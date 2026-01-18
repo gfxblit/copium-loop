@@ -108,22 +108,23 @@ async def _execute_gemini(prompt: str, model: str, args: List[str] = []) -> str:
     
     return full_output.strip()
 
-async def invoke_gemini(prompt: str, args: List[str] = []) -> str:
+async def invoke_gemini(prompt: str, args: List[str] = [], models: List[str] = None) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
     Streams output to stdout and returns the full response.
     """
-    for i, model in enumerate(DEFAULT_MODELS):
+    model_list = models if models is not None else DEFAULT_MODELS
+    for i, model in enumerate(model_list):
         try:
             print(f"Using model: {model}")
             return await _execute_gemini(prompt, model, args)
         except Exception as error:
             error_msg = str(error)
             is_quota_error = 'TerminalQuotaError' in error_msg or '429' in error_msg
-            is_last_model = i == len(DEFAULT_MODELS) - 1
+            is_last_model = i == len(model_list) - 1
 
             if is_quota_error and not is_last_model:
-                next_model = DEFAULT_MODELS[i + 1]
+                next_model = model_list[i + 1]
                 print(f"Quota exhausted for {model}. Falling back to {next_model}...")
                 continue
             

@@ -4,6 +4,7 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import END
 
 from copium_loop.state import AgentState
+from copium_loop.constants import REVIEWER_MODELS
 from copium_loop.utils import invoke_gemini, run_command, notify
 
 async def coder(state: AgentState) -> dict:
@@ -129,7 +130,7 @@ async def reviewer(state: AgentState) -> dict:
         print(system_prompt)
         print('--------------------------------------\n')
 
-    review_content = await invoke_gemini(system_prompt, ['--yolo'])
+    review_content = await invoke_gemini(system_prompt, ['--yolo'], models=REVIEWER_MODELS)
     
     is_approved = "APPROVED" in review_content
     print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
