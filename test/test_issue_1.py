@@ -1,11 +1,11 @@
 
 import pytest
 from unittest.mock import patch, AsyncMock
-from copium_loop.nodes import run_tests
+from copium_loop.nodes import tester
 import os
 
 @pytest.mark.asyncio
-class TestRunTestsDetection:
+class TestTesterDetection:
     async def test_detects_npm(self):
         """Test that npm test is used when package.json exists."""
         with patch('os.path.exists') as mock_exists:
@@ -15,7 +15,7 @@ class TestRunTestsDetection:
             with patch('copium_loop.nodes.run_command', new_callable=AsyncMock) as mock_run:
                 mock_run.return_value = {'output': 'PASS', 'exit_code': 0}
                 
-                await run_tests({'retry_count': 0})
+                await tester({'retry_count': 0})
                 
                 # Check that run_command was called with npm test
                 mock_run.assert_called_with('npm', ['test'])
@@ -29,7 +29,7 @@ class TestRunTestsDetection:
             with patch('copium_loop.nodes.run_command', new_callable=AsyncMock) as mock_run:
                 mock_run.return_value = {'output': 'PASS', 'exit_code': 0}
                 
-                await run_tests({'retry_count': 0})
+                await tester({'retry_count': 0})
                 
                 # Check that run_command was called with pytest
                 mock_run.assert_called_with('pytest', [])
@@ -40,7 +40,7 @@ class TestRunTestsDetection:
             with patch('copium_loop.nodes.run_command', new_callable=AsyncMock) as mock_run:
                 mock_run.return_value = {'output': 'PASS', 'exit_code': 0}
                 
-                await run_tests({'retry_count': 0})
+                await tester({'retry_count': 0})
                 
                 # Check that run_command was called with custom command
                 mock_run.assert_called_with('custom', ['test', '--flag'])

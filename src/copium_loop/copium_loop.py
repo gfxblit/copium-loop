@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, START, END
 
 from copium_loop.state import AgentState
 from copium_loop.nodes import (
-    coder, run_tests, reviewer, pr_creator,
+    coder, tester, reviewer, pr_creator,
     should_continue_from_test, should_continue_from_review, should_continue_from_pr_creator
 )
 from copium_loop.utils import notify
@@ -33,12 +33,12 @@ class WorkflowManager:
 
         # Add Nodes
         workflow.add_node('coder', coder)
-        workflow.add_node('run_tests', run_tests)
+        workflow.add_node('tester', tester)
         workflow.add_node('reviewer', reviewer)
         workflow.add_node('pr_creator', pr_creator)
 
         # Determine entry point
-        valid_nodes = ['coder', 'run_tests', 'reviewer', 'pr_creator']
+        valid_nodes = ['coder', 'tester', 'reviewer', 'pr_creator']
         entry_node = self.start_node if self.start_node in valid_nodes else 'coder'
         
         if self.start_node and self.start_node not in valid_nodes:
@@ -48,10 +48,10 @@ class WorkflowManager:
 
         # Edges
         workflow.add_edge(START, entry_node)
-        workflow.add_edge('coder', 'run_tests')
+        workflow.add_edge('coder', 'tester')
 
         workflow.add_conditional_edges(
-            'run_tests',
+            'tester',
             should_continue_from_test,
             {
                 'reviewer': 'reviewer',

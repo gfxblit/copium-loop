@@ -6,7 +6,7 @@ import os
 from unittest.mock import Mock, AsyncMock, patch, MagicMock, call
 from copium_loop.copium_loop import WorkflowManager
 from copium_loop.state import AgentState
-from copium_loop.nodes import coder, run_tests, reviewer, pr_creator, should_continue_from_test, should_continue_from_review, should_continue_from_pr_creator
+from copium_loop.nodes import coder, tester, reviewer, pr_creator, should_continue_from_test, should_continue_from_review, should_continue_from_pr_creator
 from copium_loop import utils
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END
@@ -26,7 +26,7 @@ class TestGraphCreation:
         assert graph is not None
         assert workflow.graph is not None
 
-    @pytest.mark.parametrize("start_node", ["coder", "run_tests", "reviewer", "pr_creator"])
+    @pytest.mark.parametrize("start_node", ["coder", "tester", "reviewer", "pr_creator"])
     def test_create_graph_with_valid_start_nodes(self, start_node):
         """Test graph creation with each valid start node."""
         workflow = WorkflowManager(start_node=start_node)
@@ -138,28 +138,28 @@ class TestReviewerNode:
             assert result['review_status'] == 'approved'
 
 
-class TestRunTestsNode:
+class TestTesterNode:
     """Tests for the test runner node."""
 
     @pytest.mark.asyncio
-    async def test_run_tests_returns_pass(self):
+    async def test_tester_returns_pass(self):
         """Test that test runner returns PASS on success."""
         with patch('copium_loop.nodes.run_command', new_callable=AsyncMock) as mock_run:
             mock_run.return_value = {'output': 'All tests passed', 'exit_code': 0}
 
             state = {'retry_count': 0}
-            result = await run_tests(state)
+            result = await tester(state)
 
             assert result['test_output'] == 'PASS'
 
     @pytest.mark.asyncio
-    async def test_run_tests_returns_fail(self):
+    async def test_tester_returns_fail(self):
         """Test that test runner returns FAIL on failure."""
         with patch('copium_loop.nodes.run_command', new_callable=AsyncMock) as mock_run:
             mock_run.return_value = {'output': 'FAIL tests', 'exit_code': 1}
             with patch('copium_loop.nodes.notify', new_callable=AsyncMock) as mock_notify:
                 state = {'retry_count': 0}
-                result = await run_tests(state)
+                result = await tester(state)
 
                 assert 'FAIL' in result['test_output']
                 assert result['retry_count'] == 1

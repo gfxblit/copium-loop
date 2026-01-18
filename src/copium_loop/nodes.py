@@ -56,7 +56,7 @@ async def coder(state: AgentState) -> dict:
         'messages': [SystemMessage(content=code_content)],
     }
 
-async def run_tests(state: AgentState) -> dict:
+async def tester(state: AgentState) -> dict:
     print('--- Test Runner Node ---')
     retry_count = state.get('retry_count', 0)
 
