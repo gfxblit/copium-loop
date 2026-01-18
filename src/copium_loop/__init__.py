@@ -2,6 +2,6 @@
 
 __version__ = "0.1.0"
 
-from copium_loop.workflow import WorkflowManager
+from copium_loop.copium_loop import WorkflowManager
 
 __all__ = ["WorkflowManager"]

@@ -4,7 +4,7 @@ import asyncio
 import os
 import sys
 import argparse
-from copium_loop.workflow import WorkflowManager
+from copium_loop.copium_loop import WorkflowManager
 
 
 async def async_main():
