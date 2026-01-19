@@ -230,7 +230,7 @@ def get_test_command() -> tuple[str, list[str]]:
         or os.path.exists("requirements.txt")
     ):
         test_cmd = "pytest"
-        test_args = []
+        test_args = ["--cov=src", "--cov-report=term-missing"]
 
     return test_cmd, test_args
 
