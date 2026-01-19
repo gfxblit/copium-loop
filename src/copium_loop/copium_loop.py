@@ -1,6 +1,7 @@
 """Core workflow implementation."""
 
 import re
+import os
 from typing import Optional
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
@@ -10,7 +11,7 @@ from copium_loop.nodes import (
     coder, tester, reviewer, pr_creator,
     should_continue_from_test, should_continue_from_review, should_continue_from_pr_creator
 )
-from copium_loop.utils import notify
+from copium_loop.utils import notify, run_command, get_test_command
 
 class WorkflowManager:
     """
@@ -94,15 +95,44 @@ class WorkflowManager:
         if not self.graph:
             self.create_graph()
 
+        initial_commit_hash = ''
+        if os.path.exists('.git'):
+            try:
+                res = await run_command('git', ['rev-parse', 'HEAD'])
+                if res['exit_code'] == 0:
+                    initial_commit_hash = res['output'].strip()
+                    print(f"Initial commit hash: {initial_commit_hash}")
+            except Exception as e:
+                print(f"Warning: Failed to capture initial commit hash: {e}")
+
+        # Ensure existing tests run successfully if starting from coder
+        if self.start_node == 'coder':
+            print("Verifying baseline tests...")
+            test_cmd, test_args = get_test_command()
+            try:
+                print(f"Running {test_cmd} {' '.join(test_args)}...")
+                # We don't necessarily want to fail the whole workflow if baseline tests fail,
+                # but we should definitely inform the user.
+                res = await run_command(test_cmd, test_args)
+                if res['exit_code'] != 0:
+                    print("Warning: Baseline tests failed. Proceeding anyway, but be aware.")
+                else:
+                    print("Baseline tests passed.")
+            except Exception as e:
+                print(f"Warning: Could not run baseline tests: {e}")
+
         initial_state = {
-            'messages': [HumanMessage(content=input_prompt)],
-            'retry_count': 0,
-            'issue_url': issue_match.group(0) if issue_match else '',
-            'test_output': '' if self.start_node not in ['reviewer', 'pr_creator'] else '',
-            'code_status': 'pending',
-            'review_status': 'approved' if self.start_node == 'pr_creator' else 'pending',
-            'pr_url': '',
-            'verbose': self.verbose
-        }
-        
+            
+                'messages': [HumanMessage(content=input_prompt)],
+                'retry_count': 0,
+                'issue_url': issue_match.group(0) if issue_match else '',
+                'test_output': '' if self.start_node not in ['reviewer', 'pr_creator'] else '',
+                'code_status': 'pending',
+                'review_status': 'approved' if self.start_node == 'pr_creator' else 'pending',
+                'pr_url': '',
+                'initial_commit_hash': initial_commit_hash,
+                'git_diff': '',
+                'verbose': self.verbose
+            }
+            
         return await self.graph.ainvoke(initial_state)

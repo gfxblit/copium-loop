@@ -11,4 +11,6 @@ class AgentState(TypedDict):
     retry_count: int
     pr_url: str
     issue_url: str
+    initial_commit_hash: str
+    git_diff: str
     verbose: bool

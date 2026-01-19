@@ -1,13 +1,15 @@
 import re
+import os
 from langchain_core.messages import SystemMessage
 from copium_loop.state import AgentState
 from copium_loop.constants import REVIEWER_MODELS
-from copium_loop.utils import invoke_gemini, notify
+from copium_loop.utils import invoke_gemini, notify, run_command
 
 async def reviewer(state: AgentState) -> dict:
     print('--- Reviewer Node ---')
     test_output = state.get('test_output', '')
     retry_count = state.get('retry_count', 0)
+    initial_commit_hash = state.get('initial_commit_hash', '')
 
     if test_output and 'PASS' not in test_output:
         return {
@@ -16,8 +18,30 @@ async def reviewer(state: AgentState) -> dict:
             'retry_count': retry_count + 1,
         }
     
-    system_prompt = """You are a senior reviewer. Your task is to review the implementation provided by the current branch.
-    To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context.
+    git_diff = ""
+    if os.path.exists('.git') and initial_commit_hash:
+        try:
+            res = await run_command('git', ['diff', initial_commit_hash, 'HEAD'])
+            if res['exit_code'] == 0:
+                git_diff = res['output']
+        except Exception as e:
+            print(f"Warning: Failed to get git diff: {e}")
+
+    system_prompt = f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
+    
+    GIT DIFF SINCE START:
+    {git_diff}
+
+    Your primary responsibility is to ensure the code changes are correct, idiomatic, and well-tested.
+    
+    CRITICAL REQUIREMENTS:
+    1. Verify that new tests have been added for any new functionality.
+    2. Verify that existing tests have been updated if behavior changed.
+    3. If the change is a pure refactor, determine if existing tests provide sufficient coverage.
+    4. Reject the implementation if it lacks relevant new tests for new features.
+    5. Ensure no debug statements or commented-out code are left behind.
+
+    To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context, including the git diff above.
     After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
     determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
     if state.get('verbose'):

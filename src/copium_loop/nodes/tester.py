@@ -1,7 +1,8 @@
 import os
+import re
 from langchain_core.messages import SystemMessage
 from copium_loop.state import AgentState
-from copium_loop.utils import run_command, notify
+from copium_loop.utils import run_command, notify, get_test_command
 
 async def tester(state: AgentState) -> dict:
     print('--- Test Runner Node ---')
@@ -9,26 +10,34 @@ async def tester(state: AgentState) -> dict:
 
     try:
         # Determine test command
-        test_cmd = 'npm'
-        test_args = ['test']
-
-        if os.environ.get('COPIUM_TEST_CMD'):
-            parts = os.environ.get('COPIUM_TEST_CMD').split()
-            test_cmd = parts[0]
-            test_args = parts[1:]
-        elif os.path.exists('pyproject.toml') or os.path.exists('setup.py') or os.path.exists('requirements.txt'):
-             test_cmd = 'pytest'
-             test_args = []
-        elif os.path.exists('package.json'):
-             test_cmd = 'npm'
-             test_args = ['test']
+        test_cmd, test_args = get_test_command()
 
         print(f'Running {test_cmd} {" ".join(test_args)}...')
         result = await run_command(test_cmd, test_args)
         unit_output = result['output']
         exit_code = result['exit_code']
 
-        if exit_code != 0 or 'FAIL' in unit_output or 'failed' in unit_output:
+        # More robust test failure detection
+        # We look for common patterns in pytest, npm test, etc.
+        # "FAILURES", "ERRORS", "FAILED", "FAIL", "error:"
+        failure_patterns = [
+            r'FAILURES',
+            r'ERRORS',
+            r'\d+ failed',
+            r'\d+ error',
+            r'FAIL\b',
+            r'FAILED\b',
+            r'^error:'
+        ]
+        
+        has_failed = exit_code != 0
+        if not has_failed:
+            for pattern in failure_patterns:
+                if re.search(pattern, unit_output, re.MULTILINE | re.IGNORECASE):
+                    has_failed = True
+                    break
+
+        if has_failed:
             message = 'Max retries exceeded. Aborting.' if retry_count >= 3 else 'Unit tests failed. Returning to coder.'
             await notify('Workflow: Tests Failed', message, 4)
             

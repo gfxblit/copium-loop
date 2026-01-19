@@ -170,3 +170,21 @@ async def notify(title: str, message: str, priority: int = 3):
         ])
     except Exception as e:
         print(f"Failed to send notification: {e}")
+
+def get_test_command() -> tuple[str, List[str]]:
+    """Determines the test command based on the project structure."""
+    test_cmd = 'npm'
+    test_args = ['test']
+
+    if os.environ.get('COPIUM_TEST_CMD'):
+        parts = os.environ.get('COPIUM_TEST_CMD').split()
+        test_cmd = parts[0]
+        test_args = parts[1:]
+    elif os.path.exists('pyproject.toml') or os.path.exists('setup.py') or os.path.exists('requirements.txt'):
+        test_cmd = 'pytest'
+        test_args = []
+    elif os.path.exists('package.json'):
+        test_cmd = 'npm'
+        test_args = ['test']
+    
+    return test_cmd, test_args

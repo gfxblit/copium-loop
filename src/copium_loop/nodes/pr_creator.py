@@ -1,4 +1,5 @@
 import re
+import os
 from langchain_core.messages import SystemMessage
 from copium_loop.state import AgentState
 from copium_loop.utils import run_command, notify
@@ -6,6 +7,10 @@ from copium_loop.utils import run_command, notify
 async def pr_creator(state: AgentState) -> dict:
     print('--- PR Creator Node ---')
     retry_count = state.get('retry_count', 0)
+
+    if not os.path.exists('.git'):
+        print('Not a git repository. Skipping PR creation.')
+        return {'review_status': 'pr_skipped'}
 
     try:
         # 1. Check feature branch
