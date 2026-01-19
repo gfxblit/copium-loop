@@ -235,6 +235,32 @@ def get_test_command() -> tuple[str, list[str]]:
     return test_cmd, test_args
 
 
+def get_build_command() -> tuple[str, list[str]]:
+    """Determines the build command based on the project structure."""
+    build_cmd = "npm"
+    build_args = ["run", "build"]
+
+    if os.environ.get("COPIUM_BUILD_CMD"):
+        parts = os.environ.get("COPIUM_BUILD_CMD").split()
+        build_cmd = parts[0]
+        build_args = parts[1:]
+    elif os.path.exists("package.json"):
+        build_cmd = get_package_manager()
+        build_args = ["run", "build"]
+    elif (
+        os.path.exists("pyproject.toml")
+        or os.path.exists("setup.py")
+        or os.path.exists("requirements.txt")
+    ):
+        # For Python, build often means building the package or just checking types/compiling
+        # If there's no explicit build command, we might just return None or a placeholder
+        # For now, let's see if there's a common one. Often it's just 'pip install -e .' or 'python -m build'
+        # But if we don't know, we'll return None to signal skipping build.
+        return "", []
+
+    return build_cmd, build_args
+
+
 def get_lint_command() -> tuple[str, list[str]]:
     """Determines the lint command based on the project structure."""
     lint_cmd = "npm"

@@ -4,7 +4,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MAX_RETRIES
 from copium_loop.state import AgentState
-from copium_loop.utils import get_lint_command, get_test_command, notify, run_command
+from copium_loop.utils import get_build_command, get_lint_command, get_test_command, notify, run_command
 
 
 async def tester(state: AgentState) -> dict:
@@ -32,7 +32,27 @@ async def tester(state: AgentState) -> dict:
                 ],
             }
 
-        # 2. Run Unit Tests
+        # 2. Run Build
+        build_cmd, build_args = get_build_command()
+        if build_cmd:
+            print(f"Running {build_cmd} {' '.join(build_args)}...")
+            build_result = await run_command(build_cmd, build_args)
+            build_output = build_result["output"]
+
+            if build_result["exit_code"] != 0:
+                print("Build failed.")
+                return {
+                    "test_output": "FAIL (Build):\n" + build_output,
+                    "retry_count": retry_count + 1,
+                    "messages": [
+                        SystemMessage(
+                            content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n"
+                            + build_output
+                        )
+                    ],
+                }
+
+        # 3. Run Unit Tests
         test_cmd, test_args = get_test_command()
 
         print(f"Running {test_cmd} {' '.join(test_args)}...")
