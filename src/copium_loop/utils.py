@@ -70,12 +70,20 @@ async def run_command(command: str, args: list[str] | None = None) -> dict:
 
 
 async def _execute_gemini(
-    prompt: str, model: str, args: list[str] | None = None, verbose: bool = False
+    prompt: str,
+    model: str | None,
+    args: list[str] | None = None,
+    verbose: bool = False,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
         args = []
-    cmd_args = ["-m", model, "--sandbox"] + args + [prompt]
+    
+    cmd_args = ["--sandbox"] + args
+    if model:
+        cmd_args.extend(["-m", model])
+    
+    cmd_args.append(prompt)
 
     process = await asyncio.create_subprocess_exec(
         "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -119,7 +127,7 @@ async def _execute_gemini(
 async def invoke_gemini(
     prompt: str,
     args: list[str] | None = None,
-    models: list[str] | None = None,
+    models: list[str | None] | None = None,
     verbose: bool = False,
 ) -> str:
     """
@@ -131,19 +139,23 @@ async def invoke_gemini(
     model_list = models if models is not None else DEFAULT_MODELS
     for i, model in enumerate(model_list):
         try:
-            print(f"Using model: {model}")
+            model_display = model if model else "auto"
+            print(f"Using model: {model_display}")
             return await _execute_gemini(prompt, model, args, verbose)
         except Exception as error:
             error_msg = str(error)
             is_quota_error = "TerminalQuotaError" in error_msg or "429" in error_msg
             is_last_model = i == len(model_list) - 1
 
-            if is_quota_error and not is_last_model:
+            # Fallback if quota error OR if we are in "auto" mode (model is None) and failed
+            if (is_quota_error or model is None) and not is_last_model:
                 next_model = model_list[i + 1]
-                print(f"Quota exhausted for {model}. Falling back to {next_model}...")
+                next_model_display = next_model if next_model else "auto"
+                print(f"Error with {model_display}: {error_msg}")
+                print(f"Falling back to {next_model_display}...")
                 continue
 
-            if is_quota_error and is_last_model:
+            if (is_quota_error or model is None) and is_last_model:
                 raise Exception(
                     f"All models exhausted. Last error: {error_msg}"
                 ) from error

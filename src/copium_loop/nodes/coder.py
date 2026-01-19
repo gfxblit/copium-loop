@@ -1,5 +1,6 @@
 from langchain_core.messages import SystemMessage
 
+from copium_loop.constants import DEFAULT_MODELS
 from copium_loop.state import AgentState
 from copium_loop.utils import invoke_gemini
 
@@ -45,7 +46,11 @@ async def coder(state: AgentState) -> dict:
         print(system_prompt)
         print("------------------------------------\n")
 
-    code_content = await invoke_gemini(system_prompt, ["--yolo"])
+    # Start with "auto" (None), then fallback to default models
+    coder_models = [None] + DEFAULT_MODELS
+    code_content = await invoke_gemini(
+        system_prompt, ["--yolo"], models=coder_models, verbose=state.get("verbose")
+    )
     print("\nCoding complete.")
 
     return {
