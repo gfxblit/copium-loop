@@ -25,7 +25,7 @@ async def async_main():
         type=str,
         help="Start node (coder, test_runner, reviewer, pr_creator)",
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--verbose", "-v", action="store_true", default=True, help="Verbose output")
 
     args = parser.parse_args()
 
