@@ -52,23 +52,23 @@ async def reviewer(state: AgentState) -> dict:
         print(system_prompt)
         print("--------------------------------------\n")
 
-    review_content = await invoke_gemini(
-        system_prompt, ["--yolo"], models=REVIEWER_MODELS, verbose=state.get("verbose")
-    )
+    try:
+        review_content = await invoke_gemini(
+            system_prompt, ["--yolo"], models=REVIEWER_MODELS, verbose=state.get("verbose")
+        )
+    except Exception as e:
+        print(f"Error during review: {e}")
+        return {
+            "review_status": "rejected",
+            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
+            "retry_count": retry_count + 1,
+        }
 
     # Robustly check for the final verdict by looking for the last occurrence of APPROVED or REJECTED
     verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", review_content.upper())
     is_approved = verdicts[-1] == "APPROVED" if verdicts else False
 
     print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
-
-    if not is_approved:
-        message = (
-            "Max retries exceeded. Aborting."
-            if retry_count >= 3
-            else "Reviewer rejected the implementation. Returning to coder."
-        )
-        await notify("Workflow: Review Rejected", message, 4)
 
     return {
         "review_status": "approved" if is_approved else "rejected",
