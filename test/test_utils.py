@@ -145,7 +145,6 @@ class TestExecuteGemini:
         with patch("asyncio.create_subprocess_exec") as mock_exec:
             mock_proc = AsyncMock()
             mock_proc.stdout.read = AsyncMock(return_value=b"")
-            mock_proc.stderr.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
             mock_exec.return_value = mock_proc
 
@@ -170,7 +169,6 @@ class TestExecuteGemini:
         with patch("asyncio.create_subprocess_exec") as mock_exec:
             mock_proc = AsyncMock()
             mock_proc.stdout.read = AsyncMock(return_value=b"")
-            mock_proc.stderr.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
             mock_exec.return_value = mock_proc
 
@@ -215,17 +213,21 @@ class TestInvokeGemini:
             assert mock_exec.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_non_quota_error_immediate_fail(self):
-        """Test immediate failure on non-quota errors."""
+    async def test_invoke_gemini_any_error_triggers_fallback(self):
+        """Test that any error triggers fallback to next model."""
         with patch(
             "copium_loop.utils._execute_gemini", new_callable=AsyncMock
         ) as mock_exec:
-            mock_exec.side_effect = Exception("Gemini CLI exited with code 1")
+            # First model fails with generic error, second succeeds
+            mock_exec.side_effect = [
+                Exception("Gemini CLI exited with code 1"),
+                "Response from second model",
+            ]
 
-            with pytest.raises(Exception, match="Gemini CLI exited with code 1"):
-                await utils.invoke_gemini("Hello")
+            result = await utils.invoke_gemini("Hello")
 
-            assert mock_exec.call_count == 1
+            assert result == "Response from second model"
+            assert mock_exec.call_count == 2
 
     @pytest.mark.asyncio
     async def test_invoke_gemini_auto_fallback_on_any_error(self):

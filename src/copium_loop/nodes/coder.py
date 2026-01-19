@@ -16,6 +16,17 @@ async def coder(state: AgentState) -> dict:
     system_prompt = f"""You are a software engineer. Implement the following request: {initial_request}.
     You have access to the file system and git.
 
+    CRITICAL: You MUST follow Test-Driven Development (TDD) methodology.
+    To do this, you MUST activate the 'tdd-guide' skill and follow its Red-Green-Refactor cycle:
+    1. Write tests FIRST (they should fail initially)
+    2. Run tests to verify they fail
+    3. Write minimal implementation to make tests pass
+    4. Run tests to verify they pass
+    5. Refactor and ensure 80%+ test coverage
+
+    After the skill completes its guidance, implement the code following TDD principles.
+    Do not skip writing tests - they are mandatory for all new functionality.
+
     IMPORTANT: You MUST commit your changes using git. You may create multiple commits if it makes sense for the task.
     Please output the code changes in markdown blocks as well for the conversation record."""
 
