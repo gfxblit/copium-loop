@@ -56,3 +56,12 @@ class TestConditionalLogic:
             )
             == "coder"
         )
+
+    def test_should_continue_from_pr_creator_on_failure(self):
+        """Test transition to coder on pr_failed."""
+        assert (
+            should_continue_from_pr_creator(
+                {"review_status": "pr_failed", "retry_count": 0}
+            )
+            == "coder"
+        )

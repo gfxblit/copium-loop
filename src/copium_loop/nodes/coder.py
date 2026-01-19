@@ -36,6 +36,16 @@ async def coder(state: AgentState) -> dict:
 
     Please fix the code to satisfy the reviewer and the original request: {initial_request}."""
         system_prompt += "\n\nMake sure to commit your fixes."
+    elif review_status == "pr_failed":
+        last_message = messages[-1]
+        system_prompt = f"""Your previous attempt to create a PR failed.
+
+    ERROR:
+    {last_message.content}
+
+    Please fix any issues (e.g., git push failures, branch issues) and try again.
+    Original request: {initial_request}"""
+        system_prompt += "\n\nMake sure to commit your fixes if necessary."
     if review_status == "needs_commit":
         system_prompt = f"""You have uncommitted changes that prevent PR creation.
     Please review your changes and commit them using git.

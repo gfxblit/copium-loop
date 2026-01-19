@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.nodes import coder
 
@@ -58,3 +58,28 @@ class TestCoderNode:
             _, kwargs = mock_gemini.call_args
             assert kwargs["verbose"] is True
             assert kwargs["label"] == "Coder System"
+
+    @pytest.mark.asyncio
+    async def test_coder_handles_pr_failure(self):
+        """Test that coder node handles PR creation failure."""
+        with patch(
+            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "Retrying PR..."
+
+            state = {
+                "messages": [
+                    HumanMessage(content="Original request"),
+                    SystemMessage(
+                        content="Failed to create PR: Git push failed (exit 1): error: failed to push some refs"
+                    ),
+                ],
+                "review_status": "pr_failed",
+            }
+            await coder(state)
+
+            # Check that the prompt contains the PR failure message
+            call_args = mock_gemini.call_args[0]
+            prompt = call_args[0]
+            assert "Your previous attempt to create a PR failed." in prompt
+            assert "Failed to create PR: Git push failed" in prompt
