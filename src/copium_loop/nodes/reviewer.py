@@ -16,20 +16,9 @@ async def reviewer(state: AgentState) -> dict:
             'retry_count': retry_count + 1,
         }
     
-    system_prompt = """You are a senior reviewer. Review the implementation. 
-    You have access to the file system and git.
-    
-    MANDATORY: You MUST activate the 'code-reviewer' skill to perform a thorough review of the changes. 
+    system_prompt = """MANDATORY: You MUST activate the 'code-reviewer' skill to perform a thorough review of the changes.
 
-    You MUST examine all commits and the full diff between the current branch and 'origin/main'.
-    Use tools like 'git log origin/main..HEAD' to see the commit history and 'git diff origin/main..HEAD' to review the code changes.
-
-    You MUST evaluate commit granularity. Reject the implementation if:
-    1. Commits are too large: They bundle multiple unrelated tasks or ideas, making them difficult to review (cognitive overload).
-    2. Commits are too small: There are too many tiny, fragmented commits that lack independent value and should have been grouped or squashed.
-
-    If the code looks correct, safe, and follows the requirements, output "APPROVED". 
-    Otherwise, output "REJECTED" followed by a concise explanation of why."""
+    Do not make any fixes or changes yourself. Only suggest changes."""
     if state.get('verbose'):
         print('\n--- [VERBOSE] Reviewer System Prompt ---')
         print(system_prompt)
