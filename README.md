@@ -30,7 +30,7 @@ copium-loop --start reviewer --verbose "check code"
 ## How It Works
 
 1. **Coder** → Implements using Gemini
-2. **Test Runner** → Runs `npm test`
+2. **Test Runner** → Runs `npm test` or `pnpm test` (automatically detects package manager)
 3. **Reviewer** → Reviews commits/diffs
 4. **PR Creator** → Pushes & creates PR
 

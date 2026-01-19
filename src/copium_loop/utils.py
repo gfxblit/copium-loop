@@ -199,6 +199,15 @@ async def notify(title: str, message: str, priority: int = 3):
         print(f"Failed to send notification: {e}")
 
 
+def get_package_manager() -> str:
+    """Detects the package manager based on lock files."""
+    if os.path.exists("pnpm-lock.yaml"):
+        return "pnpm"
+    if os.path.exists("yarn.lock"):
+        return "yarn"
+    return "npm"
+
+
 def get_test_command() -> tuple[str, list[str]]:
     """Determines the test command based on the project structure."""
     test_cmd = "npm"
@@ -209,7 +218,7 @@ def get_test_command() -> tuple[str, list[str]]:
         test_cmd = parts[0]
         test_args = parts[1:]
     elif os.path.exists("package.json"):
-        test_cmd = "npm"
+        test_cmd = get_package_manager()
         test_args = ["test"]
     elif (
         os.path.exists("pyproject.toml")
@@ -232,7 +241,7 @@ def get_lint_command() -> tuple[str, list[str]]:
         lint_cmd = parts[0]
         lint_args = parts[1:]
     elif os.path.exists("package.json"):
-        lint_cmd = "npm"
+        lint_cmd = get_package_manager()
         lint_args = ["run", "lint"]
     elif (
         os.path.exists("pyproject.toml")

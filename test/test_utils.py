@@ -75,11 +75,22 @@ class TestHelpers:
         """Test that get_test_command returns npm if package.json exists, even if pyproject.toml exists."""
 
         def side_effect(path):
-            return path in ["package.json", "pyproject.toml"]
+            return path in ["package.json", "pyproject.toml", "package-lock.json"]
 
         with patch("os.path.exists", side_effect=side_effect):
             cmd, args = utils.get_test_command()
             assert cmd == "npm"
+            assert args == ["test"]
+
+    def test_get_test_command_pnpm_priority(self):
+        """Test that get_test_command returns pnpm if package.json and pnpm-lock.yaml exist."""
+
+        def side_effect(path):
+            return path in ["package.json", "pnpm-lock.yaml"]
+
+        with patch("os.path.exists", side_effect=side_effect):
+            cmd, args = utils.get_test_command()
+            assert cmd == "pnpm"
             assert args == ["test"]
 
     def test_get_lint_command_ruff(self):
@@ -103,6 +114,26 @@ class TestHelpers:
             cmd, args = utils.get_lint_command()
             assert cmd == "npm"
             assert args == ["run", "lint"]
+
+    def test_get_package_manager_detection(self):
+        """Test detection of different package managers."""
+        # Test npm (default)
+        with patch("os.path.exists", return_value=False):
+            assert utils.get_package_manager() == "npm"
+
+        # Test pnpm
+        def pnpm_side_effect(path):
+            return path == "pnpm-lock.yaml"
+
+        with patch("os.path.exists", side_effect=pnpm_side_effect):
+            assert utils.get_package_manager() == "pnpm"
+
+        # Test yarn
+        def yarn_side_effect(path):
+            return path == "yarn.lock"
+
+        with patch("os.path.exists", side_effect=yarn_side_effect):
+            assert utils.get_package_manager() == "yarn"
 
 
 class TestInvokeGemini:
