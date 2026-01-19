@@ -39,6 +39,11 @@ Loops on failures (max 3 retries/phase).
 ## Development
 
 ```bash
-pytest test/  # Run tests
+# Run tests
+pytest
+
+# Lint and format
+ruff check .
+ruff format .
 ```
 

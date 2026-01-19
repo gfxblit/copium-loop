@@ -1,10 +1,13 @@
-from typing import TypedDict, Annotated, List, Optional
+from typing import Annotated, TypedDict
+
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
+
 class AgentState(TypedDict):
     """The state of the workflow."""
-    messages: Annotated[List[BaseMessage], add_messages]
+
+    messages: Annotated[list[BaseMessage], add_messages]
     code_status: str
     test_output: str
     review_status: str

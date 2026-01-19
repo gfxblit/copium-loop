@@ -1,17 +1,23 @@
 """Core workflow implementation."""
 
-import re
 import os
-from typing import Optional
-from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, START, END
+import re
 
-from copium_loop.state import AgentState
+from langchain_core.messages import HumanMessage
+from langgraph.graph import END, START, StateGraph
+
 from copium_loop.nodes import (
-    coder, tester, reviewer, pr_creator,
-    should_continue_from_test, should_continue_from_review, should_continue_from_pr_creator
+    coder,
+    pr_creator,
+    reviewer,
+    should_continue_from_pr_creator,
+    should_continue_from_review,
+    should_continue_from_test,
+    tester,
 )
-from copium_loop.utils import notify, run_command, get_test_command
+from copium_loop.state import AgentState
+from copium_loop.utils import get_test_command, notify, run_command
+
 
 class WorkflowManager:
     """
@@ -19,7 +25,7 @@ class WorkflowManager:
     Orchestrates the coding, testing, and review phases.
     """
 
-    def __init__(self, start_node: Optional[str] = None, verbose: bool = False):
+    def __init__(self, start_node: str | None = None, verbose: bool = False):
         self.graph = None
         self.start_node = start_node
         self.verbose = verbose
@@ -33,51 +39,38 @@ class WorkflowManager:
         workflow = StateGraph(AgentState)
 
         # Add Nodes
-        workflow.add_node('coder', coder)
-        workflow.add_node('tester', tester)
-        workflow.add_node('reviewer', reviewer)
-        workflow.add_node('pr_creator', pr_creator)
+        workflow.add_node("coder", coder)
+        workflow.add_node("tester", tester)
+        workflow.add_node("reviewer", reviewer)
+        workflow.add_node("pr_creator", pr_creator)
 
         # Determine entry point
-        valid_nodes = ['coder', 'tester', 'reviewer', 'pr_creator']
-        entry_node = self.start_node if self.start_node in valid_nodes else 'coder'
-        
+        valid_nodes = ["coder", "tester", "reviewer", "pr_creator"]
+        entry_node = self.start_node if self.start_node in valid_nodes else "coder"
+
         if self.start_node and self.start_node not in valid_nodes:
-            print(f"Warning: Invalid start node \"{self.start_node}\".")
+            print(f'Warning: Invalid start node "{self.start_node}".')
             print(f"Valid nodes are: {', '.join(valid_nodes)}")
             print('Falling back to "coder".')
 
         # Edges
         workflow.add_edge(START, entry_node)
-        workflow.add_edge('coder', 'tester')
+        workflow.add_edge("coder", "tester")
 
         workflow.add_conditional_edges(
-            'tester',
+            "tester",
             should_continue_from_test,
-            {
-                'reviewer': 'reviewer',
-                'coder': 'coder',
-                END: END
-            }
+            {"reviewer": "reviewer", "coder": "coder", END: END},
         )
 
         workflow.add_conditional_edges(
-            'reviewer',
+            "reviewer",
             should_continue_from_review,
-            {
-                'pr_creator': 'pr_creator',
-                'coder': 'coder',
-                END: END
-            }
+            {"pr_creator": "pr_creator", "coder": "coder", END: END},
         )
 
         workflow.add_conditional_edges(
-            'pr_creator',
-            should_continue_from_pr_creator,
-            {
-                END: END,
-                'coder': 'coder'
-            }
+            "pr_creator", should_continue_from_pr_creator, {END: END, "coder": "coder"}
         )
 
         self.graph = workflow.compile()
@@ -85,28 +78,28 @@ class WorkflowManager:
 
     async def run(self, input_prompt: str):
         """Run the workflow with the given prompt."""
-        issue_match = re.search(r'https://github\.com/[^\s]+/issues/\d+', input_prompt)
-        
+        issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
+
         if not self.start_node:
-            self.start_node = 'coder'
-        
+            self.start_node = "coder"
+
         print(f"Starting workflow at node: {self.start_node}")
 
         if not self.graph:
             self.create_graph()
 
-        initial_commit_hash = ''
-        if os.path.exists('.git'):
+        initial_commit_hash = ""
+        if os.path.exists(".git"):
             try:
-                res = await run_command('git', ['rev-parse', 'HEAD'])
-                if res['exit_code'] == 0:
-                    initial_commit_hash = res['output'].strip()
+                res = await run_command("git", ["rev-parse", "HEAD"])
+                if res["exit_code"] == 0:
+                    initial_commit_hash = res["output"].strip()
                     print(f"Initial commit hash: {initial_commit_hash}")
             except Exception as e:
                 print(f"Warning: Failed to capture initial commit hash: {e}")
 
         # Ensure existing tests run successfully if starting from coder
-        if self.start_node == 'coder':
+        if self.start_node == "coder":
             print("Verifying baseline tests...")
             test_cmd, test_args = get_test_command()
             try:
@@ -114,25 +107,30 @@ class WorkflowManager:
                 # We don't necessarily want to fail the whole workflow if baseline tests fail,
                 # but we should definitely inform the user.
                 res = await run_command(test_cmd, test_args)
-                if res['exit_code'] != 0:
-                    print("Warning: Baseline tests failed. Proceeding anyway, but be aware.")
+                if res["exit_code"] != 0:
+                    print(
+                        "Warning: Baseline tests failed. Proceeding anyway, but be aware."
+                    )
                 else:
                     print("Baseline tests passed.")
             except Exception as e:
                 print(f"Warning: Could not run baseline tests: {e}")
 
         initial_state = {
-            
-                'messages': [HumanMessage(content=input_prompt)],
-                'retry_count': 0,
-                'issue_url': issue_match.group(0) if issue_match else '',
-                'test_output': '' if self.start_node not in ['reviewer', 'pr_creator'] else '',
-                'code_status': 'pending',
-                'review_status': 'approved' if self.start_node == 'pr_creator' else 'pending',
-                'pr_url': '',
-                'initial_commit_hash': initial_commit_hash,
-                'git_diff': '',
-                'verbose': self.verbose
-            }
-            
+            "messages": [HumanMessage(content=input_prompt)],
+            "retry_count": 0,
+            "issue_url": issue_match.group(0) if issue_match else "",
+            "test_output": ""
+            if self.start_node not in ["reviewer", "pr_creator"]
+            else "",
+            "code_status": "pending",
+            "review_status": "approved"
+            if self.start_node == "pr_creator"
+            else "pending",
+            "pr_url": "",
+            "initial_commit_hash": initial_commit_hash,
+            "git_diff": "",
+            "verbose": self.verbose,
+        }
+
         return await self.graph.ainvoke(initial_state)

@@ -23,7 +23,40 @@ copium-loop = "copium_loop.__main__:main"
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "ruff",
 ]
+
+[tool.ruff]
+# Target Python version
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+# Enable Pyflakes (E) and pycodestyle (W) codes by default.
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # flake8-unused-arguments
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long, handled by formatter
+]
+
+[tool.ruff.format]
+# Use double quotes for strings.
+quote-style = "double"
+# Indent with spaces, rather than tabs.
+indent-style = "space"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
 
 [tool.setuptools.packages.find]
 where = ["src"]
