@@ -60,6 +60,20 @@ class TestHelpers:
             session = await utils.get_tmux_session()
             assert session == "no-tmux"
 
+    def test_get_test_command_pytest(self):
+        """Test that get_test_command returns pytest for python projects."""
+        with patch("os.path.exists", return_value=True):
+            cmd, args = utils.get_test_command()
+            assert cmd == "pytest"
+            assert args == []
+
+    def test_get_lint_command_ruff(self):
+        """Test that get_lint_command returns ruff for python projects."""
+        with patch("os.path.exists", return_value=True):
+            cmd, args = utils.get_lint_command()
+            assert cmd == "ruff"
+            assert args == ["check", "."]
+
 
 class TestInvokeGemini:
     """Tests for Gemini CLI invocation with fallback."""

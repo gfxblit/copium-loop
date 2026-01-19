@@ -220,3 +220,26 @@ def get_test_command() -> tuple[str, list[str]]:
         test_args = ["test"]
 
     return test_cmd, test_args
+
+
+def get_lint_command() -> tuple[str, list[str]]:
+    """Determines the lint command based on the project structure."""
+    lint_cmd = "npm"
+    lint_args = ["run", "lint"]
+
+    if os.environ.get("COPIUM_LINT_CMD"):
+        parts = os.environ.get("COPIUM_LINT_CMD").split()
+        lint_cmd = parts[0]
+        lint_args = parts[1:]
+    elif (
+        os.path.exists("pyproject.toml")
+        or os.path.exists("setup.py")
+        or os.path.exists("requirements.txt")
+    ):
+        lint_cmd = "ruff"
+        lint_args = ["check", "."]
+    elif os.path.exists("package.json"):
+        lint_cmd = "npm"
+        lint_args = ["run", "lint"]
+
+    return lint_cmd, lint_args
