@@ -47,14 +47,14 @@ async def reviewer(state: AgentState) -> dict:
     To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context, including the git diff above.
     After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
     determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
-    if state.get("verbose"):
-        print("\n--- [VERBOSE] Reviewer System Prompt ---")
-        print(system_prompt)
-        print("--------------------------------------\n")
 
     try:
         review_content = await invoke_gemini(
-            system_prompt, ["--yolo"], models=REVIEWER_MODELS, verbose=state.get("verbose")
+            system_prompt,
+            ["--yolo"],
+            models=REVIEWER_MODELS,
+            verbose=state.get("verbose"),
+            label="Reviewer System",
         )
     except Exception as e:
         print(f"Error during review: {e}")

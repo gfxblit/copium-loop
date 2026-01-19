@@ -44,7 +44,7 @@ class TestCoderNode:
             assert "FAIL: Expected 1 to be 2" in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_logs_prompt_when_verbose(self, capsys):
+    async def test_coder_logs_prompt_when_verbose(self):
         """Test that coder logs system prompt when verbose is True."""
         with patch(
             "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
@@ -54,5 +54,7 @@ class TestCoderNode:
             state = {"messages": [HumanMessage(content="Test prompt")], "verbose": True}
             await coder(state)
 
-            captured = capsys.readouterr()
-            assert "[VERBOSE] Coder System Prompt" in captured.out
+            # Check that invoke_gemini was called with verbose=True and label="Coder System"
+            _, kwargs = mock_gemini.call_args
+            assert kwargs["verbose"] is True
+            assert kwargs["label"] == "Coder System"

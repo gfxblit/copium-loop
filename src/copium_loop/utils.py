@@ -73,7 +73,6 @@ async def _execute_gemini(
     prompt: str,
     model: str | None,
     args: list[str] | None = None,
-    verbose: bool = False,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
@@ -112,8 +111,6 @@ async def _execute_gemini(
             decoded = _clean_chunk(chunk)
             if decoded:
                 error_output += decoded
-                if verbose:
-                    _stream_output(decoded)
 
     await asyncio.gather(read_stdout(), read_stderr())
     exit_code = await process.wait()
@@ -129,19 +126,27 @@ async def invoke_gemini(
     args: list[str] | None = None,
     models: list[str | None] | None = None,
     verbose: bool = False,
+    label: str | None = None,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
     Streams output to stdout and returns the full response.
     """
+    if verbose:
+        banner = f"--- [VERBOSE] {label} Prompt ---" if label else "--- [VERBOSE] Prompt ---"
+        print(f"\n{banner}")
+        print(prompt)
+        print("-" * len(banner) + "\n")
+
     if args is None:
         args = []
     model_list = models if models is not None else DEFAULT_MODELS
     for i, model in enumerate(model_list):
         try:
             model_display = model if model else "auto"
-            print(f"Using model: {model_display}")
-            return await _execute_gemini(prompt, model, args, verbose)
+            if verbose:
+                print(f"Using model: {model_display}")
+            return await _execute_gemini(prompt, model, args)
         except Exception as error:
             error_msg = str(error)
             is_quota_error = "TerminalQuotaError" in error_msg or "429" in error_msg

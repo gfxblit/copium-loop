@@ -252,6 +252,39 @@ class TestInvokeGemini:
             # Verify second call had model="backup-model"
             assert mock_exec.call_args_list[1][0][1] == "backup-model"
 
+    @pytest.mark.asyncio
+    async def test_invoke_gemini_verbose_output(self, capsys):
+        """Test that invoke_gemini prints prompt when verbose is True."""
+        with patch(
+            "copium_loop.utils._execute_gemini", new_callable=AsyncMock
+        ) as mock_exec:
+            mock_exec.return_value = "Response"
+
+            await utils.invoke_gemini(
+                "Test Prompt", verbose=True, label="TestNode", models=["test-model"]
+            )
+
+            captured = capsys.readouterr()
+            assert "[VERBOSE] TestNode Prompt" in captured.out
+            assert "Test Prompt" in captured.out
+            assert "Using model: test-model" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_invoke_gemini_no_verbose_output(self, capsys):
+        """Test that invoke_gemini does NOT print when verbose is False."""
+        with patch(
+            "copium_loop.utils._execute_gemini", new_callable=AsyncMock
+        ) as mock_exec:
+            mock_exec.return_value = "Response"
+
+            await utils.invoke_gemini(
+                "Test Prompt", verbose=False, label="TestNode", models=["test-model"]
+            )
+
+            captured = capsys.readouterr()
+            assert "[VERBOSE]" not in captured.out
+            assert "Using model" not in captured.out
+
 
 class TestNotifications:
     """Tests for notification system."""

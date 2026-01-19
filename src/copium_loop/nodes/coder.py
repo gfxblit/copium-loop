@@ -36,20 +36,19 @@ async def coder(state: AgentState) -> dict:
 
     Please fix the code to satisfy the reviewer and the original request: {initial_request}."""
         system_prompt += "\n\nMake sure to commit your fixes."
-    elif review_status == "needs_commit":
+    if review_status == "needs_commit":
         system_prompt = f"""You have uncommitted changes that prevent PR creation.
     Please review your changes and commit them using git.
     Original request: {initial_request}"""
 
-    if state.get("verbose"):
-        print("\n--- [VERBOSE] Coder System Prompt ---")
-        print(system_prompt)
-        print("------------------------------------\n")
-
     # Start with "auto" (None), then fallback to default models
     coder_models = [None] + DEFAULT_MODELS
     code_content = await invoke_gemini(
-        system_prompt, ["--yolo"], models=coder_models, verbose=state.get("verbose")
+        system_prompt,
+        ["--yolo"],
+        models=coder_models,
+        verbose=state.get("verbose"),
+        label="Coder System",
     )
     print("\nCoding complete.")
 
