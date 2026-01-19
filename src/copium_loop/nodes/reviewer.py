@@ -16,9 +16,10 @@ async def reviewer(state: AgentState) -> dict:
             'retry_count': retry_count + 1,
         }
     
-    system_prompt = """MANDATORY: You MUST activate the 'code-reviewer' skill to perform a thorough review of the changes.
-
-    Do not make any fixes or changes yourself. Only suggest changes."""
+    system_prompt = """You are a senior reviewer. Your task is to review the implementation provided by the current branch.
+    To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context.
+    After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
+    determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
     if state.get('verbose'):
         print('\n--- [VERBOSE] Reviewer System Prompt ---')
         print(system_prompt)
