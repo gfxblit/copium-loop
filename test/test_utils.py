@@ -62,17 +62,47 @@ class TestHelpers:
 
     def test_get_test_command_pytest(self):
         """Test that get_test_command returns pytest for python projects."""
-        with patch("os.path.exists", return_value=True):
+
+        def side_effect(path):
+            return path == "pyproject.toml"
+
+        with patch("os.path.exists", side_effect=side_effect):
             cmd, args = utils.get_test_command()
             assert cmd == "pytest"
             assert args == []
 
+    def test_get_test_command_npm_priority(self):
+        """Test that get_test_command returns npm if package.json exists, even if pyproject.toml exists."""
+
+        def side_effect(path):
+            return path in ["package.json", "pyproject.toml"]
+
+        with patch("os.path.exists", side_effect=side_effect):
+            cmd, args = utils.get_test_command()
+            assert cmd == "npm"
+            assert args == ["test"]
+
     def test_get_lint_command_ruff(self):
         """Test that get_lint_command returns ruff for python projects."""
-        with patch("os.path.exists", return_value=True):
+
+        def side_effect(path):
+            return path == "pyproject.toml"
+
+        with patch("os.path.exists", side_effect=side_effect):
             cmd, args = utils.get_lint_command()
             assert cmd == "ruff"
             assert args == ["check", "."]
+
+    def test_get_lint_command_npm_priority(self):
+        """Test that get_lint_command returns npm if package.json exists, even if pyproject.toml exists."""
+
+        def side_effect(path):
+            return path in ["package.json", "pyproject.toml"]
+
+        with patch("os.path.exists", side_effect=side_effect):
+            cmd, args = utils.get_lint_command()
+            assert cmd == "npm"
+            assert args == ["run", "lint"]
 
 
 class TestInvokeGemini:

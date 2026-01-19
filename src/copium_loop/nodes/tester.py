@@ -31,7 +31,10 @@ async def tester(state: AgentState) -> dict:
                 "test_output": "FAIL (Lint):\n" + lint_output,
                 "retry_count": retry_count + 1,
                 "messages": [
-                    SystemMessage(content="Linting failed (ruff check):\n" + lint_output)
+                    SystemMessage(
+                        content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n"
+                        + lint_output
+                    )
                 ],
             }
 
