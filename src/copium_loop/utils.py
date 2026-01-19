@@ -66,7 +66,7 @@ async def run_command(command: str, args: List[str] = []) -> dict:
     exit_code = await process.wait()
     return {'output': full_output, 'exit_code': exit_code}
 
-async def _execute_gemini(prompt: str, model: str, args: List[str] = []) -> str:
+async def _execute_gemini(prompt: str, model: str, args: List[str] = [], verbose: bool = False) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     cmd_args = ['-m', model] + args + [prompt]
     
@@ -99,6 +99,8 @@ async def _execute_gemini(prompt: str, model: str, args: List[str] = []) -> str:
             decoded = _clean_chunk(chunk)
             if decoded:
                 error_output += decoded
+                if verbose:
+                    _stream_output(decoded)
 
     await asyncio.gather(read_stdout(), read_stderr())
     exit_code = await process.wait()
@@ -108,7 +110,7 @@ async def _execute_gemini(prompt: str, model: str, args: List[str] = []) -> str:
     
     return full_output.strip()
 
-async def invoke_gemini(prompt: str, args: List[str] = [], models: List[str] = None) -> str:
+async def invoke_gemini(prompt: str, args: List[str] = [], models: List[str] = None, verbose: bool = False) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
     Streams output to stdout and returns the full response.
@@ -117,7 +119,7 @@ async def invoke_gemini(prompt: str, args: List[str] = [], models: List[str] = N
     for i, model in enumerate(model_list):
         try:
             print(f"Using model: {model}")
-            return await _execute_gemini(prompt, model, args)
+            return await _execute_gemini(prompt, model, args, verbose)
         except Exception as error:
             error_msg = str(error)
             is_quota_error = 'TerminalQuotaError' in error_msg or '429' in error_msg

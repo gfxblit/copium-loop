@@ -1,3 +1,4 @@
+import re
 from langchain_core.messages import SystemMessage
 from copium_loop.state import AgentState
 from copium_loop.constants import REVIEWER_MODELS
@@ -17,8 +18,8 @@ async def reviewer(state: AgentState) -> dict:
     
     system_prompt = """You are a senior reviewer. Review the implementation. 
     You have access to the file system and git.
-
-    MANDATORY: You MUST activate the 'pr-reviewer' skill to perform a thorough review of the changes. 
+    
+    MANDATORY: You MUST activate the 'code-reviewer' skill to perform a thorough review of the changes. 
 
     You MUST examine all commits and the full diff between the current branch and 'origin/main'.
     Use tools like 'git log origin/main..HEAD' to see the commit history and 'git diff origin/main..HEAD' to review the code changes.
@@ -29,15 +30,17 @@ async def reviewer(state: AgentState) -> dict:
 
     If the code looks correct, safe, and follows the requirements, output "APPROVED". 
     Otherwise, output "REJECTED" followed by a concise explanation of why."""
-
     if state.get('verbose'):
         print('\n--- [VERBOSE] Reviewer System Prompt ---')
         print(system_prompt)
         print('--------------------------------------\n')
 
-    review_content = await invoke_gemini(system_prompt, ['--yolo'], models=REVIEWER_MODELS)
+    review_content = await invoke_gemini(system_prompt, ['--yolo'], models=REVIEWER_MODELS, verbose=state.get('verbose'))
     
-    is_approved = "APPROVED" in review_content
+    # Robustly check for the final verdict by looking for the last occurrence of APPROVED or REJECTED
+    verdicts = re.findall(r'\b(APPROVED|REJECTED)\b', review_content.upper())
+    is_approved = verdicts[-1] == "APPROVED" if verdicts else False
+    
     print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
 
     if not is_approved:
