@@ -5,7 +5,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import REVIEWER_MODELS
 from copium_loop.state import AgentState
-from copium_loop.utils import invoke_gemini, notify, run_command
+from copium_loop.utils import invoke_gemini, run_command
 
 
 async def reviewer(state: AgentState) -> dict:

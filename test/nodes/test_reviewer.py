@@ -62,9 +62,7 @@ class TestReviewerNode:
         """Test that reviewer handles exception from invoke_gemini."""
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini, patch(
-            "copium_loop.nodes.reviewer.notify", new_callable=AsyncMock
-        ) as mock_notify:
+        ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
             state = {"test_output": "PASS", "retry_count": 0}
@@ -72,20 +70,16 @@ class TestReviewerNode:
 
             assert result["review_status"] == "rejected"
             assert result["retry_count"] == 1
-            mock_notify.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_reviewer_no_notification_on_rejected(self):
         """Test that reviewer does not send notification on rejection."""
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini, patch(
-            "copium_loop.nodes.reviewer.notify", new_callable=AsyncMock
-        ) as mock_notify:
+        ) as mock_gemini:
             mock_gemini.return_value = "REJECTED"
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
-            mock_notify.assert_not_called()
