@@ -153,7 +153,7 @@ class TestExecuteGemini:
 
             # Check that "gemini" was called
             assert mock_exec.call_args[0][0] == "gemini"
-            
+
             # Check args
             cmd_args = mock_exec.call_args[0][1:]
             assert "--sandbox" in cmd_args
