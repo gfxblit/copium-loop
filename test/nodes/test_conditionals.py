@@ -1,5 +1,6 @@
 from langgraph.graph import END
 
+from copium_loop.constants import MAX_RETRIES
 from copium_loop.nodes import (
     should_continue_from_pr_creator,
     should_continue_from_review,
@@ -24,7 +25,10 @@ class TestConditionalLogic:
     def test_should_continue_from_test_max_retries(self):
         """Test END transition on max retries."""
         assert (
-            should_continue_from_test({"test_output": "FAIL", "retry_count": 4}) == END
+            should_continue_from_test(
+                {"test_output": "FAIL", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
         )
 
     def test_should_continue_from_review_on_approved(self):

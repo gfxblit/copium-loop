@@ -3,6 +3,7 @@ import re
 
 from langchain_core.messages import SystemMessage
 
+from copium_loop.constants import MAX_RETRIES
 from copium_loop.state import AgentState
 from copium_loop.utils import notify, run_command
 
@@ -36,7 +37,7 @@ async def pr_creator(state: AgentState) -> dict:
             print("Uncommitted changes found. Returning to coder to finalize commits.")
             message = (
                 "Max retries exceeded. Aborting due to uncommitted changes."
-                if retry_count >= 3
+                if retry_count >= MAX_RETRIES
                 else "Uncommitted changes found. Returning to coder."
             )
             await notify("Workflow: Uncommitted Changes", message, 4)
@@ -89,7 +90,7 @@ async def pr_creator(state: AgentState) -> dict:
         print(f"Error in PR creation: {error}")
         message = (
             "Max retries exceeded. Aborting."
-            if retry_count >= 3
+            if retry_count >= MAX_RETRIES
             else f"Failed to create PR: {error}"
         )
         await notify("Workflow: PR Failed", message, 5)

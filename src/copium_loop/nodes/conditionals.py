@@ -1,5 +1,6 @@
 from langgraph.graph import END
 
+from copium_loop.constants import MAX_RETRIES
 from copium_loop.state import AgentState
 
 
@@ -7,7 +8,7 @@ def should_continue_from_test(state: AgentState) -> str:
     if state.get("test_output") == "PASS":
         return "reviewer"
 
-    if state.get("retry_count", 0) > 3:
+    if state.get("retry_count", 0) > MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         return END
 
@@ -18,7 +19,7 @@ def should_continue_from_review(state: AgentState) -> str:
     if state.get("review_status") == "approved":
         return "pr_creator"
 
-    if state.get("retry_count", 0) > 3:
+    if state.get("retry_count", 0) > MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         return END
 
@@ -30,7 +31,7 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
     if status in ["pr_created", "pr_skipped"]:
         return END
 
-    if state.get("retry_count", 0) > 3:
+    if state.get("retry_count", 0) > MAX_RETRIES:
         print("Max retries exceeded in PR Creator. Aborting.")
         return END
 

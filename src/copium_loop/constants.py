@@ -11,3 +11,6 @@ REVIEWER_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
 ]
+
+# Max retries for the workflow
+MAX_RETRIES = 10
