@@ -20,12 +20,6 @@ async def tester(state: AgentState) -> dict:
 
         if lint_result["exit_code"] != 0:
             print("Linter failed.")
-            message = (
-                "Max retries exceeded. Aborting."
-                if retry_count >= MAX_RETRIES
-                else "Linting failed. Returning to coder."
-            )
-            await notify("Workflow: Linting Failed", message, 4)
 
             return {
                 "test_output": "FAIL (Lint):\n" + lint_output,

@@ -29,12 +29,9 @@ class TestTesterNode:
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_lint(self):
         """Test that test runner returns FAIL if linting fails."""
-        with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
-            ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-        ):
+        with patch(
+            "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+        ) as mock_run:
             mock_run.return_value = {"output": "Linting failed", "exit_code": 1}
             state = {"retry_count": 0}
             result = await tester(state)

@@ -62,11 +62,10 @@ class TestPrCreatorNode:
                 {"output": "feature-branch\n", "exit_code": 0},
                 {"output": "M file.js\n", "exit_code": 0},
             ]
-            with patch("copium_loop.nodes.pr_creator.notify", new_callable=AsyncMock):
-                state = {"retry_count": 0}
-                result = await pr_creator(state)
+            state = {"retry_count": 0}
+            result = await pr_creator(state)
 
-                assert result["review_status"] == "needs_commit"
+            assert result["review_status"] == "needs_commit"
 
     @pytest.mark.asyncio
     async def test_pr_creator_skips_on_main_branch(self):

@@ -35,12 +35,6 @@ async def pr_creator(state: AgentState) -> dict:
         res_status = await run_command("git", ["status", "--porcelain"])
         if res_status["output"].strip():
             print("Uncommitted changes found. Returning to coder to finalize commits.")
-            message = (
-                "Max retries exceeded. Aborting due to uncommitted changes."
-                if retry_count >= MAX_RETRIES
-                else "Uncommitted changes found. Returning to coder."
-            )
-            await notify("Workflow: Uncommitted Changes", message, 4)
             return {
                 "review_status": "needs_commit",
                 "messages": [
