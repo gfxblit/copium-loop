@@ -75,7 +75,7 @@ async def _execute_gemini(
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
         args = []
-    cmd_args = ["-m", model] + args + [prompt]
+    cmd_args = ["-m", model, "--sandbox"] + args + [prompt]
 
     process = await asyncio.create_subprocess_exec(
         "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE

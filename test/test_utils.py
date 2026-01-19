@@ -136,6 +136,31 @@ class TestHelpers:
             assert utils.get_package_manager() == "yarn"
 
 
+class TestExecuteGemini:
+    """Tests for the internal _execute_gemini function."""
+
+    @pytest.mark.asyncio
+    async def test_execute_gemini_includes_sandbox(self):
+        """Test that _execute_gemini always includes the --sandbox flag."""
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
+            mock_proc = AsyncMock()
+            mock_proc.stdout.read = AsyncMock(return_value=b"")
+            mock_proc.stderr.read = AsyncMock(return_value=b"")
+            mock_proc.wait = AsyncMock(return_value=0)
+            mock_exec.return_value = mock_proc
+
+            await utils._execute_gemini("test prompt", "test-model")
+
+            # Check that "gemini" was called
+            assert mock_exec.call_args[0][0] == "gemini"
+            
+            # Check args
+            cmd_args = mock_exec.call_args[0][1:]
+            assert "--sandbox" in cmd_args
+            assert cmd_args[0] == "-m"
+            assert cmd_args[1] == "test-model"
+
+
 class TestInvokeGemini:
     """Tests for Gemini CLI invocation with fallback."""
 
