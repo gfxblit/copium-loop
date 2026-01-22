@@ -11,6 +11,7 @@ from copium_loop.utils import notify, run_command
 async def pr_creator(state: AgentState) -> dict:
     print("--- PR Creator Node ---")
     retry_count = state.get("retry_count", 0)
+    issue_url = state.get("issue_url", "")
 
     if not os.path.exists(".git"):
         print("Not a git repository. Skipping PR creation.")
@@ -45,7 +46,25 @@ async def pr_creator(state: AgentState) -> dict:
                 "retry_count": retry_count + 1,
             }
 
-        # 3. Push to origin
+        # 3. Attempt rebase on origin/main
+        print("Fetching origin and attempting rebase on origin/main...")
+        await run_command("git", ["fetch", "origin"])
+        res_rebase = await run_command("git", ["rebase", "origin/main"])
+
+        if res_rebase["exit_code"] != 0:
+            print("Rebase failed. Aborting rebase and returning to coder.")
+            await run_command("git", ["rebase", "--abort"])
+            return {
+                "review_status": "pr_failed",
+                "messages": [
+                    SystemMessage(
+                        content=f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted. Please update the code to resolve conflicts with the main branch."
+                    )
+                ],
+                "retry_count": retry_count + 1,
+            }
+
+        # 4. Push to origin
         print("Pushing to origin...")
         res_push = await run_command("git", ["push", "-u", "origin", branch_name])
         if res_push["exit_code"] != 0:
@@ -53,7 +72,7 @@ async def pr_creator(state: AgentState) -> dict:
                 f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"
             )
 
-        # 4. Create PR
+        # 5. Create PR
         print("Creating Pull Request...")
         res_pr = await run_command("gh", ["pr", "create", "--fill"])
 
@@ -73,6 +92,24 @@ async def pr_creator(state: AgentState) -> dict:
 
         pr_output_clean = res_pr["output"].strip()
         print(f"PR created: {pr_output_clean}")
+
+        # 6. Link issue if present
+        if issue_url:
+            print(f"Linking issue: {issue_url}")
+            try:
+                # Get current body
+                res_view = await run_command(
+                    "gh", ["pr", "view", pr_output_clean, "--json", "body", "--jq", ".body"]
+                )
+                if res_view["exit_code"] == 0:
+                    current_body = res_view["output"].strip()
+                    new_body = f"{current_body}\n\nCloses {issue_url}"
+                    await run_command(
+                        "gh", ["pr", "edit", pr_output_clean, "--body", new_body]
+                    )
+                    print("PR body updated with issue reference.")
+            except Exception as e:
+                print(f"Warning: Failed to link issue to PR: {e}")
 
         return {
             "review_status": "pr_created",
