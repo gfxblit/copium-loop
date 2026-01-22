@@ -54,11 +54,13 @@ async def pr_creator(state: AgentState) -> dict:
         if res_rebase["exit_code"] != 0:
             print("Rebase failed. Aborting rebase and returning to coder.")
             await run_command("git", ["rebase", "--abort"])
+            error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
+            await notify("Workflow: Rebase Conflict", "Automatic rebase failed. Manual resolution required by coder.", 4)
             return {
                 "review_status": "pr_failed",
                 "messages": [
                     SystemMessage(
-                        content=f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
+                        content=error_msg
                     )
                 ],
                 "retry_count": retry_count + 1,
