@@ -43,8 +43,15 @@ async def run_command(command: str, args: list[str] | None = None) -> dict:
     """
     if args is None:
         args = []
+
+    # Prevent interactive prompts that would hang the agent
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_EDITOR"] = "true"
+    env["GH_PROMPT_DISABLED"] = "1"
+
     process = await asyncio.create_subprocess_exec(
-        command, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        command, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
     )
 
     full_output = ""

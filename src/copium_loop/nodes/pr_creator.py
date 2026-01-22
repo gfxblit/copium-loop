@@ -58,7 +58,7 @@ async def pr_creator(state: AgentState) -> dict:
                 "review_status": "pr_failed",
                 "messages": [
                     SystemMessage(
-                        content=f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted. Please update the code to resolve conflicts with the main branch."
+                        content=f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
                     )
                 ],
                 "retry_count": retry_count + 1,
