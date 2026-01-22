@@ -69,7 +69,7 @@ class TestHelpers:
         with patch("os.path.exists", side_effect=side_effect):
             cmd, args = utils.get_test_command()
             assert cmd == "pytest"
-            assert args == []
+            assert args == ["--cov=src", "--cov-report=term-missing"]
 
     def test_get_test_command_npm_priority(self):
         """Test that get_test_command returns npm if package.json exists, even if pyproject.toml exists."""
