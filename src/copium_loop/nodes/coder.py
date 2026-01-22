@@ -31,6 +31,7 @@ async def coder(state: AgentState) -> dict:
     The test suite will now report coverage - ensure it remains high (80%+).
 
     IMPORTANT: You MUST commit your changes using git. You may create multiple commits if it makes sense for the task.
+    When resolving conflicts or rebasing, ALWAYS use the '--no-edit' flag (e.g., 'git rebase --continue --no-edit' or 'git commit --no-edit') to avoid interactive editors.
     Please output the code changes in markdown blocks as well for the conversation record."""
 
     if test_output and ("FAIL" in test_output or "failed" in test_output):

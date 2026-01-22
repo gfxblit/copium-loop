@@ -48,6 +48,9 @@ async def run_command(command: str, args: list[str] | None = None) -> dict:
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_EDITOR"] = "true"
+    env["EDITOR"] = "true"
+    env["VISUAL"] = "true"
+    env["GIT_SEQUENCE_EDITOR"] = "true"
     env["GH_PROMPT_DISABLED"] = "1"
 
     process = await asyncio.create_subprocess_exec(
@@ -91,8 +94,17 @@ async def _execute_gemini(
 
     cmd_args.append(prompt)
 
+    # Prevent interactive prompts in sub-agents
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_EDITOR"] = "true"
+    env["EDITOR"] = "true"
+    env["VISUAL"] = "true"
+    env["GIT_SEQUENCE_EDITOR"] = "true"
+    env["GH_PROMPT_DISABLED"] = "1"
+
     process = await asyncio.create_subprocess_exec(
-        "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+        "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env
     )
 
     full_output = ""
