@@ -18,7 +18,7 @@ async def pr_creator(state: AgentState) -> dict:
 
     if not os.path.exists(".git"):
         print("Not a git repository. Skipping PR creation.")
-        telemetry.log_status("pr_creator", "idle")
+        telemetry.log_status("pr_creator", "success")
         return {"review_status": "pr_skipped"}
 
     try:
@@ -32,7 +32,7 @@ async def pr_creator(state: AgentState) -> dict:
             or not branch_name
         ):
             print("Not on a feature branch. Skipping PR creation.")
-            telemetry.log_status("pr_creator", "idle")
+            telemetry.log_status("pr_creator", "success")
             return {"review_status": "pr_skipped"}
 
         print(f"On feature branch: {branch_name}")
@@ -41,7 +41,7 @@ async def pr_creator(state: AgentState) -> dict:
         res_status = await run_command("git", ["status", "--porcelain"], node="pr_creator")
         if res_status["output"].strip():
             print("Uncommitted changes found. Returning to coder to finalize commits.")
-            telemetry.log_status("pr_creator", "idle")
+            telemetry.log_status("pr_creator", "failed")
             return {
                 "review_status": "needs_commit",
                 "messages": [
@@ -62,7 +62,7 @@ async def pr_creator(state: AgentState) -> dict:
             await run_command("git", ["rebase", "--abort"], node="pr_creator")
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
             await notify("Workflow: Rebase Conflict", "Automatic rebase failed. Manual resolution required by coder.", 4)
-            telemetry.log_status("pr_creator", "idle")
+            telemetry.log_status("pr_creator", "failed")
             return {
                 "review_status": "pr_failed",
                 "messages": [
@@ -90,7 +90,7 @@ async def pr_creator(state: AgentState) -> dict:
                 print("PR already exists. Treating as success.")
                 match = re.search(r"https://github\.com/[^\s]+", res_pr["output"])
                 pr_url = match.group(0) if match else "existing PR"
-                telemetry.log_status("pr_creator", "idle")
+                telemetry.log_status("pr_creator", "success")
                 return {
                     "review_status": "pr_created",
                     "pr_url": pr_url,
@@ -121,7 +121,7 @@ async def pr_creator(state: AgentState) -> dict:
             except Exception as e:
                 print(f"Warning: Failed to link issue to PR: {e}")
 
-        telemetry.log_status("pr_creator", "idle")
+        telemetry.log_status("pr_creator", "success")
         return {
             "review_status": "pr_created",
             "pr_url": pr_output_clean,
@@ -136,7 +136,7 @@ async def pr_creator(state: AgentState) -> dict:
             else f"Failed to create PR: {error}"
         )
         await notify("Workflow: PR Failed", message, 5)
-        telemetry.log_status("pr_creator", "idle")
+        telemetry.log_status("pr_creator", "failed")
         return {
             "review_status": "pr_failed",
             "messages": [SystemMessage(content=f"Failed to create PR: {error}")],

@@ -16,7 +16,6 @@ def should_continue_from_test(state: AgentState) -> str:
         telemetry.log_status("tester", "error")
         return END
 
-    telemetry.log_status("tester", "idle")
     return "coder"
 
 
@@ -31,7 +30,6 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_status("reviewer", "error")
         return END
 
-    telemetry.log_status("reviewer", "idle")
     return "coder"
 
 
@@ -48,5 +46,4 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
         return END
 
     print(f"PR Creator failed or needs commit (status: {status}). Returning to coder.")
-    telemetry.log_status("pr_creator", "idle")
     return "coder"

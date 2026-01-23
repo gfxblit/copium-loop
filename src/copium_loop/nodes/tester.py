@@ -29,7 +29,7 @@ async def tester(state: AgentState) -> dict:
 
         if lint_result["exit_code"] != 0:
             print("Linter failed.")
-            telemetry.log_status("tester", "idle")
+            telemetry.log_status("tester", "failed")
 
             return {
                 "test_output": "FAIL (Lint):\n" + lint_output,
@@ -51,7 +51,7 @@ async def tester(state: AgentState) -> dict:
 
             if build_result["exit_code"] != 0:
                 print("Build failed.")
-                telemetry.log_status("tester", "idle")
+                telemetry.log_status("tester", "failed")
                 return {
                     "test_output": "FAIL (Build):\n" + build_output,
                     "retry_count": retry_count + 1,
@@ -98,7 +98,7 @@ async def tester(state: AgentState) -> dict:
                 else "Unit tests failed. Returning to coder."
             )
             await notify("Workflow: Tests Failed", message, 4)
-            telemetry.log_status("tester", "idle")
+            telemetry.log_status("tester", "failed")
 
             return {
                 "test_output": "FAIL (Unit):\n" + unit_output,
@@ -108,10 +108,10 @@ async def tester(state: AgentState) -> dict:
                 ],
             }
 
-        telemetry.log_status("tester", "idle")
+        telemetry.log_status("tester", "success")
         return {"test_output": "PASS"}
     except Exception as error:
-        telemetry.log_status("tester", "idle")
+        telemetry.log_status("tester", "failed")
         return {
             "test_output": "FAIL: " + str(error),
             "retry_count": retry_count + 1,

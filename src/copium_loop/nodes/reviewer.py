@@ -18,7 +18,7 @@ async def reviewer(state: AgentState) -> dict:
     initial_commit_hash = state.get("initial_commit_hash", "")
 
     if test_output and "PASS" not in test_output:
-        telemetry.log_status("reviewer", "idle")
+        telemetry.log_status("reviewer", "rejected")
         return {
             "review_status": "rejected",
             "messages": [SystemMessage(content="Tests failed.")],
@@ -75,7 +75,7 @@ async def reviewer(state: AgentState) -> dict:
     is_approved = verdicts[-1] == "APPROVED" if verdicts else False
 
     print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
-    telemetry.log_status("reviewer", "idle")
+    telemetry.log_status("reviewer", "approved" if is_approved else "rejected")
 
     return {
         "review_status": "approved" if is_approved else "rejected",
