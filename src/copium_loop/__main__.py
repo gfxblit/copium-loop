@@ -6,17 +6,11 @@ import os
 import sys
 
 from copium_loop.copium_loop import WorkflowManager
+from copium_loop.ui import Dashboard
 
 
 async def async_main():
     """Main async function."""
-    if not os.environ.get("NTFY_CHANNEL"):
-        print("Error: NTFY_CHANNEL environment variable is not defined.")
-        print(
-            "This is required for workflow notifications. Please set it in your environment or .env file."
-        )
-        sys.exit(1)
-
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
     parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     parser.add_argument(
@@ -26,8 +20,21 @@ async def async_main():
         help="Start node (coder, test_runner, reviewer, pr_creator)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", default=True, help="Verbose output")
+    parser.add_argument("--monitor", "-m", action="store_true", help="Start the Matrix visualization monitor")
+    parser.add_argument("--session", type=str, help="Specific session ID to monitor")
 
     args = parser.parse_args()
+
+    if args.monitor:
+        dashboard = Dashboard()
+        try:
+            dashboard.run_monitor(args.session)
+        except KeyboardInterrupt:
+            sys.exit(0)
+        return
+
+    if not os.environ.get("NTFY_CHANNEL"):
+        print("Error: NTFY_CHANNEL environment variable is not defined.")
 
     prompt = (
         " ".join(args.prompt)

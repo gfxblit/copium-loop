@@ -16,6 +16,7 @@ from copium_loop.nodes import (
     tester,
 )
 from copium_loop.state import AgentState
+from copium_loop.telemetry import get_telemetry
 from copium_loop.utils import get_test_command, notify, run_command
 
 
@@ -78,12 +79,15 @@ class WorkflowManager:
 
     async def run(self, input_prompt: str):
         """Run the workflow with the given prompt."""
+        telemetry = get_telemetry()
         issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
 
         if not self.start_node:
             self.start_node = "coder"
 
         print(f"Starting workflow at node: {self.start_node}")
+        telemetry.log_status(self.start_node, "active")
+        telemetry.log_output(self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}")
 
         if not self.graph:
             self.create_graph()
@@ -106,7 +110,7 @@ class WorkflowManager:
                 print(f"Running {test_cmd} {' '.join(test_args)}...")
                 # We don't necessarily want to fail the whole workflow if baseline tests fail,
                 # but we should definitely inform the user.
-                res = await run_command(test_cmd, test_args)
+                res = await run_command(test_cmd, test_args, node=self.start_node)
                 if res["exit_code"] != 0:
                     print(
                         "Warning: Baseline tests failed. Proceeding anyway, but be aware."

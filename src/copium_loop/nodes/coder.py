@@ -2,10 +2,13 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import DEFAULT_MODELS
 from copium_loop.state import AgentState
+from copium_loop.telemetry import get_telemetry
 from copium_loop.utils import invoke_gemini
 
 
 async def coder(state: AgentState) -> dict:
+    telemetry = get_telemetry()
+    telemetry.log_status("coder", "active")
     print("--- Coder Node ---")
     messages = state["messages"]
     test_output = state.get("test_output", "")
@@ -74,8 +77,10 @@ async def coder(state: AgentState) -> dict:
         models=coder_models,
         verbose=state.get("verbose"),
         label="Coder System",
+        node="coder",
     )
     print("\nCoding complete.")
+    telemetry.log_status("coder", "idle")
 
     return {
         "code_status": "coded",

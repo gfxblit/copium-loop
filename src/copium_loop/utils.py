@@ -5,14 +5,17 @@ import subprocess
 import sys
 
 from copium_loop.constants import DEFAULT_MODELS
+from copium_loop.telemetry import get_telemetry
 
 
-def _stream_output(chunk: str):
-    """Streams a chunk of output to stdout."""
+def _stream_output(chunk: str, node: str | None = None):
+    """Streams a chunk of output to stdout and telemetry."""
     if not chunk:
         return
     sys.stdout.write(chunk)
     sys.stdout.flush()
+    if node:
+        get_telemetry().log_output(node, chunk)
 
 
 def _clean_chunk(chunk: str | bytes) -> str:
@@ -36,7 +39,7 @@ def _clean_chunk(chunk: str | bytes) -> str:
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
 
 
-async def run_command(command: str, args: list[str] | None = None) -> dict:
+async def run_command(command: str, args: list[str] | None = None, node: str | None = None) -> dict:
     """
     Invokes a shell command and streams output to stdout.
     Returns the combined stdout/stderr output and exit code.
@@ -68,7 +71,7 @@ async def run_command(command: str, args: list[str] | None = None) -> dict:
             decoded_chunk = _clean_chunk(line)
             if decoded_chunk:
                 if not is_stderr:
-                    _stream_output(decoded_chunk)
+                    _stream_output(decoded_chunk, node)
                 full_output += decoded_chunk
 
     await asyncio.gather(
@@ -83,6 +86,7 @@ async def _execute_gemini(
     prompt: str,
     model: str | None,
     args: list[str] | None = None,
+    node: str | None = None,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
@@ -117,7 +121,7 @@ async def _execute_gemini(
                 break
             decoded = _clean_chunk(chunk)
             if decoded:
-                _stream_output(decoded)
+                _stream_output(decoded, node)
                 full_output += decoded
 
     await read_stdout()
@@ -135,6 +139,7 @@ async def invoke_gemini(
     models: list[str | None] | None = None,
     verbose: bool = False,
     label: str | None = None,
+    node: str | None = None,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
@@ -154,7 +159,7 @@ async def invoke_gemini(
             model_display = model if model else "auto"
             if verbose:
                 print(f"Using model: {model_display}")
-            return await _execute_gemini(prompt, model, args)
+            return await _execute_gemini(prompt, model, args, node)
         except Exception as error:
             error_msg = str(error)
             is_last_model = i == len(model_list) - 1

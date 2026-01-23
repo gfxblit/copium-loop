@@ -5,16 +5,20 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import REVIEWER_MODELS
 from copium_loop.state import AgentState
+from copium_loop.telemetry import get_telemetry
 from copium_loop.utils import invoke_gemini, run_command
 
 
 async def reviewer(state: AgentState) -> dict:
+    telemetry = get_telemetry()
+    telemetry.log_status("reviewer", "active")
     print("--- Reviewer Node ---")
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
     initial_commit_hash = state.get("initial_commit_hash", "")
 
     if test_output and "PASS" not in test_output:
+        telemetry.log_status("reviewer", "idle")
         return {
             "review_status": "rejected",
             "messages": [SystemMessage(content="Tests failed.")],
@@ -24,7 +28,7 @@ async def reviewer(state: AgentState) -> dict:
     git_diff = ""
     if os.path.exists(".git") and initial_commit_hash:
         try:
-            res = await run_command("git", ["diff", initial_commit_hash, "HEAD"])
+            res = await run_command("git", ["diff", initial_commit_hash, "HEAD"], node="reviewer")
             if res["exit_code"] == 0:
                 git_diff = res["output"]
         except Exception as e:
@@ -55,9 +59,11 @@ async def reviewer(state: AgentState) -> dict:
             models=REVIEWER_MODELS,
             verbose=state.get("verbose"),
             label="Reviewer System",
+            node="reviewer",
         )
     except Exception as e:
         print(f"Error during review: {e}")
+        telemetry.log_status("reviewer", "idle")
         return {
             "review_status": "rejected",
             "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
@@ -69,6 +75,7 @@ async def reviewer(state: AgentState) -> dict:
     is_approved = verdicts[-1] == "APPROVED" if verdicts else False
 
     print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
+    telemetry.log_status("reviewer", "idle")
 
     return {
         "review_status": "approved" if is_approved else "rejected",
