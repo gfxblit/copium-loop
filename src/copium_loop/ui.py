@@ -69,7 +69,7 @@ class MatrixPillar:
             time_suffix = f" [{elapsed}s]"
 
         if self.status == "active":
-            header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold bright_white on #00FF41")
+            header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41")
             border_style = "#00FF41"
         elif self.status in ["success", "approved", "coded"]:
             header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan")
