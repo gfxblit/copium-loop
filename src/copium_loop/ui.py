@@ -4,6 +4,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import select
+import sys
+import termios
+import tty
+
 import psutil
 from rich.console import Console, Group
 from rich.layout import Layout
@@ -161,6 +166,8 @@ class Dashboard:
         self.sessions = {}  # session_id -> SessionColumn
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
+        self.current_page = 0
+        self.sessions_per_page = 4
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -169,8 +176,18 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
         
-        # Display up to 4 sessions side-by-side
-        active_sessions = list(self.sessions.values())[-4:]
+        # Pagination logic
+        session_list = list(self.sessions.values())
+        num_sessions = len(session_list)
+        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+        
+        # Ensure current_page is valid
+        self.current_page = max(0, min(self.current_page, num_pages - 1))
+        
+        start_idx = self.current_page * self.sessions_per_page
+        end_idx = start_idx + self.sessions_per_page
+        active_sessions = session_list[start_idx:end_idx]
+        
         if active_sessions:
             layout["main"].split_row(*[Layout(s.render()) for s in active_sessions])
         else:
@@ -184,66 +201,15 @@ class Dashboard:
         mem = psutil.virtual_memory().percent
         spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
         
+        num_sessions = len(self.sessions)
+        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+        
+        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]" if num_sessions > 0 else ""
+        
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
-            f"  SESSIONS: {len(self.sessions)}  ",
-            (f"CPU: {cpu}%", "bright_green"),
-            f" [{spark}] ",
-            "  ",
-            (f"MEM: {mem}%", "bright_cyan"),
-        )
-        return Panel(footer_text, border_style="blue")
-
-    def update_from_logs(self):
-        """Reads .jsonl files and updates session states."""
-        log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
-        
-        for target_file in log_files:
-            sid = target_file.stem
-            if sid not in self.sessions:
-                self.sessions[sid] = SessionColumn(sid)
-            
-            offset = self.log_offsets.get(sid, 0)
-            try:
-                with open(target_file, "r") as f:
-                    f.seek(offset)
-                    for line in f:
-                        try:
-                            event = json.loads(line)
-                            node = event.get("node")
-                            etype = event.get("event_type")
-                            data = event.get("data")
-
-                            if node in self.sessions[sid].pillars:
-                                if etype == "output":
-                                    for l in data.splitlines():
-                                        if l.strip():
-                                            self.sessions[sid].pillars[node].add_line(l)
-                                elif etype == "status":
-                                    self.sessions[sid].pillars[node].set_status(data)
-                        except json.JSONDecodeError:
-                            continue
-                    self.log_offsets[sid] = f.tell()
-            except Exception:
-                pass
-
-    def run_monitor(self, session_id: str | None = None):
-        """Runs the live dashboard."""
-        with Live(self.make_layout(), console=self.console, screen=True, refresh_per_second=4) as live:
-            while True:
-                self.update_from_logs()
-                live.update(self.make_layout())
-                time.sleep(0.25)
-
-    def make_footer(self) -> Panel:
-        cpu = psutil.cpu_percent()
-        mem = psutil.virtual_memory().percent
-        spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
-        
-        footer_text = Text.assemble(
-            (" ACTIVE SESSIONS: ", "bold white on blue"),
-            (f" {len(self.sessions)} ", "bold yellow on blue"),
-            "  ",
+            f"  SESSIONS: {num_sessions}  ",
+            (f"  {pagination_info}  ", "bold yellow"),
             (f"CPU: {cpu}%", "bright_green"),
             f" [{spark}] ",
             "  ",
@@ -289,8 +255,37 @@ class Dashboard:
 
     def run_monitor(self, session_id: str | None = None):
         """Runs the live dashboard."""
-        with Live(self.make_layout(), console=self.console, screen=True, refresh_per_second=4) as live:
-            while True:
-                self.update_from_logs()
-                live.update(self.make_layout())
-                time.sleep(0.25)
+        self.current_page = 0
+        
+        # Save terminal settings to restore them later
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            tty.setcbreak(sys.stdin.fileno())
+            with Live(self.make_layout(), console=self.console, screen=True, refresh_per_second=4) as live:
+                while True:
+                    self.update_from_logs()
+                    
+                    # Check for keyboard input (non-blocking)
+                    if select.select([sys.stdin], [], [], 0)[0]:
+                        key = sys.stdin.read(1)
+                        
+                        # Handle Escape sequences (Arrows, etc.)
+                        if key == "\x1b":
+                            # Read the next two characters if available
+                            if select.select([sys.stdin], [], [], 0.05)[0]:
+                                key += sys.stdin.read(2)
+                        
+                        num_sessions = len(self.sessions)
+                        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+                        
+                        if key in ["\t", "\x1b[C"]:  # Tab or Right Arrow
+                            self.current_page = (self.current_page + 1) % num_pages
+                        elif key in ["\x1b[D", "\x1b[Z"]:  # Left Arrow or Shift+Tab
+                            self.current_page = (self.current_page - 1) % num_pages
+                        elif key.lower() == "q":
+                            break
+                    
+                    live.update(self.make_layout())
+                    time.sleep(0.1)
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
