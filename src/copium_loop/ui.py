@@ -33,24 +33,38 @@ class MatrixPillar:
         self.status = status
 
     def render(self) -> Panel:
-        pulse = int(time.time() * 2) % 2 == 0
+        # Visual Semantics:
+        # active -> bright white header, pulsing
+        # success/approved -> cyan checkmark
+        # error/rejected/failed -> red X
+        # idle with content -> grey checkmark (passed history)
+        # idle without content -> dim grey (never run)
+        
+        has_content = len(self.buffer) > 0
+        
         if self.status == "active":
             header_text = Text(f"▶ {self.name.upper()}", style="bold bright_white on #00FF41")
-        elif self.status == "success":
+            border_style = "#00FF41"
+        elif self.status in ["success", "approved", "coded"]:
             header_text = Text(f"✔ {self.name.upper()}", style="bold black on cyan")
-        elif self.status == "error":
+            border_style = "cyan"
+        elif self.status in ["error", "rejected", "failed", "pr_failed"]:
             header_text = Text(f"✘ {self.name.upper()}", style="bold white on red")
+            border_style = "red"
+        elif has_content:
+            header_text = Text(f"✔ {self.name.upper()}", style="dim cyan")
+            border_style = "grey37"
         else:
             header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
+            border_style = "grey37"
 
         content = Text()
         # Waterfall effect: newest lines at the top
         for i, line in enumerate(reversed(self.buffer)):
-            if i == 0:
-                # Newest line: Bright White
+            if i == 0 and self.status == "active":
+                # Newest line while active: Bright White
                 style = Style(color="#FFFFFF", bold=True)
-                prefix = "> " if self.status == "active" else "  "
-                content.append(f"{prefix}{line}\n", style=style)
+                content.append(f"> {line}\n", style=style)
             elif i < 5:
                 # Active Context: Neon Green
                 style = Style(color="#00FF41")
@@ -67,7 +81,7 @@ class MatrixPillar:
         return Panel(
             content,
             title=header_text,
-            border_style="#00FF41" if self.status == "active" else "grey37",
+            border_style=border_style,
             expand=True,
         )
 
