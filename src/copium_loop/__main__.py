@@ -5,8 +5,10 @@ import asyncio
 import os
 import sys
 
+from langchain_core.messages import HumanMessage
+
 from copium_loop.copium_loop import WorkflowManager
-from copium_loop.telemetry import get_telemetry
+from copium_loop.telemetry import Telemetry, find_latest_session, get_telemetry
 from copium_loop.ui import Dashboard
 
 
@@ -22,7 +24,14 @@ async def async_main():
     )
     parser.add_argument("--verbose", "-v", action="store_true", default=True, help="Verbose output")
     parser.add_argument("--monitor", "-m", action="store_true", help="Start the Matrix visualization monitor")
-    parser.add_argument("--session", type=str, help="Specific session ID to monitor")
+    parser.add_argument("--session", type=str, help="Specific session ID to monitor or continue")
+    parser.add_argument(
+        "--continue",
+        "-c",
+        dest="continue_session",
+        action="store_true",
+        help="Continue from the last incomplete workflow session",
+    )
 
     args = parser.parse_args()
 
@@ -37,16 +46,62 @@ async def async_main():
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")
 
-    prompt = (
-        " ".join(args.prompt)
-        if args.prompt
-        else "Continue development and verify implementation."
-    )
+    # Handle --continue flag
+    start_node = args.start
+    reconstructed_state = None
+    
+    if args.continue_session:
+        # Determine which session to continue
+        session_id = args.session
+        if not session_id:
+            # Try to find the latest session
+            session_id = find_latest_session()
+            if not session_id:
+                print("Error: No previous sessions found to continue.")
+                sys.exit(1)
+        
+        print(f"Attempting to continue session: {session_id}")
+        
+        # Load the telemetry for this session
+        telemetry = Telemetry(session_id)
+        
+        # Determine where to resume from
+        resume_node, metadata = telemetry.get_last_incomplete_node()
+        
+        if resume_node is None:
+            reason = metadata.get("reason")
+            if reason == "workflow_completed":
+                status = metadata.get("status")
+                print(f"Workflow already completed with status: {status}")
+                print("Nothing to continue.")
+                sys.exit(0)
+            elif reason == "no_log_found":
+                print(f"Error: No log file found for session {session_id}")
+                sys.exit(1)
+            else:
+                print(f"Cannot determine resume point: {reason}")
+                sys.exit(1)
+        
+        print(f"Resuming from node: {resume_node}")
+        print(f"Metadata: {metadata}")
+        
+        # Reconstruct state from logs
+        reconstructed_state = telemetry.reconstruct_state()
+        start_node = resume_node
+        
+        # If we have a prompt from the logs, use it; otherwise use default
+        prompt = reconstructed_state.get("prompt", "Continue development and verify implementation.")
+    else:
+        prompt = (
+            " ".join(args.prompt)
+            if args.prompt
+            else "Continue development and verify implementation."
+        )
 
-    workflow = WorkflowManager(start_node=args.start, verbose=args.verbose)
+    workflow = WorkflowManager(start_node=start_node, verbose=args.verbose)
 
     try:
-        result = await workflow.run(prompt)
+        result = await workflow.run(prompt, initial_state=reconstructed_state)
 
         status = result.get("review_status")
         test_out = result.get("test_output", "")

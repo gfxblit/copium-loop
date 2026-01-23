@@ -77,8 +77,13 @@ class WorkflowManager:
         self.graph = workflow.compile()
         return self.graph
 
-    async def run(self, input_prompt: str):
-        """Run the workflow with the given prompt."""
+    async def run(self, input_prompt: str, initial_state: dict | None = None):
+        """Run the workflow with the given prompt.
+        
+        Args:
+            input_prompt: The prompt to run the workflow with
+            initial_state: Optional reconstructed state from a previous session
+        """
         telemetry = get_telemetry()
         issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
 
@@ -121,7 +126,8 @@ class WorkflowManager:
             except Exception as e:
                 print(f"Warning: Could not run baseline tests: {e}")
 
-        initial_state = {
+        # Build default initial state
+        default_state = {
             "messages": [HumanMessage(content=input_prompt)],
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
@@ -137,5 +143,13 @@ class WorkflowManager:
             "git_diff": "",
             "verbose": self.verbose,
         }
+        
+        # Merge reconstructed state if provided
+        if initial_state:
+            print(f"Merging reconstructed state: {initial_state}")
+            # Keep messages from default, but override other fields from reconstructed state
+            for key, value in initial_state.items():
+                if key != "prompt":  # Don't override with prompt key
+                    default_state[key] = value
 
-        return await self.graph.ainvoke(initial_state)
+        return await self.graph.ainvoke(default_state)

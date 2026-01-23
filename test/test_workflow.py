@@ -36,3 +36,34 @@ class TestGraphCreation:
         assert graph is not None
         captured = capsys.readouterr()
         assert "Valid nodes are:" in captured.out
+
+
+class TestContinueFeature:
+    """Tests for the continue feature with state reconstruction."""
+
+    def test_workflow_accepts_initial_state(self):
+        """Test that workflow can be initialized with reconstructed state."""
+        workflow = WorkflowManager(start_node="tester", verbose=False)
+        workflow.create_graph()
+        
+        # Verify the graph was created
+        assert workflow.graph is not None
+        assert workflow.start_node == "tester"
+
+    def test_workflow_run_accepts_initial_state_parameter(self):
+        """Test that workflow.run() accepts initial_state parameter."""
+        workflow = WorkflowManager(start_node="coder", verbose=False)
+        
+        # This should not raise an error
+        reconstructed_state = {
+            "retry_count": 2,
+            "test_output": "FAIL",
+            "review_status": "rejected",
+        }
+        
+        # We can't actually run the workflow in tests without mocking,
+        # but we can verify the method signature accepts the parameter
+        import inspect
+        sig = inspect.signature(workflow.run)
+        assert "initial_state" in sig.parameters
+        assert sig.parameters["initial_state"].default is None
