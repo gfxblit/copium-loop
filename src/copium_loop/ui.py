@@ -176,8 +176,8 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
         
-        # Pagination logic
-        session_list = list(self.sessions.values())
+        # Pagination logic - newest sessions first
+        session_list = list(self.sessions.values())[::-1]
         num_sessions = len(session_list)
         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
         
