@@ -27,6 +27,8 @@ class MatrixPillar:
         self.status = "idle"
         self.max_buffer = 100
         self.last_update = time.time()
+        self.start_time = None
+        self.duration = None
 
     def add_line(self, line: str):
         self.buffer.append(line)
@@ -34,8 +36,19 @@ class MatrixPillar:
             self.buffer.pop(0)
         self.last_update = time.time()
 
-    def set_status(self, status: str):
+    def set_status(self, status: str, timestamp_str: str | None = None):
         self.status = status
+        if timestamp_str:
+            try:
+                # Parse ISO format timestamp
+                ts = datetime.fromisoformat(timestamp_str).timestamp()
+                if status == "active":
+                    self.start_time = ts
+                    self.duration = None
+                elif self.start_time and status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
+                    self.duration = ts - self.start_time
+            except (ValueError, TypeError):
+                pass
 
     def render(self) -> Panel:
         # Visual Semantics:
@@ -47,17 +60,25 @@ class MatrixPillar:
         
         has_content = len(self.buffer) > 0
         
+        # Calculate display time if applicable
+        time_suffix = ""
+        if self.duration is not None:
+            time_suffix = f" [{int(self.duration)}s]"
+        elif self.start_time is not None and self.status == "active":
+            elapsed = int(time.time() - self.start_time)
+            time_suffix = f" [{elapsed}s]"
+
         if self.status == "active":
-            header_text = Text(f"▶ {self.name.upper()}", style="bold bright_white on #00FF41")
+            header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold bright_white on #00FF41")
             border_style = "#00FF41"
         elif self.status in ["success", "approved", "coded"]:
-            header_text = Text(f"✔ {self.name.upper()}", style="bold black on cyan")
+            header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan")
             border_style = "cyan"
         elif self.status in ["error", "rejected", "failed", "pr_failed"]:
-            header_text = Text(f"✘ {self.name.upper()}", style="bold white on red")
+            header_text = Text(f"✘ {self.name.upper()}{time_suffix}", style="bold white on red")
             border_style = "red"
         elif has_content:
-            header_text = Text(f"✔ {self.name.upper()}", style="dim cyan")
+            header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
             border_style = "grey37"
         else:
             header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
@@ -246,7 +267,7 @@ class Dashboard:
                                         if l.strip():
                                             self.sessions[sid].pillars[node].add_line(l)
                                 elif etype == "status":
-                                    self.sessions[sid].pillars[node].set_status(data)
+                                    self.sessions[sid].pillars[node].set_status(data, event.get("timestamp"))
                         except json.JSONDecodeError:
                             continue
                     self.log_offsets[sid] = f.tell()
