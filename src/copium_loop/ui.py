@@ -91,6 +91,7 @@ class SessionColumn:
 
     def __init__(self, session_id: str):
         self.session_id = session_id
+        self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
             "coder": MatrixPillar("Coder"),
             "tester": MatrixPillar("Tester"),
@@ -116,13 +117,32 @@ class SessionColumn:
             
             ratios[node] = weight
 
-        col_layout.split_column(
-            Layout(name="header", size=3),
-            Layout(name="coder", ratio=ratios["coder"]),
-            Layout(name="tester", ratio=ratios["tester"]),
-            Layout(name="reviewer", ratio=ratios["reviewer"]),
-            Layout(name="pr_creator", ratio=ratios["pr_creator"]),
-        )
+        # Add workflow status banner if workflow has completed
+        if self.workflow_status in ["success", "failed"]:
+            col_layout.split_column(
+                Layout(name="header", size=3),
+                Layout(name="workflow_status", size=3),
+                Layout(name="coder", ratio=ratios["coder"]),
+                Layout(name="tester", ratio=ratios["tester"]),
+                Layout(name="reviewer", ratio=ratios["reviewer"]),
+                Layout(name="pr_creator", ratio=ratios["pr_creator"]),
+            )
+            
+            # Render workflow status banner
+            if self.workflow_status == "failed":
+                status_text = Text("⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED", style="bold white on red", justify="center")
+                col_layout["workflow_status"].update(Panel(status_text, border_style="red"))
+            else:  # success
+                status_text = Text("✓ WORKFLOW COMPLETED SUCCESSFULLY", style="bold black on green", justify="center")
+                col_layout["workflow_status"].update(Panel(status_text, border_style="green"))
+        else:
+            col_layout.split_column(
+                Layout(name="header", size=3),
+                Layout(name="coder", ratio=ratios["coder"]),
+                Layout(name="tester", ratio=ratios["tester"]),
+                Layout(name="reviewer", ratio=ratios["reviewer"]),
+                Layout(name="pr_creator", ratio=ratios["pr_creator"]),
+            )
         
         col_layout["header"].update(
             Panel(Text(self.session_id, justify="center", style="bold yellow"), border_style="yellow")
@@ -251,7 +271,10 @@ class Dashboard:
                             etype = event.get("event_type")
                             data = event.get("data")
 
-                            if node in self.sessions[sid].pillars:
+                            # Handle workflow-level status events
+                            if node == "workflow" and etype == "workflow_status":
+                                self.sessions[sid].workflow_status = data
+                            elif node in self.sessions[sid].pillars:
                                 if etype == "output":
                                     for l in data.splitlines():
                                         if l.strip():

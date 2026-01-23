@@ -40,6 +40,10 @@ class Telemetry:
         """Logs a metric for a node (e.g., 'latency', 'tokens')."""
         self.log(node, "metric", {"name": metric_name, "value": value})
 
+    def log_workflow_status(self, status: str):
+        """Logs a workflow-level status change (e.g., 'running', 'success', 'failed')."""
+        self.log("workflow", "workflow_status", status)
+
 
 _telemetry_instance = None
 

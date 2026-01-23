@@ -6,6 +6,7 @@ import os
 import sys
 
 from copium_loop.copium_loop import WorkflowManager
+from copium_loop.telemetry import get_telemetry
 from copium_loop.ui import Dashboard
 
 
@@ -54,6 +55,7 @@ async def async_main():
         if status == "pr_created":
             msg = f"Workflow completed successfully. PR created: {pr_url or 'N/A'}"
             print(msg)
+            get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         elif status == "pr_skipped":
@@ -61,6 +63,7 @@ async def async_main():
                 "Workflow completed successfully. PR skipped (not on a feature branch)."
             )
             print(msg)
+            get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         elif status == "pr_failed":
@@ -71,6 +74,7 @@ async def async_main():
         elif status == "approved" and ("PASS" in test_out or not test_out):
             msg = "Workflow completed successfully (no PR)."
             print(msg)
+            get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         else:
