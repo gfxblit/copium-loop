@@ -60,13 +60,20 @@ class MatrixPillar:
         
         has_content = len(self.buffer) > 0
         
-        # Calculate display time if applicable
+        # Calculate display time if applicable - human readable (e.g. 1m 5s)
         time_suffix = ""
-        if self.duration is not None:
-            time_suffix = f" [{int(self.duration)}s]"
-        elif self.start_time is not None and self.status == "active":
-            elapsed = int(time.time() - self.start_time)
-            time_suffix = f" [{elapsed}s]"
+        duration_val = self.duration if self.duration is not None else (
+            int(time.time() - self.start_time) if self.start_time is not None and self.status == "active" else None
+        )
+        
+        if duration_val is not None:
+            secs = int(duration_val)
+            if secs >= 60:
+                mins = secs // 60
+                rem_secs = secs % 60
+                time_suffix = f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
+            else:
+                time_suffix = f" [{secs}s]"
 
         if self.status == "active":
             header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41")
