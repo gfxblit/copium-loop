@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -141,7 +142,7 @@ class SessionColumn:
             "pr_creator": MatrixPillar("PR Creator"),
         }
 
-    def render(self) -> Layout:
+    def render(self, session_number: int | None = None) -> Layout:
         col_layout = Layout()
         
         # Calculate dynamic ratios based on buffer size and activity
@@ -186,8 +187,10 @@ class SessionColumn:
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
         
+        # Add numbered prefix if session_number is provided
+        header_text = f"[{session_number}] {self.session_id}" if session_number else self.session_id
         col_layout["header"].update(
-            Panel(Text(self.session_id, justify="center", style="bold yellow"), border_style="yellow")
+            Panel(Text(header_text, justify="center", style="bold yellow"), border_style="yellow")
         )
         for node, pillar in self.pillars.items():
             col_layout[node].update(pillar.render())
@@ -226,7 +229,11 @@ class Dashboard:
         active_sessions = session_list[start_idx:end_idx]
         
         if active_sessions:
-            layout["main"].split_row(*[Layout(s.render()) for s in active_sessions])
+            # Pass session numbers (1-based) to each session for display
+            layout["main"].split_row(*[
+                Layout(s.render(session_number=i+1)) 
+                for i, s in enumerate(active_sessions)
+            ])
         else:
             layout["main"].update(Panel(Text("WAITING FOR SESSIONS...", justify="center", style="dim")))
             
@@ -241,7 +248,7 @@ class Dashboard:
         num_sessions = len(self.sessions)
         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
         
-        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]" if num_sessions > 0 else ""
+        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate] [1-9 to switch sessions]" if num_sessions > 0 else ""
         
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
@@ -253,6 +260,42 @@ class Dashboard:
             (f"MEM: {mem}%", "bright_cyan"),
         )
         return Panel(footer_text, border_style="blue")
+
+    def extract_tmux_session(self, session_id: str) -> str | None:
+        """Extracts the tmux session name from a session_id.
+        
+        Session IDs are formatted as {tmux_session}_{pane} or session_{timestamp}.
+        Returns the tmux session name if it exists, None otherwise.
+        """
+        # Handle non-tmux sessions (format: session_{timestamp})
+        if session_id.startswith("session_"):
+            return None
+        
+        # Extract tmux session name (everything before the last underscore)
+        parts = session_id.rsplit("_", 1)
+        if len(parts) == 2:
+            return parts[0]
+        return None
+    
+    def switch_to_tmux_session(self, session_name: str):
+        """Switches the current tmux client to the specified session."""
+        # Check if we're running inside tmux
+        if not os.environ.get("TMUX"):
+            return  # Not in tmux, silently ignore
+        
+        try:
+            subprocess.run(
+                ["tmux", "switch-client", "-t", session_name],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            # Session doesn't exist or other error, silently ignore
+            pass
+        except Exception:
+            # Any other error, silently ignore
+            pass
 
     def update_from_logs(self):
         """Reads .jsonl files and updates session states."""
@@ -321,6 +364,20 @@ class Dashboard:
                             self.current_page = (self.current_page - 1) % num_pages
                         elif key.lower() == "q":
                             break
+                        elif key.isdigit() and key != "0":  # Number keys 1-9
+                            session_num = int(key)
+                            # Get the session list for the current page
+                            session_list = list(self.sessions.values())[::-1]
+                            start_idx = self.current_page * self.sessions_per_page
+                            end_idx = start_idx + self.sessions_per_page
+                            active_sessions = session_list[start_idx:end_idx]
+                            
+                            # Check if the session number is valid for current page
+                            if 1 <= session_num <= len(active_sessions):
+                                target_session = active_sessions[session_num - 1]
+                                tmux_session = self.extract_tmux_session(target_session.session_id)
+                                if tmux_session:
+                                    self.switch_to_tmux_session(tmux_session)
                     
                     live.update(self.make_layout())
                     time.sleep(0.1)
