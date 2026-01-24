@@ -29,6 +29,7 @@ class MatrixPillar:
         self.last_update = time.time()
         self.start_time = None
         self.duration = None
+        self.completion_time = None
 
     def add_line(self, line: str):
         self.buffer.append(line)
@@ -45,8 +46,10 @@ class MatrixPillar:
                 if status == "active":
                     self.start_time = ts
                     self.duration = None
+                    self.completion_time = None
                 elif self.start_time and status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
                     self.duration = ts - self.start_time
+                    self.completion_time = ts
             except (ValueError, TypeError):
                 pass
 
@@ -74,6 +77,12 @@ class MatrixPillar:
                 time_suffix = f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
             else:
                 time_suffix = f" [{secs}s]"
+        
+        # Add completion time for completed steps
+        if self.completion_time is not None and self.status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
+            completion_dt = datetime.fromtimestamp(self.completion_time)
+            completion_str = completion_dt.strftime("%H:%M:%S")
+            time_suffix += f" @ {completion_str}"
 
         if self.status == "active":
             header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41")
