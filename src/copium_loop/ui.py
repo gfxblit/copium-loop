@@ -345,8 +345,8 @@ class Dashboard:
                 while True:
                     self.update_from_logs()
                     
-                    # Check for keyboard input (non-blocking)
-                    if select.select([sys.stdin], [], [], 0)[0]:
+                    # Check for keyboard input (non-blocking with longer timeout for better responsiveness)
+                    if select.select([sys.stdin], [], [], 0.05)[0]:
                         key = sys.stdin.read(1)
                         
                         # Handle Escape sequences (Arrows, etc.)
@@ -380,6 +380,6 @@ class Dashboard:
                                     self.switch_to_tmux_session(tmux_session)
                     
                     live.update(self.make_layout())
-                    time.sleep(0.1)
+                    time.sleep(0.05)
         finally:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
