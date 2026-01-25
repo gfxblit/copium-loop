@@ -54,13 +54,6 @@ class TestContinueFeature:
         """Test that workflow.run() accepts initial_state parameter."""
         workflow = WorkflowManager(start_node="coder", verbose=False)
 
-        # This should not raise an error
-        # reconstructed_state = {
-        #     "retry_count": 2,
-        #     "test_output": "FAIL",
-        #     "review_status": "rejected",
-        # }
-
         # We can't actually run the workflow in tests without mocking,
         # but we can verify the method signature accepts the parameter
         import inspect
