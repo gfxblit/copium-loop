@@ -9,6 +9,7 @@ from copium_loop.utils import invoke_gemini
 async def coder(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("coder", "active")
+    telemetry.log_output("coder", "--- Coder Node ---\n")
     print("--- Coder Node ---")
     messages = state["messages"]
     test_output = state.get("test_output", "")
@@ -78,8 +79,9 @@ async def coder(state: AgentState) -> dict:
         label="Coder System",
         node="coder",
     )
+    telemetry.log_output("coder", "\nCoding complete.\n")
     print("\nCoding complete.")
-    telemetry.log_status("coder", "idle")
+    telemetry.log_status("coder", "coded")
 
     return {
         "code_status": "coded",

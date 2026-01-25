@@ -17,17 +17,21 @@ from copium_loop.utils import (
 async def tester(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("tester", "active")
+    telemetry.log_output("tester", "--- Test Runner Node ---\n")
     print("--- Test Runner Node ---")
     retry_count = state.get("retry_count", 0)
 
     try:
         # 1. Run Linter
         lint_cmd, lint_args = get_lint_command()
-        print(f"Running {lint_cmd} {' '.join(lint_args)}...")
+        msg = f"Running {lint_cmd} {' '.join(lint_args)}...\n"
+        telemetry.log_output("tester", msg)
+        print(msg, end="")
         lint_result = await run_command(lint_cmd, lint_args, node="tester")
         lint_output = lint_result["output"]
 
         if lint_result["exit_code"] != 0:
+            telemetry.log_output("tester", "Linter failed.\n")
             print("Linter failed.")
             telemetry.log_status("tester", "failed")
 
@@ -45,11 +49,14 @@ async def tester(state: AgentState) -> dict:
         # 2. Run Build
         build_cmd, build_args = get_build_command()
         if build_cmd:
-            print(f"Running {build_cmd} {' '.join(build_args)}...")
+            msg = f"Running {build_cmd} {' '.join(build_args)}...\n"
+            telemetry.log_output("tester", msg)
+            print(msg, end="")
             build_result = await run_command(build_cmd, build_args, node="tester")
             build_output = build_result["output"]
 
             if build_result["exit_code"] != 0:
+                telemetry.log_output("tester", "Build failed.\n")
                 print("Build failed.")
                 telemetry.log_status("tester", "failed")
                 return {
@@ -66,7 +73,9 @@ async def tester(state: AgentState) -> dict:
         # 3. Run Unit Tests
         test_cmd, test_args = get_test_command()
 
-        print(f"Running {test_cmd} {' '.join(test_args)}...")
+        msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
+        telemetry.log_output("tester", msg)
+        print(msg, end="")
         result = await run_command(test_cmd, test_args, node="tester")
         unit_output = result["output"]
         exit_code = result["exit_code"]
@@ -97,6 +106,7 @@ async def tester(state: AgentState) -> dict:
                 if retry_count >= MAX_RETRIES
                 else "Unit tests failed. Returning to coder."
             )
+            telemetry.log_output("tester", f"{message}\n")
             await notify("Workflow: Tests Failed", message, 4)
             telemetry.log_status("tester", "failed")
 

@@ -104,27 +104,39 @@ class WorkflowManager:
                 res = await run_command("git", ["rev-parse", "HEAD"])
                 if res["exit_code"] == 0:
                     initial_commit_hash = res["output"].strip()
-                    print(f"Initial commit hash: {initial_commit_hash}")
+                    msg = f"Initial commit hash: {initial_commit_hash}\n"
+                    telemetry.log_output(self.start_node, msg)
+                    print(msg, end="")
             except Exception as e:
-                print(f"Warning: Failed to capture initial commit hash: {e}")
+                msg = f"Warning: Failed to capture initial commit hash: {e}\n"
+                telemetry.log_output(self.start_node, msg)
+                print(msg, end="")
 
         # Ensure existing tests run successfully if starting from coder
         if self.start_node == "coder":
-            print("Verifying baseline tests...")
+            msg = "Verifying baseline tests...\n"
+            telemetry.log_output(self.start_node, msg)
+            print(msg, end="")
             test_cmd, test_args = get_test_command()
             try:
-                print(f"Running {test_cmd} {' '.join(test_args)}...")
+                msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
+                telemetry.log_output(self.start_node, msg)
+                print(msg, end="")
                 # We don't necessarily want to fail the whole workflow if baseline tests fail,
                 # but we should definitely inform the user.
                 res = await run_command(test_cmd, test_args, node=self.start_node)
                 if res["exit_code"] != 0:
-                    print(
-                        "Warning: Baseline tests failed. Proceeding anyway, but be aware."
-                    )
+                    msg = "Warning: Baseline tests failed. Proceeding anyway, but be aware.\n"
+                    telemetry.log_output(self.start_node, msg)
+                    print(msg, end="")
                 else:
-                    print("Baseline tests passed.")
+                    msg = "Baseline tests passed.\n"
+                    telemetry.log_output(self.start_node, msg)
+                    print(msg, end="")
             except Exception as e:
-                print(f"Warning: Could not run baseline tests: {e}")
+                msg = f"Warning: Could not run baseline tests: {e}\n"
+                telemetry.log_output(self.start_node, msg)
+                print(msg, end="")
 
         # Build default initial state
         default_state = {

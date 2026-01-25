@@ -12,6 +12,7 @@ from copium_loop.utils import invoke_gemini, run_command
 async def reviewer(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
+    telemetry.log_output("reviewer", "--- Reviewer Node ---\n")
     print("--- Reviewer Node ---")
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
@@ -32,7 +33,9 @@ async def reviewer(state: AgentState) -> dict:
             if res["exit_code"] == 0:
                 git_diff = res["output"]
         except Exception as e:
-            print(f"Warning: Failed to get git diff: {e}")
+            msg = f"Warning: Failed to get git diff: {e}\n"
+            telemetry.log_output("reviewer", msg)
+            print(msg, end="")
 
     system_prompt = f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
 
@@ -62,8 +65,10 @@ async def reviewer(state: AgentState) -> dict:
             node="reviewer",
         )
     except Exception as e:
-        print(f"Error during review: {e}")
-        telemetry.log_status("reviewer", "idle")
+        msg = f"Error during review: {e}\n"
+        telemetry.log_output("reviewer", msg)
+        print(msg, end="")
+        telemetry.log_status("reviewer", "rejected")
         return {
             "review_status": "rejected",
             "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
@@ -74,7 +79,9 @@ async def reviewer(state: AgentState) -> dict:
     verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", review_content.upper())
     is_approved = verdicts[-1] == "APPROVED" if verdicts else False
 
-    print(f"\nReview decision: {'Approved' if is_approved else 'Rejected'}")
+    msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
+    telemetry.log_output("reviewer", msg)
+    print(msg, end="")
     telemetry.log_status("reviewer", "approved" if is_approved else "rejected")
 
     return {

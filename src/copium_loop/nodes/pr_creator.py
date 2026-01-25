@@ -12,12 +12,15 @@ from copium_loop.utils import notify, run_command
 async def pr_creator(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("pr_creator", "active")
+    telemetry.log_output("pr_creator", "--- PR Creator Node ---\n")
     print("--- PR Creator Node ---")
     retry_count = state.get("retry_count", 0)
     issue_url = state.get("issue_url", "")
 
     if not os.path.exists(".git"):
-        print("Not a git repository. Skipping PR creation.")
+        msg = "Not a git repository. Skipping PR creation.\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
         telemetry.log_status("pr_creator", "success")
         return {"review_status": "pr_skipped"}
 
@@ -31,16 +34,22 @@ async def pr_creator(state: AgentState) -> dict:
             or branch_name in ["main", "master"]
             or not branch_name
         ):
-            print("Not on a feature branch. Skipping PR creation.")
+            msg = "Not on a feature branch. Skipping PR creation.\n"
+            telemetry.log_output("pr_creator", msg)
+            print(msg, end="")
             telemetry.log_status("pr_creator", "success")
             return {"review_status": "pr_skipped"}
 
-        print(f"On feature branch: {branch_name}")
+        msg = f"On feature branch: {branch_name}\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
 
         # 2. Check uncommitted changes
         res_status = await run_command("git", ["status", "--porcelain"], node="pr_creator")
         if res_status["output"].strip():
-            print("Uncommitted changes found. Returning to coder to finalize commits.")
+            msg = "Uncommitted changes found. Returning to coder to finalize commits.\n"
+            telemetry.log_output("pr_creator", msg)
+            print(msg, end="")
             telemetry.log_status("pr_creator", "failed")
             return {
                 "review_status": "needs_commit",
@@ -53,12 +62,16 @@ async def pr_creator(state: AgentState) -> dict:
             }
 
         # 3. Attempt rebase on origin/main
-        print("Fetching origin and attempting rebase on origin/main...")
+        msg = "Fetching origin and attempting rebase on origin/main...\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
         await run_command("git", ["fetch", "origin"], node="pr_creator")
         res_rebase = await run_command("git", ["rebase", "origin/main"], node="pr_creator")
 
         if res_rebase["exit_code"] != 0:
-            print("Rebase failed. Aborting rebase and returning to coder.")
+            msg = "Rebase failed. Aborting rebase and returning to coder.\n"
+            telemetry.log_output("pr_creator", msg)
+            print(msg, end="")
             await run_command("git", ["rebase", "--abort"], node="pr_creator")
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
             await notify("Workflow: Rebase Conflict", "Automatic rebase failed. Manual resolution required by coder.", 4)
@@ -74,7 +87,9 @@ async def pr_creator(state: AgentState) -> dict:
             }
 
         # 4. Push to origin
-        print("Pushing to origin...")
+        msg = "Pushing to origin...\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
         res_push = await run_command("git", ["push", "-u", "origin", branch_name], node="pr_creator")
         if res_push["exit_code"] != 0:
             raise Exception(
@@ -82,12 +97,16 @@ async def pr_creator(state: AgentState) -> dict:
             )
 
         # 5. Create PR
-        print("Creating Pull Request...")
+        msg = "Creating Pull Request...\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
         res_pr = await run_command("gh", ["pr", "create", "--fill"], node="pr_creator")
 
         if res_pr["exit_code"] != 0:
             if "already exists" in res_pr["output"]:
-                print("PR already exists. Treating as success.")
+                msg = "PR already exists. Treating as success.\n"
+                telemetry.log_output("pr_creator", msg)
+                print(msg, end="")
                 match = re.search(r"https://github\.com/[^\s]+", res_pr["output"])
                 pr_url = match.group(0) if match else "existing PR"
                 telemetry.log_status("pr_creator", "success")
@@ -101,11 +120,15 @@ async def pr_creator(state: AgentState) -> dict:
             )
 
         pr_output_clean = res_pr["output"].strip()
-        print(f"PR created: {pr_output_clean}")
+        msg = f"PR created: {pr_output_clean}\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
 
         # 6. Link issue if present
         if issue_url:
-            print(f"Linking issue: {issue_url}")
+            msg = f"Linking issue: {issue_url}\n"
+            telemetry.log_output("pr_creator", msg)
+            print(msg, end="")
             try:
                 # Get current body
                 res_view = await run_command(
@@ -117,9 +140,13 @@ async def pr_creator(state: AgentState) -> dict:
                     await run_command(
                         "gh", ["pr", "edit", pr_output_clean, "--body", new_body], node="pr_creator"
                     )
-                    print("PR body updated with issue reference.")
+                    msg = "PR body updated with issue reference.\n"
+                    telemetry.log_output("pr_creator", msg)
+                    print(msg, end="")
             except Exception as e:
-                print(f"Warning: Failed to link issue to PR: {e}")
+                msg = f"Warning: Failed to link issue to PR: {e}\n"
+                telemetry.log_output("pr_creator", msg)
+                print(msg, end="")
 
         telemetry.log_status("pr_creator", "success")
         return {
@@ -129,7 +156,9 @@ async def pr_creator(state: AgentState) -> dict:
         }
 
     except Exception as error:
-        print(f"Error in PR creation: {error}")
+        msg = f"Error in PR creation: {error}\n"
+        telemetry.log_output("pr_creator", msg)
+        print(msg, end="")
         message = (
             "Max retries exceeded. Aborting."
             if retry_count >= MAX_RETRIES
