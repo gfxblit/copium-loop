@@ -102,15 +102,15 @@ class MatrixPillar:
         content = Text()
         # Waterfall effect: newest lines at the top
         for i, line in enumerate(reversed(self.buffer)):
-            if i == 0 and self.status == "active":
+            if i == 0:
                 # Newest line while active: Bright White
                 style = Style(color="#FFFFFF", bold=True)
                 content.append(f"> {line}\n", style=style)
-            elif i < 5:
+            elif i == 1:
                 # Active Context: Neon Green
                 style = Style(color="#00FF41")
                 content.append(f"  {line}\n", style=style)
-            elif i < 15:
+            elif i < 2:
                 # History: Dark Green
                 style = Style(color="#008F11")
                 content.append(f"  {line}\n", style=style)
