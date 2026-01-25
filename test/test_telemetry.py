@@ -1,7 +1,5 @@
 """Tests for telemetry log parsing and continuation features."""
 
-import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -51,11 +49,11 @@ class TestTelemetryLogReading:
         """Test reading a log file with invalid JSON lines."""
         # Write valid and invalid events
         telemetry_with_temp_dir.log_status("coder", "active")
-        
+
         # Manually append invalid JSON
         with open(telemetry_with_temp_dir.log_file, "a") as f:
             f.write("invalid json line\n")
-        
+
         telemetry_with_temp_dir.log_status("tester", "active")
 
         events = telemetry_with_temp_dir.read_log()
@@ -279,18 +277,18 @@ class TestFindLatestSession:
     def test_find_latest_session(self, temp_log_dir, monkeypatch):
         """Test finding the most recent session."""
         monkeypatch.setattr(Path, "home", lambda: temp_log_dir.parent.parent)
-        
+
         # Create multiple log files with different timestamps
         import time
-        
+
         session1 = temp_log_dir / "session1.jsonl"
         session1.write_text("{}\n")
         time.sleep(0.01)
-        
+
         session2 = temp_log_dir / "session2.jsonl"
         session2.write_text("{}\n")
         time.sleep(0.01)
-        
+
         session3 = temp_log_dir / "session3.jsonl"
         session3.write_text("{}\n")
 

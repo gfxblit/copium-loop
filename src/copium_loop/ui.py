@@ -17,7 +17,6 @@ from rich.panel import Panel
 from rich.style import Style
 from rich.text import Text
 
-
 class MatrixPillar:
     """Manages the buffer and rendering for a single agent phase."""
 
@@ -332,9 +331,9 @@ class Dashboard:
                                 self.sessions[sid].workflow_status = data
                             elif node in self.sessions[sid].pillars:
                                 if etype == "output":
-                                    for l in data.splitlines():
-                                        if l.strip():
-                                            self.sessions[sid].pillars[node].add_line(l)
+                                    for line in data.splitlines():
+                                        if line.strip():
+                                            self.sessions[sid].pillars[node].add_line(line)
                                 elif etype == "status":
                                     self.sessions[sid].pillars[node].set_status(data, event.get("timestamp"))
                         except json.JSONDecodeError:
@@ -343,7 +342,7 @@ class Dashboard:
             except Exception:
                 pass
 
-    def run_monitor(self, session_id: str | None = None):
+    def run_monitor(self, _session_id: str | None = None):
         """Runs the live dashboard."""
         self.current_page = 0
 
@@ -360,10 +359,9 @@ class Dashboard:
                         key = sys.stdin.read(1)
 
                         # Handle Escape sequences (Arrows, etc.)
-                        if key == "\x1b":
+                        if key == "\x1b" and select.select([sys.stdin], [], [], 0.05)[0]:
                             # Read the next two characters if available
-                            if select.select([sys.stdin], [], [], 0.05)[0]:
-                                key += sys.stdin.read(2)
+                            key += sys.stdin.read(2)
 
                         num_sessions = len(self.sessions)
                         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1

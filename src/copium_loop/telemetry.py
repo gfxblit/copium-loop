@@ -48,9 +48,9 @@ class Telemetry:
         """Reads all events from the session's log file."""
         if not self.log_file.exists():
             return []
-        
+
         events = []
-        with open(self.log_file, "r", encoding="utf-8") as f:
+        with open(self.log_file, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -63,7 +63,7 @@ class Telemetry:
     def get_last_incomplete_node(self) -> tuple[str | None, dict]:
         """
         Determines which node to resume from based on log events.
-        
+
         Returns:
             tuple: (node_name, metadata) where node_name is the node to resume from,
                    or (None, metadata) if workflow is complete or cannot be resumed.
@@ -72,14 +72,14 @@ class Telemetry:
         events = self.read_log()
         if not events:
             return None, {"reason": "no_log_found"}
-        
+
         # Check if workflow completed successfully or failed terminally
         workflow_events = [e for e in events if e.get("node") == "workflow" and e.get("event_type") == "workflow_status"]
         if workflow_events:
             last_workflow_status = workflow_events[-1].get("data")
             if last_workflow_status in ["success", "failed"]:
                 return None, {"reason": "workflow_completed", "status": last_workflow_status}
-        
+
         # Track the last status for each node
         node_statuses = {}
         for event in events:
@@ -90,11 +90,11 @@ class Telemetry:
                     if node not in node_statuses:
                         node_statuses[node] = []
                     node_statuses[node].append(status)
-        
+
         # Determine which node was last active but didn't complete
         # Node progression: coder -> tester -> reviewer -> pr_creator
         node_order = ["coder", "tester", "reviewer", "pr_creator"]
-        
+
         # Find the last node that was active
         last_active_node = None
         for node in reversed(node_order):
@@ -111,23 +111,23 @@ class Telemetry:
                     if current_idx < len(node_order) - 1:
                         last_active_node = node_order[current_idx + 1]
                     break
-        
+
         if last_active_node:
             return last_active_node, {"reason": "incomplete", "last_statuses": node_statuses}
-        
+
         # Default to coder if we can't determine
         return "coder", {"reason": "uncertain", "last_statuses": node_statuses}
 
     def reconstruct_state(self) -> dict:
         """
         Reconstructs workflow state from log events.
-        
+
         Returns:
             dict: Partial state that can be merged with initial state
         """
         events = self.read_log()
         state = {}
-        
+
         # We can't fully reconstruct messages, but we can get some state
         # Look for the initial prompt in output events
         for event in events:
@@ -137,7 +137,7 @@ class Telemetry:
                 if "Starting workflow with prompt:" in data:
                     prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
                     state["prompt"] = prompt
-        
+
         # Count retries by counting how many times we've returned to coder from failures
         retry_count = 0
         node_statuses = {}
@@ -149,15 +149,15 @@ class Telemetry:
                     if node not in node_statuses:
                         node_statuses[node] = []
                     node_statuses[node].append(status)
-        
+
         # Count failures that would increment retry_count
         for node in ["tester", "reviewer"]:
             if node in node_statuses:
                 retry_count += node_statuses[node].count("failed")
                 retry_count += node_statuses[node].count("rejected")
-        
+
         state["retry_count"] = retry_count
-        
+
         # Determine test_output status
         if "tester" in node_statuses:
             last_tester_status = node_statuses["tester"][-1]
@@ -165,7 +165,7 @@ class Telemetry:
                 state["test_output"] = "PASS"
             elif last_tester_status in ["failed", "error"]:
                 state["test_output"] = "FAIL"
-        
+
         # Determine review_status
         if "reviewer" in node_statuses:
             last_reviewer_status = node_statuses["reviewer"][-1]
@@ -173,7 +173,7 @@ class Telemetry:
                 state["review_status"] = "approved"
             elif last_reviewer_status == "rejected":
                 state["review_status"] = "rejected"
-        
+
         # Check PR creator status
         if "pr_creator" in node_statuses:
             last_pr_status = node_statuses["pr_creator"][-1]
@@ -181,7 +181,7 @@ class Telemetry:
                 state["review_status"] = "pr_created"
             elif last_pr_status == "failed":
                 state["review_status"] = "pr_failed"
-        
+
         return state
 
 
@@ -191,22 +191,22 @@ _telemetry_instance = None
 def find_latest_session() -> str | None:
     """
     Finds the most recent session ID from the log directory.
-    
+
     Returns:
         str: The session ID of the most recent log file, or None if no logs exist
     """
     log_dir = Path.home() / ".copium" / "logs"
     if not log_dir.exists():
         return None
-    
+
     # Find all .jsonl files
     log_files = list(log_dir.glob("*.jsonl"))
     if not log_files:
         return None
-    
+
     # Sort by modification time, most recent first
     log_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-    
+
     # Return the session ID (filename without extension)
     return log_files[0].stem
 

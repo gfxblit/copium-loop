@@ -45,7 +45,7 @@ class TestContinueFeature:
         """Test that workflow can be initialized with reconstructed state."""
         workflow = WorkflowManager(start_node="tester", verbose=False)
         workflow.create_graph()
-        
+
         # Verify the graph was created
         assert workflow.graph is not None
         assert workflow.start_node == "tester"
@@ -53,14 +53,14 @@ class TestContinueFeature:
     def test_workflow_run_accepts_initial_state_parameter(self):
         """Test that workflow.run() accepts initial_state parameter."""
         workflow = WorkflowManager(start_node="coder", verbose=False)
-        
+
         # This should not raise an error
-        reconstructed_state = {
-            "retry_count": 2,
-            "test_output": "FAIL",
-            "review_status": "rejected",
-        }
-        
+        # reconstructed_state = {
+        #     "retry_count": 2,
+        #     "test_output": "FAIL",
+        #     "review_status": "rejected",
+        # }
+
         # We can't actually run the workflow in tests without mocking,
         # but we can verify the method signature accepts the parameter
         import inspect

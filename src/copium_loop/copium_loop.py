@@ -79,7 +79,7 @@ class WorkflowManager:
 
     async def run(self, input_prompt: str, initial_state: dict | None = None):
         """Run the workflow with the given prompt.
-        
+
         Args:
             input_prompt: The prompt to run the workflow with
             initial_state: Optional reconstructed state from a previous session
@@ -155,7 +155,7 @@ class WorkflowManager:
             "git_diff": "",
             "verbose": self.verbose,
         }
-        
+
         # Merge reconstructed state if provided
         if initial_state:
             print(f"Merging reconstructed state: {initial_state}")

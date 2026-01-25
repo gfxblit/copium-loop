@@ -5,8 +5,6 @@ import asyncio
 import os
 import sys
 
-from langchain_core.messages import HumanMessage
-
 from copium_loop.copium_loop import WorkflowManager
 from copium_loop.telemetry import Telemetry, find_latest_session, get_telemetry
 from copium_loop.ui import Dashboard
@@ -49,7 +47,7 @@ async def async_main():
     # Handle --continue flag
     start_node = args.start
     reconstructed_state = None
-    
+
     if args.continue_session:
         # Determine which session to continue
         session_id = args.session
@@ -59,15 +57,15 @@ async def async_main():
             if not session_id:
                 print("Error: No previous sessions found to continue.")
                 sys.exit(1)
-        
+
         print(f"Attempting to continue session: {session_id}")
-        
+
         # Load the telemetry for this session
         telemetry = Telemetry(session_id)
-        
+
         # Determine where to resume from
         resume_node, metadata = telemetry.get_last_incomplete_node()
-        
+
         if resume_node is None:
             reason = metadata.get("reason")
             if reason == "workflow_completed":
@@ -81,14 +79,14 @@ async def async_main():
             else:
                 print(f"Cannot determine resume point: {reason}")
                 sys.exit(1)
-        
+
         print(f"Resuming from node: {resume_node}")
         print(f"Metadata: {metadata}")
-        
+
         # Reconstruct state from logs
         reconstructed_state = telemetry.reconstruct_state()
         start_node = resume_node
-        
+
         # If we have a prompt from the logs, use it; otherwise use default
         prompt = reconstructed_state.get("prompt", "Continue development and verify implementation.")
     else:
