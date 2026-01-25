@@ -82,21 +82,21 @@ async def tester(state: AgentState) -> dict:
 
         # More robust test failure detection
         # We look for common patterns in pytest, npm test, etc.
-        # "FAILURES", "ERRORS", "FAILED", "FAIL", "error:"
+        # We are conservative if exit_code is 0 to avoid false positives.
         failure_patterns = [
-            r"FAILURES",
-            r"ERRORS",
-            r"\d+ failed",
-            r"\d+ error",
-            r"FAIL\b",
-            r"FAILED\b",
-            r"^error:",
+            r"\b[1-9]\d* failed\b",
+            r"\b[1-9]\d* errors?\b",
+            r"\bFAILURES\b",
+            r"\bERRORS\b",
+            r"^\s*FAIL\b",
+            r"^\s*FAILED\b",
+            r"^\s*error:",
         ]
 
         has_failed = exit_code != 0
         if not has_failed:
             for pattern in failure_patterns:
-                if re.search(pattern, unit_output, re.MULTILINE | re.IGNORECASE):
+                if re.search(pattern, unit_output, re.MULTILINE):
                     has_failed = True
                     break
 

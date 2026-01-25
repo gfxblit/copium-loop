@@ -98,3 +98,65 @@ class TestTesterNode:
             assert "FAIL (Unit)" in result["test_output"]
             assert result["retry_count"] == 1
             assert mock_run.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_tester_false_positive_avoidance(self):
+        """Test that '0 failed' or 'failed' in test names don't trigger failure with exit code 0."""
+        with (
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
+            patch(
+                "copium_loop.nodes.tester.get_build_command",
+                return_value=("", []),
+            ),
+        ):
+            # 1. Lint passes, 2. Test output contains '0 failed' but exit 0
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {"output": "Tests: 10 passed, 0 failed", "exit_code": 0},
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+            assert result["test_output"] == "PASS"
+
+            # 3. Lint passes, 4. Test output contains 'failed' in name but exit 0
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {"output": "PASS test_failed_logic.ts", "exit_code": 0},
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+            assert result["test_output"] == "PASS"
+
+    @pytest.mark.asyncio
+    async def test_tester_still_detects_failure_with_exit_0(self):
+        """Test that explicit failure indicators still trigger failure even if exit code is 0."""
+        with (
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
+            patch(
+                "copium_loop.nodes.tester.get_build_command",
+                return_value=("", []),
+            ),
+        ):
+            # 1. Lint passes, 2. Test output contains '1 failed'
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {"output": "Tests: 9 passed, 1 failed", "exit_code": 0},
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+            assert "FAIL (Unit)" in result["test_output"]
+
+            # 3. Lint passes, 4. Test output contains 'FAILED' at start of line
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {"output": "FAILED test_file.py", "exit_code": 0},
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+            assert "FAIL (Unit)" in result["test_output"]
