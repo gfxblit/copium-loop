@@ -8,14 +8,33 @@ from copium_loop.constants import DEFAULT_MODELS
 from copium_loop.telemetry import get_telemetry
 
 
-def _stream_output(chunk: str, node: str | None = None):
-    """Streams a chunk of output to stdout and telemetry."""
-    if not chunk:
-        return
-    sys.stdout.write(chunk)
-    sys.stdout.flush()
-    if node:
-        get_telemetry().log_output(node, chunk)
+class StreamLogger:
+    """Helper to buffer output for line-based logging while streaming to stdout."""
+
+    def __init__(self, node: str | None):
+        self.node = node
+        self.buffer = ""
+        self.telemetry = get_telemetry() if node else None
+
+    def process_chunk(self, chunk: str):
+        """Streams chunk to stdout immediately and buffers for telemetry."""
+        if not chunk:
+            return
+
+        sys.stdout.write(chunk)
+        sys.stdout.flush()
+
+        if self.telemetry:
+            self.buffer += chunk
+            while "\n" in self.buffer:
+                line, self.buffer = self.buffer.split("\n", 1)
+                self.telemetry.log_output(self.node, line + "\n")
+
+    def flush(self):
+        """Flushes any remaining buffered output to telemetry."""
+        if self.telemetry and self.buffer:
+            self.telemetry.log_output(self.node, self.buffer)
+            self.buffer = ""
 
 
 def _clean_chunk(chunk: str | bytes) -> str:
@@ -61,6 +80,7 @@ async def run_command(command: str, args: list[str] | None = None, node: str | N
     )
 
     full_output = ""
+    stdout_logger = StreamLogger(node)
 
     async def read_stream(stream, is_stderr):
         nonlocal full_output
@@ -71,12 +91,14 @@ async def run_command(command: str, args: list[str] | None = None, node: str | N
             decoded_chunk = _clean_chunk(line)
             if decoded_chunk:
                 if not is_stderr:
-                    _stream_output(decoded_chunk, node)
+                    stdout_logger.process_chunk(decoded_chunk)
                 full_output += decoded_chunk
 
     await asyncio.gather(
         read_stream(process.stdout, False), read_stream(process.stderr, True)
     )
+
+    stdout_logger.flush()
 
     exit_code = await process.wait()
     return {"output": full_output, "exit_code": exit_code}
@@ -112,6 +134,7 @@ async def _execute_gemini(
     )
 
     full_output = ""
+    logger = StreamLogger(node)
 
     async def read_stdout():
         nonlocal full_output
@@ -121,10 +144,11 @@ async def _execute_gemini(
                 break
             decoded = _clean_chunk(chunk)
             if decoded:
-                _stream_output(decoded, node)
+                logger.process_chunk(decoded)
                 full_output += decoded
 
     await read_stdout()
+    logger.flush()
     exit_code = await process.wait()
 
     if exit_code != 0:
@@ -235,7 +259,6 @@ def get_package_manager() -> str:
         return "yarn"
     return "npm"
 
-
 def get_test_command() -> tuple[str, list[str]]:
     """Determines the test command based on the project structure."""
     test_cmd = "npm"
@@ -257,7 +280,6 @@ def get_test_command() -> tuple[str, list[str]]:
         test_args = ["--cov=src", "--cov-report=term-missing"]
 
     return test_cmd, test_args
-
 
 def get_build_command() -> tuple[str, list[str]]:
     """Determines the build command based on the project structure."""
@@ -283,7 +305,6 @@ def get_build_command() -> tuple[str, list[str]]:
         return "", []
 
     return build_cmd, build_args
-
 
 def get_lint_command() -> tuple[str, list[str]]:
     """Determines the lint command based on the project structure."""
