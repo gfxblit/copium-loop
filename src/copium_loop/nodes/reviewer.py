@@ -42,16 +42,16 @@ async def reviewer(state: AgentState) -> dict:
     GIT DIFF SINCE START:
     {git_diff}
 
-    Your primary responsibility is to ensure the code changes are correct, idiomatic, and well-tested.
+    Your primary responsibility is to ensure the code changes do not introduce critical or high-severity issues.
 
     CRITICAL REQUIREMENTS:
-    1. Verify that new tests have been added for any new functionality.
-    2. Verify that existing tests have been updated if behavior changed.
-    3. If the change is a pure refactor, determine if existing tests provide sufficient coverage.
-    4. Reject the implementation if it lacks relevant new tests for new features.
-    5. Ensure no debug statements or commented-out code are left behind.
+    1. ONLY reject if there are CRITICAL or HIGH severity issues introduced by the changes in the git diff.
+    2. Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
+    3. If the logic is correct and passes tests (which it has if you are seeing this), and no high-severity bugs are obvious in the diff, you SHOULD APPROVE.
+    4. Focus ONLY on the changes introduced in the diff.
 
     To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context, including the git diff above.
+    Instruct the skill to focus ONLY on identifying critical or high severity issues within the changes.
     After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
     determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
 
