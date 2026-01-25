@@ -141,7 +141,7 @@ class SessionColumn:
             "pr_creator": MatrixPillar("PR Creator"),
         }
 
-    def render(self, session_number: int | None = None) -> Layout:
+    def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
 
         # Calculate dynamic ratios based on buffer size and activity
@@ -186,8 +186,14 @@ class SessionColumn:
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
 
-        # Add numbered prefix if session_number is provided
-        header_text = f"[{session_number}] {self.session_id}" if session_number else self.session_id
+        # Dynamically truncate session_id based on available column width
+        if column_width:
+            # Account for: panel borders (2), padding (2)
+            available_width = column_width - 4
+            header_text = self.session_id[:available_width]
+        else:
+            header_text = self.session_id
+
         col_layout["header"].update(
             Panel(Text(header_text, justify="center", style="bold yellow"), border_style="yellow")
         )
@@ -228,10 +234,15 @@ class Dashboard:
         active_sessions = session_list[start_idx:end_idx]
 
         if active_sessions:
-            # Pass session numbers (1-based) to each session for display
+            # Calculate column width based on console width
+            num_columns = len(active_sessions)
+            # Account for borders between columns (1 char per border)
+            column_width = (self.console.width - num_columns + 1) // num_columns
+
+            # Pass column width to each session for display
             layout["main"].split_row(*[
-                Layout(s.render(session_number=i+1))
-                for i, s in enumerate(active_sessions)
+                Layout(s.render(column_width=column_width))
+                for s in active_sessions
             ])
         else:
             layout["main"].update(Panel(Text("WAITING FOR SESSIONS...", justify="center", style="dim")))
@@ -247,7 +258,7 @@ class Dashboard:
         num_sessions = len(self.sessions)
         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
 
-        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate] [1-9 to switch sessions]" if num_sessions > 0 else ""
+        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]" if num_sessions > 0 else ""
 
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
