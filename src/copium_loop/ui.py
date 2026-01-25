@@ -1,22 +1,21 @@
 import json
 import os
+import select
 import subprocess
+import sys
+import termios
 import time
+import tty
 from datetime import datetime
 from pathlib import Path
 
-import select
-import sys
-import termios
-import tty
-
 import psutil
-from rich.console import Console, Group
+from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.text import Text
 from rich.style import Style
+from rich.text import Text
 
 
 class MatrixPillar:
@@ -61,15 +60,15 @@ class MatrixPillar:
         # error/rejected/failed -> red X
         # idle with content -> grey checkmark (passed history)
         # idle without content -> dim grey (never run)
-        
+
         has_content = len(self.buffer) > 0
-        
+
         # Calculate display time if applicable - human readable (e.g. 1m 5s)
         time_suffix = ""
         duration_val = self.duration if self.duration is not None else (
             int(time.time() - self.start_time) if self.start_time is not None and self.status == "active" else None
         )
-        
+
         if duration_val is not None:
             secs = int(duration_val)
             if secs >= 60:
@@ -78,7 +77,7 @@ class MatrixPillar:
                 time_suffix = f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
             else:
                 time_suffix = f" [{secs}s]"
-        
+
         # Add completion time for completed steps
         if self.completion_time is not None and self.status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
             completion_dt = datetime.fromtimestamp(self.completion_time)
@@ -144,7 +143,7 @@ class SessionColumn:
 
     def render(self, session_number: int | None = None) -> Layout:
         col_layout = Layout()
-        
+
         # Calculate dynamic ratios based on buffer size and activity
         # This makes the windows "flexible" - they grow as they fill
         ratios = {}
@@ -157,7 +156,7 @@ class SessionColumn:
                 weight += 10  # Ensure active node has enough space
             elif pillar.status == "idle" and count == 0:
                 weight = 1  # Keep empty idle nodes very small
-            
+
             ratios[node] = weight
 
         # Add workflow status banner if workflow has completed
@@ -170,7 +169,7 @@ class SessionColumn:
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
-            
+
             # Render workflow status banner
             if self.workflow_status == "failed":
                 status_text = Text("⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED", style="bold white on red", justify="center")
@@ -186,7 +185,7 @@ class SessionColumn:
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
-        
+
         # Add numbered prefix if session_number is provided
         header_text = f"[{session_number}] {self.session_id}" if session_number else self.session_id
         col_layout["header"].update(
@@ -194,7 +193,7 @@ class SessionColumn:
         )
         for node, pillar in self.pillars.items():
             col_layout[node].update(pillar.render())
-            
+
         return col_layout
 
 
@@ -215,28 +214,28 @@ class Dashboard:
             Layout(name="main"),
             Layout(name="footer", size=3),
         )
-        
+
         # Pagination logic - newest sessions first
         session_list = list(self.sessions.values())[::-1]
         num_sessions = len(session_list)
         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
-        
+
         # Ensure current_page is valid
         self.current_page = max(0, min(self.current_page, num_pages - 1))
-        
+
         start_idx = self.current_page * self.sessions_per_page
         end_idx = start_idx + self.sessions_per_page
         active_sessions = session_list[start_idx:end_idx]
-        
+
         if active_sessions:
             # Pass session numbers (1-based) to each session for display
             layout["main"].split_row(*[
-                Layout(s.render(session_number=i+1)) 
+                Layout(s.render(session_number=i+1))
                 for i, s in enumerate(active_sessions)
             ])
         else:
             layout["main"].update(Panel(Text("WAITING FOR SESSIONS...", justify="center", style="dim")))
-            
+
         layout["footer"].update(self.make_footer())
         return layout
 
@@ -244,12 +243,12 @@ class Dashboard:
         cpu = psutil.cpu_percent()
         mem = psutil.virtual_memory().percent
         spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
-        
+
         num_sessions = len(self.sessions)
         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
-        
+
         pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate] [1-9 to switch sessions]" if num_sessions > 0 else ""
-        
+
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
             f"  SESSIONS: {num_sessions}  ",
@@ -263,26 +262,26 @@ class Dashboard:
 
     def extract_tmux_session(self, session_id: str) -> str | None:
         """Extracts the tmux session name from a session_id.
-        
+
         Session IDs are formatted as {tmux_session}_{pane} or session_{timestamp}.
         Returns the tmux session name if it exists, None otherwise.
         """
         # Handle non-tmux sessions (format: session_{timestamp})
         if session_id.startswith("session_"):
             return None
-        
+
         # Extract tmux session name (everything before the last underscore)
         parts = session_id.rsplit("_", 1)
         if len(parts) == 2:
             return parts[0]
         return None
-    
+
     def switch_to_tmux_session(self, session_name: str):
         """Switches the current tmux client to the specified session."""
         # Check if we're running inside tmux
         if not os.environ.get("TMUX"):
             return  # Not in tmux, silently ignore
-        
+
         try:
             subprocess.run(
                 ["tmux", "switch-client", "-t", session_name],
@@ -300,15 +299,15 @@ class Dashboard:
     def update_from_logs(self):
         """Reads .jsonl files and updates session states."""
         log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
-        
+
         for target_file in log_files:
             sid = target_file.stem
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
-            
+
             offset = self.log_offsets.get(sid, 0)
             try:
-                with open(target_file, "r") as f:
+                with open(target_file) as f:
                     f.seek(offset)
                     for line in f:
                         try:
@@ -336,7 +335,7 @@ class Dashboard:
     def run_monitor(self, session_id: str | None = None):
         """Runs the live dashboard."""
         self.current_page = 0
-        
+
         # Save terminal settings to restore them later
         old_settings = termios.tcgetattr(sys.stdin)
         try:
@@ -344,20 +343,20 @@ class Dashboard:
             with Live(self.make_layout(), console=self.console, screen=True, refresh_per_second=4) as live:
                 while True:
                     self.update_from_logs()
-                    
+
                     # Check for keyboard input (non-blocking with longer timeout for better responsiveness)
                     if select.select([sys.stdin], [], [], 0.05)[0]:
                         key = sys.stdin.read(1)
-                        
+
                         # Handle Escape sequences (Arrows, etc.)
                         if key == "\x1b":
                             # Read the next two characters if available
                             if select.select([sys.stdin], [], [], 0.05)[0]:
                                 key += sys.stdin.read(2)
-                        
+
                         num_sessions = len(self.sessions)
                         num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
-                        
+
                         if key in ["\t", "\x1b[C"]:  # Tab or Right Arrow
                             self.current_page = (self.current_page + 1) % num_pages
                         elif key in ["\x1b[D", "\x1b[Z"]:  # Left Arrow or Shift+Tab
@@ -371,14 +370,14 @@ class Dashboard:
                             start_idx = self.current_page * self.sessions_per_page
                             end_idx = start_idx + self.sessions_per_page
                             active_sessions = session_list[start_idx:end_idx]
-                            
+
                             # Check if the session number is valid for current page
                             if 1 <= session_num <= len(active_sessions):
                                 target_session = active_sessions[session_num - 1]
                                 tmux_session = self.extract_tmux_session(target_session.session_id)
                                 if tmux_session:
                                     self.switch_to_tmux_session(tmux_session)
-                    
+
                     live.update(self.make_layout())
                     time.sleep(0.05)
         finally:
