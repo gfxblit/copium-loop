@@ -100,13 +100,13 @@ def test_tail_renderable_styling():
     output_active = capture.get()
     assert "> line 14" in output_active
 
-    # Test idle status (should NOT have > prefix for newest line)
+    # Test idle status (should ALWAYS have > prefix for newest line now)
     renderable_idle = TailRenderable(buffer, status="idle")
     with console.capture() as capture:
         console.print(renderable_idle)
     output_idle = capture.get()
-    assert "> line 14" not in output_idle
-    assert "  line 14" in output_idle
+    assert "> line 14" in output_idle
+    assert "  line 14" not in output_idle
 
     # others should have "  "
     assert "  line 13" in output_active
