@@ -24,6 +24,34 @@ def test_tail_renderable_basic():
     assert "line 1" not in output
     assert "line 2" not in output
 
+def test_tail_renderable_wrapping():
+    """Test that TailRenderable handles line wrapping when calculating the tail."""
+    # Line that will wrap into 2 lines if width is small
+    buffer = ["short 1", "this is a very long line that should wrap", "short 2"]
+    # width=20, "  this is a very long line that should wrap" is ~44 chars
+    # It should wrap into 3 lines:
+    # "  this is a very"
+    # "long line that"
+    # "should wrap"
+
+    # height=3 should show "short 2" and the last 2 lines of the wrapped line
+    # Wait, height=3, and we have:
+    # L1: "short 2" (1 line)
+    # L2: "should wrap" (wrapped part of long line)
+    # L3: "long line that" (wrapped part of long line)
+
+    renderable = TailRenderable(buffer, status="idle")
+    console = Console(width=20, height=3)
+    with console.capture() as capture:
+        console.print(renderable)
+
+    output = capture.get()
+    assert "short 2" in output
+    assert "should wrap" in output
+    assert "long line that" in output
+    assert "short 1" not in output
+    assert "this is a very" not in output
+
 def test_tail_renderable_empty():
     """Test that TailRenderable handles an empty buffer."""
     renderable = TailRenderable([], status="idle")

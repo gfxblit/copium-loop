@@ -26,20 +26,16 @@ class TailRenderable:
         self.status = status
 
     def __rich_console__(self, console, options):
-        # Use provided height or console height
+        # Use provided height/width or console defaults
         height = options.max_height if options.max_height is not None else console.height
+        width = options.max_width if options.max_width is not None else console.width
 
-        # Calculate how many lines we can show (tail)
-        # We subtract some for potential borders if needed, but usually options.max_height
-        # already accounts for that if we are inside a Panel.
-        num_lines = len(self.buffer)
-        start_idx = max(0, num_lines - height)
-        visible_lines = self.buffer[start_idx:]
+        rendered_lines = []
 
-        for i, line in enumerate(visible_lines):
-            abs_idx = start_idx + i
+        # Iterate backwards through the buffer to find the lines that fit from the bottom
+        for i, line in enumerate(reversed(self.buffer)):
             # distance_from_end: 0 is newest
-            distance_from_end = num_lines - 1 - abs_idx
+            distance_from_end = i
 
             if distance_from_end == 0:
                 if self.status == "active":
@@ -63,7 +59,23 @@ class TailRenderable:
                 style = Style(color="#333333")
                 prefix = "  "
 
-            yield Text(f"{prefix}{line}", style=style)
+            text = Text(f"{prefix}{line}", style=style)
+            # Wrap the text to the available width
+            # This returns a list of Text objects, one for each console line
+            lines = text.wrap(console, width)
+
+            # Since we are going backwards, we want to add these lines to the START
+            # of our rendered_lines list. The wrapped lines for THIS buffer line
+            # should stay in their original relative order.
+            for wrapped_line in reversed(lines):
+                rendered_lines.insert(0, wrapped_line)
+                if len(rendered_lines) >= height:
+                    break
+
+            if len(rendered_lines) >= height:
+                break
+
+        yield from rendered_lines
 
 
 class MatrixPillar:
@@ -329,7 +341,7 @@ class Dashboard:
 
         try:
             subprocess.run(
-                ["tmux", "switch-client", "-t", session_name],
+                ["tmux", "switch-client", "-t", "--", session_name],
                 check=True,
                 capture_output=True,
                 text=True,
