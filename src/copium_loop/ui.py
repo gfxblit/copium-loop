@@ -17,6 +17,50 @@ from rich.panel import Panel
 from rich.style import Style
 from rich.text import Text
 
+
+class TailRenderable:
+    """A custom Rich renderable that handles height-constrained rendering (clipping from the top)."""
+
+    def __init__(self, buffer: list[str], status: str):
+        self.buffer = buffer
+        self.status = status
+
+    def __rich_console__(self, console, options):
+        # Use provided height or console height
+        height = options.max_height if options.max_height is not None else console.height
+
+        # Calculate how many lines we can show (tail)
+        # We subtract some for potential borders if needed, but usually options.max_height
+        # already accounts for that if we are inside a Panel.
+        num_lines = len(self.buffer)
+        start_idx = max(0, num_lines - height)
+        visible_lines = self.buffer[start_idx:]
+
+        for i, line in enumerate(visible_lines):
+            abs_idx = start_idx + i
+            # distance_from_end: 0 is newest
+            distance_from_end = num_lines - 1 - abs_idx
+
+            if distance_from_end == 0:
+                # Newest line: Bright White
+                style = Style(color="#FFFFFF", bold=True)
+                prefix = "> "
+            elif distance_from_end < 5:
+                # Recent lines: Neon Green
+                style = Style(color="#00FF41")
+                prefix = "  "
+            elif distance_from_end < 10:
+                # History: Dark Green
+                style = Style(color="#008F11")
+                prefix = "  "
+            else:
+                # Older: Fade to Grey/Black
+                style = Style(color="#333333")
+                prefix = "  "
+
+            yield Text(f"{prefix}{line}", style=style)
+
+
 class MatrixPillar:
     """Manages the buffer and rendering for a single agent phase."""
 
@@ -99,28 +143,8 @@ class MatrixPillar:
             header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
             border_style = "grey37"
 
-        content = Text()
-        # Waterfall effect: newest lines at the top
-        for i, line in enumerate(reversed(self.buffer)):
-            if i == 0:
-                # Newest line while active: Bright White
-                style = Style(color="#FFFFFF", bold=True)
-                content.append(f"> {line}\n", style=style)
-            elif i == 1:
-                # Active Context: Neon Green
-                style = Style(color="#00FF41")
-                content.append(f"  {line}\n", style=style)
-            elif i < 2:
-                # History: Dark Green
-                style = Style(color="#008F11")
-                content.append(f"  {line}\n", style=style)
-            else:
-                # Older: Fade to Grey/Black
-                style = Style(color="#333333")
-                content.append(f"  {line}\n", style=style)
-
         return Panel(
-            content,
+            TailRenderable(self.buffer, self.status),
             title=header_text,
             border_style=border_style,
             expand=True,

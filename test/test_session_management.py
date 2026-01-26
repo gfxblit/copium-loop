@@ -1,9 +1,10 @@
-import os
-import subprocess
 from unittest.mock import MagicMock, patch
+
 import pytest
+
 from copium_loop import telemetry
 from copium_loop.ui import Dashboard
+
 
 @pytest.fixture(autouse=True)
 def reset_telemetry_singleton():
@@ -17,17 +18,17 @@ def test_get_telemetry_uses_tmux_session_name():
     mock_res = MagicMock()
     mock_res.returncode = 0
     mock_res.stdout = "my-awesome-session\n"
-    
+
     with patch("subprocess.run", return_value=mock_res):
         t = telemetry.get_telemetry()
         assert t.session_id == "my-awesome-session"
 
 def test_get_telemetry_fallback_to_timestamp():
     """Test that get_telemetry falls back to session_timestamp when tmux is not available."""
-    with patch("subprocess.run", side_effect=Exception("no tmux")):
-        with patch("time.time", return_value=1234567890):
-            t = telemetry.get_telemetry()
-            assert t.session_id == "session_1234567890"
+    with patch("subprocess.run", side_effect=Exception("no tmux")), \
+         patch("time.time", return_value=1234567890):
+        t = telemetry.get_telemetry()
+        assert t.session_id == "session_1234567890"
 
 def test_extract_tmux_session_new_format():
     """Test that extract_tmux_session handles the new session-only format."""
