@@ -42,9 +42,14 @@ class TailRenderable:
             distance_from_end = num_lines - 1 - abs_idx
 
             if distance_from_end == 0:
-                # Newest line: Bright White
-                style = Style(color="#FFFFFF", bold=True)
-                prefix = "> "
+                if self.status == "active":
+                    # Newest line while active: Bright White
+                    style = Style(color="#FFFFFF", bold=True)
+                    prefix = "> "
+                else:
+                    # Newest line while not active: Neon Green (same as recent)
+                    style = Style(color="#00FF41")
+                    prefix = "  "
             elif distance_from_end < 5:
                 # Recent lines: Neon Green
                 style = Style(color="#00FF41")

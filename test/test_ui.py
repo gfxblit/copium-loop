@@ -60,23 +60,30 @@ def test_matrix_pillar_render_order():
     assert first_idx < second_idx < third_idx
 
 def test_tail_renderable_styling():
-    """Test that TailRenderable applies correct styles based on recency."""
+    """Test that TailRenderable applies correct styles based on recency and status."""
     buffer = [f"line {i}" for i in range(15)]
     # newest is line 14
-    renderable = TailRenderable(buffer, status="active")
-
+    
+    # Test active status (white with > prefix)
+    renderable_active = TailRenderable(buffer, status="active")
     console = Console(width=20)
     with console.capture() as capture:
-        console.print(renderable)
-
-    output = capture.get()
-
-    # newest line should have "> "
-    assert "> line 14" in output
+        console.print(renderable_active)
+    output_active = capture.get()
+    assert "> line 14" in output_active
+    
+    # Test idle status (should NOT have > prefix for newest line)
+    renderable_idle = TailRenderable(buffer, status="idle")
+    with console.capture() as capture:
+        console.print(renderable_idle)
+    output_idle = capture.get()
+    assert "> line 14" not in output_idle
+    assert "  line 14" in output_idle
+    
     # others should have "  "
-    assert "  line 13" in output
-    assert "  line 10" in output
-    assert "  line 0" in output
+    assert "  line 13" in output_active
+    assert "  line 10" in output_active
+    assert "  line 0" in output_active
 
 def test_matrix_pillar_status_and_duration():
     """Test that MatrixPillar correctly tracks status and duration."""
