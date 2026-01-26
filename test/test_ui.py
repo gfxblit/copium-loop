@@ -24,6 +24,15 @@ def test_tail_renderable_basic():
     assert "line 1" not in output
     assert "line 2" not in output
 
+def test_tail_renderable_empty():
+    """Test that TailRenderable handles an empty buffer."""
+    renderable = TailRenderable([], status="idle")
+    console = Console()
+    with console.capture() as capture:
+        console.print(renderable)
+    output = capture.get()
+    assert output == ""
+
 def test_matrix_pillar_render_order():
     """Test that MatrixPillar renders logs in chronological order (oldest to newest)."""
     pillar = MatrixPillar("Coder")
