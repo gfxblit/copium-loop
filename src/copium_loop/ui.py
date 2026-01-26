@@ -273,18 +273,24 @@ class Dashboard:
     def extract_tmux_session(self, session_id: str) -> str | None:
         """Extracts the tmux session name from a session_id.
 
-        Session IDs are formatted as {tmux_session}_{pane} or session_{timestamp}.
+        Session IDs are formatted as {tmux_session}, {tmux_session}_{pane}
+        or session_{timestamp}.
         Returns the tmux session name if it exists, None otherwise.
         """
         # Handle non-tmux sessions (format: session_{timestamp})
         if session_id.startswith("session_"):
             return None
 
-        # Extract tmux session name (everything before the last underscore)
-        parts = session_id.rsplit("_", 1)
-        if len(parts) == 2:
-            return parts[0]
-        return None
+        # Handle old format: {tmux_session}_{pane}
+        # We check if it ends with _%digit or _digit
+        if "_" in session_id:
+            parts = session_id.rsplit("_", 1)
+            suffix = parts[1]
+            if suffix.startswith("%") or suffix.isdigit():
+                return parts[0]
+
+        # Otherwise, the session_id is the tmux session name
+        return session_id
 
     def switch_to_tmux_session(self, session_name: str):
         """Switches the current tmux client to the specified session."""

@@ -215,9 +215,8 @@ def get_telemetry() -> Telemetry:
     """Returns the global telemetry instance."""
     global _telemetry_instance
     if _telemetry_instance is None:
-        # We need a session ID. We can use the tmux session or a random one.
-        # For now, let's try to get it from environment or generate a timestamp-based one.
-        session_id = os.environ.get("TMUX_PANE", f"session_{int(time.time())}")
+        # Fallback to a timestamp-based session ID
+        session_id = f"session_{int(time.time())}"
         # Try to get actual tmux session name if possible
         try:
             import subprocess
@@ -229,8 +228,8 @@ def get_telemetry() -> Telemetry:
             )
             if res.returncode == 0:
                 name = res.stdout.strip()
-                pane = os.environ.get("TMUX_PANE", "0")
-                session_id = f"{name}_{pane}"
+                if name:
+                    session_id = name
         except Exception:
             pass
         _telemetry_instance = Telemetry(session_id)
