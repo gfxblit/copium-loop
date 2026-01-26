@@ -63,7 +63,7 @@ def test_tail_renderable_styling():
     """Test that TailRenderable applies correct styles based on recency and status."""
     buffer = [f"line {i}" for i in range(15)]
     # newest is line 14
-    
+
     # Test active status (white with > prefix)
     renderable_active = TailRenderable(buffer, status="active")
     console = Console(width=20)
@@ -71,7 +71,7 @@ def test_tail_renderable_styling():
         console.print(renderable_active)
     output_active = capture.get()
     assert "> line 14" in output_active
-    
+
     # Test idle status (should NOT have > prefix for newest line)
     renderable_idle = TailRenderable(buffer, status="idle")
     with console.capture() as capture:
@@ -79,7 +79,7 @@ def test_tail_renderable_styling():
     output_idle = capture.get()
     assert "> line 14" not in output_idle
     assert "  line 14" in output_idle
-    
+
     # others should have "  "
     assert "  line 13" in output_active
     assert "  line 10" in output_active
