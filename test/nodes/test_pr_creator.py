@@ -32,6 +32,12 @@ class TestPrCreatorNode:
             assert result["review_status"] == "pr_created"
             assert "PR Created" in result["messages"][0].content
 
+            # Check that git push was called with --force
+            push_call = [
+                call for call in mock_run.call_args_list if call[0][0] == "git" and "push" in call[0][1]
+            ][0]
+            assert "--force" in push_call[0][1]
+
     @pytest.mark.asyncio
     async def test_pr_creator_handles_existing_pr(self):
         """Test that PR creator handles existing PR."""
@@ -115,6 +121,12 @@ class TestPrCreatorNode:
 
             assert result["review_status"] == "pr_created"
             assert result["pr_url"] == "https://github.com/org/repo/pull/1"
+
+            # Check that git push was called with --force
+            push_call = [
+                call for call in mock_run.call_args_list if call[0][0] == "git" and "push" in call[0][1]
+            ][0]
+            assert "--force" in push_call[0][1]
 
             # Check that pr edit was called with the "Closes" message
             edit_call = mock_run.call_args_list[-1]

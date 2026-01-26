@@ -90,7 +90,7 @@ async def pr_creator(state: AgentState) -> dict:
         msg = "Pushing to origin...\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
-        res_push = await run_command("git", ["push", "-u", "origin", branch_name], node="pr_creator")
+        res_push = await run_command("git", ["push", "--force", "-u", "origin", branch_name], node="pr_creator")
         if res_push["exit_code"] != 0:
             raise Exception(
                 f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"
