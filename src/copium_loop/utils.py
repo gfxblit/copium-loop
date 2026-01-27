@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 import time
-import unittest.mock
 
 from copium_loop.constants import DEFAULT_MODELS, INACTIVITY_TIMEOUT
 from copium_loop.telemetry import get_telemetry
@@ -65,7 +64,7 @@ async def run_command(
     command: str,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = None,
+    total_timeout: int | None = INACTIVITY_TIMEOUT,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -161,10 +160,7 @@ async def run_command(
     if timed_out:
         exit_code = -1
     else:
-        exit_code = process.returncode
-        # Ensure exit_code is an integer, even if it's a mock in tests
-        if exit_code is None or isinstance(exit_code, unittest.mock.AsyncMock):
-            exit_code = 0
+        exit_code = process.returncode if process.returncode is not None else 0
 
     return {"output": full_output, "exit_code": exit_code}
 
@@ -174,7 +170,7 @@ async def _execute_gemini(
     model: str | None,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = None,
+    total_timeout: int | None = INACTIVITY_TIMEOUT,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
@@ -266,13 +262,7 @@ async def _execute_gemini(
     if timed_out:
         exit_code = -1
     else:
-        exit_code = process.returncode
-        # Ensure exit_code is an integer, even if it's a mock in tests
-        if exit_code is None or isinstance(exit_code, unittest.mock.AsyncMock):
-            # If process.wait() returned, it implies the process finished,
-            # so a default of 0 (success) is reasonable if no specific code is available.
-            # If timed_out is True, this block won't be reached.
-            exit_code = 0
+        exit_code = process.returncode if process.returncode is not None else 0
 
     if timed_out:
         raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
