@@ -160,6 +160,7 @@ async def run_command(
     if timed_out:
         exit_code = -1
     else:
+        # Ensure returncode is an integer, default to 0 if None
         exit_code = process.returncode if process.returncode is not None else 0
 
     return {"output": full_output, "exit_code": exit_code}
@@ -262,6 +263,7 @@ async def _execute_gemini(
     if timed_out:
         exit_code = -1
     else:
+        # Ensure returncode is an integer, default to 0 if None
         exit_code = process.returncode if process.returncode is not None else 0
 
     if timed_out:

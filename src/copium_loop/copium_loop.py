@@ -38,7 +38,7 @@ class WorkflowManager:
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
         await notify(title, message, priority)
 
-    def _wrap_node(self, node_func):
+    def _wrap_node(self, node_name: str, node_func):
         """Wraps a node function with a timeout."""
 
         async def wrapper(state: AgentState):
@@ -47,7 +47,6 @@ class WorkflowManager:
                     node_func(state), timeout=INACTIVITY_TIMEOUT
                 )
             except asyncio.TimeoutError:
-                node_name = node_func.__name__
                 msg = f"Node '{node_name}' timed out after {INACTIVITY_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")
                 telemetry = get_telemetry()
@@ -87,10 +86,10 @@ class WorkflowManager:
         workflow = StateGraph(AgentState)
 
         # Add Nodes
-        workflow.add_node("coder", self._wrap_node(coder))
-        workflow.add_node("tester", self._wrap_node(tester))
-        workflow.add_node("reviewer", self._wrap_node(reviewer))
-        workflow.add_node("pr_creator", self._wrap_node(pr_creator))
+        workflow.add_node("coder", self._wrap_node("coder", coder))
+        workflow.add_node("tester", self._wrap_node("tester", tester))
+        workflow.add_node("reviewer", self._wrap_node("reviewer", reviewer))
+        workflow.add_node("pr_creator", self._wrap_node("pr_creator", pr_creator))
 
         # Determine entry point
         valid_nodes = ["coder", "tester", "reviewer", "pr_creator"]

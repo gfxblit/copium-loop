@@ -19,12 +19,12 @@ async def test_node_timeout_wrapping():
 
     # Mock INACTIVITY_TIMEOUT to 0.1s for testing
     with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
-        wrapped = manager._wrap_node(slow_node)
+        wrapped = manager._wrap_node("slow_node", slow_node)
         state = {"retry_count": 0}
         result = await wrapped(state)
 
         assert result["retry_count"] == 1
-        # The node name in wrapper is obtained via node_func.__name__
+        # The node name in wrapper is obtained via node_name argument
         # For our local slow_node, it's "slow_node"
         # Since it's not "tester", "reviewer" etc, it should return default {"retry_count": 1}
         assert "test_output" not in result
@@ -42,7 +42,7 @@ async def test_tester_node_timeout():
     manager = WorkflowManager()
 
     with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
-        wrapped = manager._wrap_node(tester)
+        wrapped = manager._wrap_node("tester", tester)
         state = {"retry_count": 5}
         result = await wrapped(state)
 
