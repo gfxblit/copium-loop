@@ -139,3 +139,39 @@ def test_input_reader_timeout():
     reader = InputReader()
     with patch("copium_loop.input_reader.select.select", return_value=([], [], [])):
         assert reader.get_key() is None
+
+
+def test_input_reader_utf8():
+    """Test reading a multi-byte UTF-8 character."""
+    reader = InputReader()
+    mock_stdin = MagicMock()
+    mock_stdin.fileno.return_value = 0
+    # Emoji: 👋 (UTF-8: 0xF0 0x9F 0x91 0x8B)
+    with (
+        patch("copium_loop.input_reader.os.read", return_value="👋".encode()),
+        patch(
+            "copium_loop.input_reader.select.select",
+            return_value=([mock_stdin], [], []),
+        ),
+        patch("copium_loop.input_reader.sys.stdin", mock_stdin),
+    ):
+        assert reader.get_key() == "👋"
+
+
+def test_input_reader_oserror_handling():
+    """Test that it handles OSError during read."""
+    reader = InputReader()
+    mock_stdin = MagicMock()
+    mock_stdin.fileno.return_value = 0
+    with (
+        patch("copium_loop.input_reader.os.read", side_effect=OSError("Read error")),
+        patch(
+            "copium_loop.input_reader.select.select",
+            return_value=([mock_stdin], [], []),
+        ),
+        patch("copium_loop.input_reader.sys.stdin", mock_stdin),
+        patch("sys.stderr", new_callable=MagicMock) as mock_stderr,
+    ):
+        assert reader.get_key() is None
+        assert mock_stderr.write.called
+        assert "Error reading from stdin: Read error" in mock_stderr.write.call_args_list[0][0][0]

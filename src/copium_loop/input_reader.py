@@ -24,11 +24,13 @@ class InputReader:
             )
         ) and select.select([sys.stdin], [], [], timeout)[0]:
             try:
-                chunk = os.read(sys.stdin.fileno(), 1024).decode(errors="ignore")
+                chunk = os.read(sys.stdin.fileno(), 1024).decode("utf-8")
                 if chunk:
                     self._buffer += chunk
-            except Exception:
-                pass
+            except OSError as e:
+                print(f"Error reading from stdin: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"Unexpected error in InputReader: {e}", file=sys.stderr)
 
         if not self._buffer:
             return None

@@ -36,6 +36,9 @@ def should_continue_from_review(state: AgentState) -> str:
     if status == "error":
         return "reviewer"
 
+    if status == "pr_failed":
+        return "pr_failed"
+
     return "coder"
 
 

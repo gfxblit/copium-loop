@@ -60,7 +60,7 @@ class WorkflowManager:
                     return {"test_output": f"FAIL: {msg}", "retry_count": retry_count}
                 if node_name == "reviewer":
                     return {
-                        "review_status": "rejected",
+                        "review_status": "error",
                         "retry_count": retry_count,
                         "messages": [SystemMessage(content=msg)],
                     }
@@ -78,7 +78,7 @@ class WorkflowManager:
                         "messages": [SystemMessage(content=msg)],
                     }
 
-                return {"retry_count": retry_count}
+                return {"error": msg, "retry_count": retry_count}
 
         return wrapper
 
@@ -117,6 +117,7 @@ class WorkflowManager:
                 "pr_creator": "pr_creator",
                 "coder": "coder",
                 "reviewer": "reviewer",
+                "pr_failed": END,
                 END: END,
             },
         )
