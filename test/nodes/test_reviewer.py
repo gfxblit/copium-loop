@@ -58,8 +58,8 @@ class TestReviewerNode:
             assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_reviewer_handles_exception(self):
-        """Test that reviewer handles exception from invoke_gemini."""
+    async def test_reviewer_returns_error_on_exception(self):
+        """Test that reviewer returns error status on exception."""
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
@@ -68,7 +68,21 @@ class TestReviewerNode:
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
 
-            assert result["review_status"] == "rejected"
+            assert result["review_status"] == "error"
+            assert result["retry_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_reviewer_returns_error_on_missing_verdict(self):
+        """Test that reviewer returns error status when no verdict is found."""
+        with patch(
+            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "I am not sure what to do."
+
+            state = {"test_output": "PASS", "retry_count": 0}
+            result = await reviewer(state)
+
+            assert result["review_status"] == "error"
             assert result["retry_count"] == 1
 
     @pytest.mark.asyncio

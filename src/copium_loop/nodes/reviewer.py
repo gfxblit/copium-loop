@@ -70,17 +70,27 @@ async def reviewer(state: AgentState) -> dict:
         msg = f"Error during review: {e}\n"
         telemetry.log_output("reviewer", msg)
         print(msg, end="")
-        telemetry.log_status("reviewer", "rejected")
+        telemetry.log_status("reviewer", "error")
         return {
-            "review_status": "rejected",
+            "review_status": "error",
             "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
             "retry_count": retry_count + 1,
         }
 
     # Robustly check for the final verdict by looking for the last occurrence of APPROVED or REJECTED
     verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", review_content.upper())
-    is_approved = verdicts[-1] == "APPROVED" if verdicts else False
+    if not verdicts:
+        msg = "\nReview decision: Error (no verdict found)\n"
+        telemetry.log_output("reviewer", msg)
+        print(msg, end="")
+        telemetry.log_status("reviewer", "error")
+        return {
+            "review_status": "error",
+            "messages": [SystemMessage(content=review_content)],
+            "retry_count": retry_count + 1,
+        }
 
+    is_approved = verdicts[-1] == "APPROVED"
     msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
     telemetry.log_output("reviewer", msg)
     print(msg, end="")

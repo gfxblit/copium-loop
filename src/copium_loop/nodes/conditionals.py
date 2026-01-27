@@ -22,7 +22,8 @@ def should_continue_from_test(state: AgentState) -> str:
 
 def should_continue_from_review(state: AgentState) -> str:
     telemetry = get_telemetry()
-    if state.get("review_status") == "approved":
+    status = state.get("review_status")
+    if status == "approved":
         telemetry.log_status("reviewer", "success")
         return "pr_creator"
 
@@ -31,6 +32,9 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_status("reviewer", "error")
         telemetry.log_workflow_status("failed")
         return END
+
+    if status == "error":
+        return "reviewer"
 
     return "coder"
 

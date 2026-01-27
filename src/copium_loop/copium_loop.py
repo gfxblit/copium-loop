@@ -67,7 +67,12 @@ class WorkflowManager:
         workflow.add_conditional_edges(
             "reviewer",
             should_continue_from_review,
-            {"pr_creator": "pr_creator", "coder": "coder", END: END},
+            {
+                "pr_creator": "pr_creator",
+                "coder": "coder",
+                "reviewer": "reviewer",
+                END: END,
+            },
         )
 
         workflow.add_conditional_edges(
