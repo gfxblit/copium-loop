@@ -93,7 +93,9 @@ class WorkflowManager:
         print(f"Starting workflow at node: {self.start_node}")
         telemetry.log_workflow_status("running")
         telemetry.log_status(self.start_node, "active")
-        telemetry.log_output(self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}")
+        telemetry.log_output(
+            self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}"
+        )
 
         if not self.graph:
             self.create_graph()

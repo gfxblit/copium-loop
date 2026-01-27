@@ -73,11 +73,18 @@ class Telemetry:
             return None, {"reason": "no_log_found"}
 
         # Check if workflow completed successfully or failed terminally
-        workflow_events = [e for e in events if e.get("node") == "workflow" and e.get("event_type") == "workflow_status"]
+        workflow_events = [
+            e
+            for e in events
+            if e.get("node") == "workflow" and e.get("event_type") == "workflow_status"
+        ]
         if workflow_events:
             last_workflow_status = workflow_events[-1].get("data")
             if last_workflow_status in ["success", "failed"]:
-                return None, {"reason": "workflow_completed", "status": last_workflow_status}
+                return None, {
+                    "reason": "workflow_completed",
+                    "status": last_workflow_status,
+                }
 
         # Track the last status for each node
         node_statuses = {}
@@ -112,7 +119,10 @@ class Telemetry:
                     break
 
         if last_active_node:
-            return last_active_node, {"reason": "incomplete", "last_statuses": node_statuses}
+            return last_active_node, {
+                "reason": "incomplete",
+                "last_statuses": node_statuses,
+            }
 
         # Default to coder if we can't determine
         return "coder", {"reason": "uncertain", "last_statuses": node_statuses}
@@ -130,7 +140,9 @@ class Telemetry:
         # We can't fully reconstruct messages, but we can get some state
         # Look for the initial prompt in output events
         for event in events:
-            if event.get("event_type") == "output" and "INIT:" in str(event.get("data", "")):
+            if event.get("event_type") == "output" and "INIT:" in str(
+                event.get("data", "")
+            ):
                 # Extract prompt from "INIT: Starting workflow with prompt: ..."
                 data = event.get("data", "")
                 if "Starting workflow with prompt:" in data:
@@ -219,11 +231,12 @@ def get_telemetry() -> Telemetry:
         # Try to get actual tmux session name if possible
         try:
             import subprocess
+
             res = subprocess.run(
                 ["tmux", "display-message", "-p", "#S"],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
             if res.returncode == 0:
                 name = res.stdout.strip()

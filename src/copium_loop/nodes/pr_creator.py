@@ -26,7 +26,9 @@ async def pr_creator(state: AgentState) -> dict:
 
     try:
         # 1. Check feature branch
-        res_branch = await run_command("git", ["branch", "--show-current"], node="pr_creator")
+        res_branch = await run_command(
+            "git", ["branch", "--show-current"], node="pr_creator"
+        )
         branch_name = res_branch["output"].strip()
 
         if (
@@ -45,7 +47,9 @@ async def pr_creator(state: AgentState) -> dict:
         print(msg, end="")
 
         # 2. Check uncommitted changes
-        res_status = await run_command("git", ["status", "--porcelain"], node="pr_creator")
+        res_status = await run_command(
+            "git", ["status", "--porcelain"], node="pr_creator"
+        )
         if res_status["output"].strip():
             msg = "Uncommitted changes found. Returning to coder to finalize commits.\n"
             telemetry.log_output("pr_creator", msg)
@@ -66,7 +70,9 @@ async def pr_creator(state: AgentState) -> dict:
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
         await run_command("git", ["fetch", "origin"], node="pr_creator")
-        res_rebase = await run_command("git", ["rebase", "origin/main"], node="pr_creator")
+        res_rebase = await run_command(
+            "git", ["rebase", "origin/main"], node="pr_creator"
+        )
 
         if res_rebase["exit_code"] != 0:
             msg = "Rebase failed. Aborting rebase and returning to coder.\n"
@@ -74,15 +80,15 @@ async def pr_creator(state: AgentState) -> dict:
             print(msg, end="")
             await run_command("git", ["rebase", "--abort"], node="pr_creator")
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
-            await notify("Workflow: Rebase Conflict", "Automatic rebase failed. Manual resolution required by coder.", 4)
+            await notify(
+                "Workflow: Rebase Conflict",
+                "Automatic rebase failed. Manual resolution required by coder.",
+                4,
+            )
             telemetry.log_status("pr_creator", "failed")
             return {
                 "review_status": "pr_failed",
-                "messages": [
-                    SystemMessage(
-                        content=error_msg
-                    )
-                ],
+                "messages": [SystemMessage(content=error_msg)],
                 "retry_count": retry_count + 1,
             }
 
@@ -90,7 +96,9 @@ async def pr_creator(state: AgentState) -> dict:
         msg = "Pushing to origin...\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
-        res_push = await run_command("git", ["push", "--force", "-u", "origin", branch_name], node="pr_creator")
+        res_push = await run_command(
+            "git", ["push", "--force", "-u", "origin", branch_name], node="pr_creator"
+        )
         if res_push["exit_code"] != 0:
             raise Exception(
                 f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"
@@ -132,13 +140,17 @@ async def pr_creator(state: AgentState) -> dict:
             try:
                 # Get current body
                 res_view = await run_command(
-                    "gh", ["pr", "view", pr_output_clean, "--json", "body", "--jq", ".body"], node="pr_creator"
+                    "gh",
+                    ["pr", "view", pr_output_clean, "--json", "body", "--jq", ".body"],
+                    node="pr_creator",
                 )
                 if res_view["exit_code"] == 0:
                     current_body = res_view["output"].strip()
                     new_body = f"{current_body}\n\nCloses {issue_url}"
                     await run_command(
-                        "gh", ["pr", "edit", pr_output_clean, "--body", new_body], node="pr_creator"
+                        "gh",
+                        ["pr", "edit", pr_output_clean, "--body", new_body],
+                        node="pr_creator",
                     )
                     msg = "PR body updated with issue reference.\n"
                     telemetry.log_output("pr_creator", msg)

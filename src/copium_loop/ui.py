@@ -1,7 +1,5 @@
 import json
 import os
-import re
-import select
 import subprocess
 import sys
 import termios
@@ -18,52 +16,7 @@ from rich.panel import Panel
 from rich.style import Style
 from rich.text import Text
 
-
-class InputReader:
-    """Handles non-blocking buffered keyboard input reading with ANSI escape sequence support."""
-
-    # Pattern to match ANSI escape sequences (e.g., arrows, shift+tab)
-    SEQ_PATTERN = re.compile(r'^(\x1b\[[0-9;]*[A-Za-z]|\x1b[\[O][A-Z])', re.DOTALL)
-
-    def __init__(self):
-        self._buffer = ""
-
-    def get_key(self, timeout: float = 0.05) -> str | None:
-        """Reads a single key or escape sequence from stdin, using an internal buffer."""
-        # Try to read more data if buffer is empty or could be an incomplete sequence
-        if (not self._buffer or (self._buffer.startswith('\x1b') and not self.SEQ_PATTERN.match(self._buffer))) and \
-           select.select([sys.stdin], [], [], timeout)[0]:
-            try:
-                chunk = os.read(sys.stdin.fileno(), 1024).decode(errors='ignore')
-                if chunk:
-                    self._buffer += chunk
-            except Exception:
-                pass
-
-        if not self._buffer:
-            return None
-
-        # Check for escape sequences
-        if self._buffer.startswith('\x1b'):
-            match = self.SEQ_PATTERN.match(self._buffer)
-            if match:
-                key = match.group(0)
-                self._buffer = self._buffer[len(key):]
-                return key
-
-            # If it's an incomplete sequence, wait for more
-            if self._buffer.startswith(('\x1b[', '\x1bO')):
-                return None
-
-            # If it's just \x1b, return it as the Escape key
-            if self._buffer == '\x1b':
-                self._buffer = ""
-                return '\x1b'
-
-        # Default: return a single character
-        key = self._buffer[0]
-        self._buffer = self._buffer[1:]
-        return key
+from .input_reader import InputReader
 
 
 class TailRenderable:
@@ -75,7 +28,9 @@ class TailRenderable:
 
     def __rich_console__(self, console, options):
         # Use provided height/width or console defaults
-        height = options.max_height if options.max_height is not None else console.height
+        height = (
+            options.max_height if options.max_height is not None else console.height
+        )
         width = options.max_width if options.max_width is not None else console.width
 
         rendered_lines = []
@@ -149,7 +104,15 @@ class MatrixPillar:
                     self.start_time = ts
                     self.duration = None
                     self.completion_time = None
-                elif self.start_time and status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
+                elif self.start_time and status in [
+                    "success",
+                    "approved",
+                    "failed",
+                    "rejected",
+                    "error",
+                    "pr_failed",
+                    "coded",
+                ]:
                     self.duration = ts - self.start_time
                     self.completion_time = ts
             except (ValueError, TypeError):
@@ -167,8 +130,14 @@ class MatrixPillar:
 
         # Calculate display time if applicable - human readable (e.g. 1m 5s)
         time_suffix = ""
-        duration_val = self.duration if self.duration is not None else (
-            int(time.time() - self.start_time) if self.start_time is not None and self.status == "active" else None
+        duration_val = (
+            self.duration
+            if self.duration is not None
+            else (
+                int(time.time() - self.start_time)
+                if self.start_time is not None and self.status == "active"
+                else None
+            )
         )
 
         if duration_val is not None:
@@ -176,24 +145,40 @@ class MatrixPillar:
             if secs >= 60:
                 mins = secs // 60
                 rem_secs = secs % 60
-                time_suffix = f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
+                time_suffix = (
+                    f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
+                )
             else:
                 time_suffix = f" [{secs}s]"
 
         # Add completion time for completed steps
-        if self.completion_time is not None and self.status in ["success", "approved", "failed", "rejected", "error", "pr_failed", "coded"]:
+        if self.completion_time is not None and self.status in [
+            "success",
+            "approved",
+            "failed",
+            "rejected",
+            "error",
+            "pr_failed",
+            "coded",
+        ]:
             completion_dt = datetime.fromtimestamp(self.completion_time)
             completion_str = completion_dt.strftime("%H:%M:%S")
             time_suffix += f" @ {completion_str}"
 
         if self.status == "active":
-            header_text = Text(f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41")
+            header_text = Text(
+                f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41"
+            )
             border_style = "#00FF41"
         elif self.status in ["success", "approved", "coded"]:
-            header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan")
+            header_text = Text(
+                f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan"
+            )
             border_style = "cyan"
         elif self.status in ["error", "rejected", "failed", "pr_failed"]:
-            header_text = Text(f"✘ {self.name.upper()}{time_suffix}", style="bold white on red")
+            header_text = Text(
+                f"✘ {self.name.upper()}{time_suffix}", style="bold white on red"
+            )
             border_style = "red"
         elif has_content:
             header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
@@ -254,11 +239,23 @@ class SessionColumn:
 
             # Render workflow status banner
             if self.workflow_status == "failed":
-                status_text = Text("⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED", style="bold white on red", justify="center")
-                col_layout["workflow_status"].update(Panel(status_text, border_style="red"))
+                status_text = Text(
+                    "⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED",
+                    style="bold white on red",
+                    justify="center",
+                )
+                col_layout["workflow_status"].update(
+                    Panel(status_text, border_style="red")
+                )
             else:  # success
-                status_text = Text("✓ WORKFLOW COMPLETED SUCCESSFULLY", style="bold black on green", justify="center")
-                col_layout["workflow_status"].update(Panel(status_text, border_style="green"))
+                status_text = Text(
+                    "✓ WORKFLOW COMPLETED SUCCESSFULLY",
+                    style="bold black on green",
+                    justify="center",
+                )
+                col_layout["workflow_status"].update(
+                    Panel(status_text, border_style="green")
+                )
         else:
             col_layout.split_column(
                 Layout(name="header", size=3),
@@ -277,7 +274,10 @@ class SessionColumn:
             header_text = self.session_id
 
         col_layout["header"].update(
-            Panel(Text(header_text, justify="center", style="bold yellow"), border_style="yellow")
+            Panel(
+                Text(header_text, justify="center", style="bold yellow"),
+                border_style="yellow",
+            )
         )
         for node, pillar in self.pillars.items():
             col_layout[node].update(pillar.render())
@@ -306,7 +306,11 @@ class Dashboard:
         # Pagination logic - newest sessions first
         session_list = list(self.sessions.values())[::-1]
         num_sessions = len(session_list)
-        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+        num_pages = (
+            (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
+            if num_sessions > 0
+            else 1
+        )
 
         # Ensure current_page is valid
         self.current_page = max(0, min(self.current_page, num_pages - 1))
@@ -322,12 +326,13 @@ class Dashboard:
             column_width = (self.console.width - num_columns + 1) // num_columns
 
             # Pass column width to each session for display
-            layout["main"].split_row(*[
-                Layout(s.render(column_width=column_width))
-                for s in active_sessions
-            ])
+            layout["main"].split_row(
+                *[Layout(s.render(column_width=column_width)) for s in active_sessions]
+            )
         else:
-            layout["main"].update(Panel(Text("WAITING FOR SESSIONS...", justify="center", style="dim")))
+            layout["main"].update(
+                Panel(Text("WAITING FOR SESSIONS...", justify="center", style="dim"))
+            )
 
         layout["footer"].update(self.make_footer())
         return layout
@@ -338,9 +343,17 @@ class Dashboard:
         spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
 
         num_sessions = len(self.sessions)
-        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+        num_pages = (
+            (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
+            if num_sessions > 0
+            else 1
+        )
 
-        pagination_info = f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]" if num_sessions > 0 else ""
+        pagination_info = (
+            f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]"
+            if num_sessions > 0
+            else ""
+        )
 
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
@@ -422,9 +435,13 @@ class Dashboard:
                                 if etype == "output":
                                     for line in data.splitlines():
                                         if line.strip():
-                                            self.sessions[sid].pillars[node].add_line(line)
+                                            self.sessions[sid].pillars[node].add_line(
+                                                line
+                                            )
                                 elif etype == "status":
-                                    self.sessions[sid].pillars[node].set_status(data, event.get("timestamp"))
+                                    self.sessions[sid].pillars[node].set_status(
+                                        data, event.get("timestamp")
+                                    )
                         except json.JSONDecodeError:
                             continue
                     self.log_offsets[sid] = f.tell()
@@ -440,7 +457,12 @@ class Dashboard:
         old_settings = termios.tcgetattr(sys.stdin)
         try:
             tty.setcbreak(sys.stdin.fileno())
-            with Live(self.make_layout(), console=self.console, screen=True, refresh_per_second=4) as live:
+            with Live(
+                self.make_layout(),
+                console=self.console,
+                screen=True,
+                refresh_per_second=4,
+            ) as live:
                 while True:
                     self.update_from_logs()
 
@@ -449,7 +471,12 @@ class Dashboard:
 
                     if key:
                         num_sessions = len(self.sessions)
-                        num_pages = (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page if num_sessions > 0 else 1
+                        num_pages = (
+                            (num_sessions + self.sessions_per_page - 1)
+                            // self.sessions_per_page
+                            if num_sessions > 0
+                            else 1
+                        )
 
                         if key in ["\t", "\x1b[C"]:  # Tab or Right Arrow
                             self.current_page = (self.current_page + 1) % num_pages
@@ -468,7 +495,9 @@ class Dashboard:
                             # Check if the session number is valid for current page
                             if 1 <= session_num <= len(active_sessions):
                                 target_session = active_sessions[session_num - 1]
-                                tmux_session = self.extract_tmux_session(target_session.session_id)
+                                tmux_session = self.extract_tmux_session(
+                                    target_session.session_id
+                                )
                                 if tmux_session:
                                     self.switch_to_tmux_session(tmux_session)
 
