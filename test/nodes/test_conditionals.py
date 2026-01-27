@@ -44,6 +44,28 @@ class TestConditionalLogic:
             == "coder"
         )
 
+    def test_should_continue_from_review_on_error(self):
+        """Test transition from review to reviewer on error."""
+        assert (
+            should_continue_from_review({"review_status": "error", "retry_count": 0})
+            == "reviewer"
+        )
+
+    def test_should_continue_from_review_max_retries(self):
+        """Test END transition on max retries from reviewer."""
+        assert (
+            should_continue_from_review(
+                {"review_status": "rejected", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_review(
+                {"review_status": "error", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
+        )
+
     def test_should_continue_from_pr_creator_on_success(self):
         """Test END transition on PR creation success."""
         assert should_continue_from_pr_creator({"review_status": "pr_created"}) == END
@@ -64,4 +86,13 @@ class TestConditionalLogic:
                 {"review_status": "pr_failed", "retry_count": 0}
             )
             == "coder"
+        )
+
+    def test_should_continue_from_pr_creator_max_retries(self):
+        """Test END transition on max retries from pr_creator."""
+        assert (
+            should_continue_from_pr_creator(
+                {"review_status": "pr_failed", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
         )
