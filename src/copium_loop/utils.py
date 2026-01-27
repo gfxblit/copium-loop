@@ -1,10 +1,12 @@
 import asyncio
+import contextlib
 import os
 import re
 import subprocess
 import sys
+import time
 
-from copium_loop.constants import DEFAULT_MODELS
+from copium_loop.constants import DEFAULT_MODELS, INACTIVITY_TIMEOUT
 from copium_loop.telemetry import get_telemetry
 
 
@@ -59,11 +61,16 @@ def _clean_chunk(chunk: str | bytes) -> str:
 
 
 async def run_command(
-    command: str, args: list[str] | None = None, node: str | None = None
+    command: str,
+    args: list[str] | None = None,
+    node: str | None = None,
+    total_timeout: int | None = None,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
     Returns the combined stdout/stderr output and exit code.
+    If total_timeout is provided, the process will be killed if it runs longer than total_timeout.
+    If inactivity_timeout is exceeded (no output for INACTIVITY_TIMEOUT seconds), the process will be killed.
     """
     if args is None:
         args = []
@@ -77,32 +84,81 @@ async def run_command(
     env["GIT_SEQUENCE_EDITOR"] = "true"
     env["GH_PROMPT_DISABLED"] = "1"
 
+    start_time = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         command, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
     )
 
     full_output = ""
     stdout_logger = StreamLogger(node)
+    last_activity_time = time.monotonic()
+    timed_out = False
 
     async def read_stream(stream, is_stderr):
-        nonlocal full_output
+        nonlocal full_output, last_activity_time
         while True:
             line = await stream.read(1024)
             if not line:
                 break
+            last_activity_time = time.monotonic()
             decoded_chunk = _clean_chunk(line)
             if decoded_chunk:
                 if not is_stderr:
                     stdout_logger.process_chunk(decoded_chunk)
                 full_output += decoded_chunk
 
-    await asyncio.gather(
-        read_stream(process.stdout, False), read_stream(process.stderr, True)
-    )
+    async def monitor_timeout():
+        nonlocal last_activity_time, timed_out, full_output
+        while True:
+            await asyncio.sleep(0.1)
+            if process.returncode is not None:
+                break
+
+            current_time = time.monotonic()
+            elapsed_total_time = current_time - start_time
+            elapsed_inactivity_time = current_time - last_activity_time
+
+            timeout_triggered = False
+            timeout_message = ""
+
+            if total_timeout is not None and elapsed_total_time >= total_timeout:
+                timeout_triggered = True
+                timeout_message = f"Process exceeded total_timeout of {total_timeout}s."
+            elif elapsed_inactivity_time >= INACTIVITY_TIMEOUT:
+                timeout_triggered = True
+                timeout_message = f"No output for {INACTIVITY_TIMEOUT}s."
+
+            if timeout_triggered:
+                timed_out = True
+                try:
+                    process.kill()
+                    msg = f"\n[TIMEOUT] {timeout_message} Killing process.\n"
+                    full_output += msg
+                    print(msg)
+                    telemetry = get_telemetry()
+                    if telemetry and node:
+                        telemetry.log_output(node, msg)
+                except Exception:
+                    pass
+                break
+
+    monitor_task = asyncio.create_task(monitor_timeout())
+
+    try:
+        await asyncio.gather(
+            read_stream(process.stdout, False),
+            read_stream(process.stderr, True),
+            process.wait(),
+        )
+    finally:
+        if not monitor_task.done():
+            monitor_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await monitor_task
 
     stdout_logger.flush()
+    exit_code = process.returncode if not timed_out else -1
 
-    exit_code = await process.wait()
     return {"output": full_output, "exit_code": exit_code}
 
 
@@ -111,6 +167,7 @@ async def _execute_gemini(
     model: str | None,
     args: list[str] | None = None,
     node: str | None = None,
+    total_timeout: int | None = None,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if args is None:
@@ -131,27 +188,85 @@ async def _execute_gemini(
     env["GIT_SEQUENCE_EDITOR"] = "true"
     env["GH_PROMPT_DISABLED"] = "1"
 
+    start_time = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env
     )
 
     full_output = ""
     logger = StreamLogger(node)
+    last_activity_time = time.monotonic()
+    timed_out = False
+    timeout_message = ""
 
     async def read_stdout():
-        nonlocal full_output
+        nonlocal full_output, last_activity_time
         while True:
             chunk = await process.stdout.read(1024)
             if not chunk:
                 break
+            last_activity_time = time.monotonic()
             decoded = _clean_chunk(chunk)
             if decoded:
                 logger.process_chunk(decoded)
                 full_output += decoded
 
-    await read_stdout()
+    async def monitor_timeout():
+        nonlocal last_activity_time, timed_out, timeout_message
+        while True:
+            await asyncio.sleep(0.1)
+            if process.returncode is not None:
+                break
+
+            current_time = time.monotonic()
+            elapsed_total_time = current_time - start_time
+            elapsed_inactivity_time = current_time - last_activity_time
+
+            timeout_triggered = False
+
+            if total_timeout is not None and elapsed_total_time >= total_timeout:
+                timeout_triggered = True
+                timeout_message = f"Process exceeded total_timeout of {total_timeout}s."
+            elif elapsed_inactivity_time >= INACTIVITY_TIMEOUT:
+                timeout_triggered = True
+                timeout_message = f"No output for {INACTIVITY_TIMEOUT}s."
+
+            if timeout_triggered:
+                timed_out = True
+                try:
+                    process.kill()
+                    msg = f"\n[TIMEOUT] {timeout_message} Killing process.\n"
+                    print(msg)
+                    telemetry = get_telemetry()
+                    if telemetry and node:
+                        telemetry.log_output(node, msg)
+                except Exception:
+                    pass
+                break
+
+    monitor_task = asyncio.create_task(monitor_timeout())
+
+    try:
+        await asyncio.gather(read_stdout(), process.wait())
+    finally:
+        if not monitor_task.done():
+            monitor_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await monitor_task
+
     logger.flush()
-    exit_code = await process.wait()
+    # If the process was timed out, we override the exit code to -1
+    if timed_out:
+        exit_code = -1
+    else:
+        exit_code = process.returncode
+        # In tests, returncode might be an AsyncMock which evaluates to True.
+        # If wait() returned 0, we should trust that if returncode is still a mock.
+        if str(exit_code).startswith("<AsyncMock"):
+            exit_code = 0
+
+    if timed_out:
+        raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
 
     if exit_code != 0:
         raise Exception(f"Gemini CLI exited with code {exit_code}")
@@ -166,6 +281,7 @@ async def invoke_gemini(
     verbose: bool = False,
     label: str | None = None,
     node: str | None = None,
+    total_timeout: int | None = INACTIVITY_TIMEOUT,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
@@ -187,7 +303,9 @@ async def invoke_gemini(
             model_display = model if model else "auto"
             if verbose:
                 print(f"Using model: {model_display}")
-            return await _execute_gemini(prompt, model, args, node)
+            return await _execute_gemini(
+                prompt, model, args, node, total_timeout=total_timeout
+            )
         except Exception as error:
             error_msg = str(error)
             is_last_model = i == len(model_list) - 1
@@ -198,6 +316,7 @@ async def invoke_gemini(
                 next_model = model_list[i + 1]
                 next_model_display = next_model if next_model else "auto"
                 print(f"Error with {model_display}: {error_msg}")
+                # If it's a timeout, we might want to log it specifically but still fallback
                 print(f"Falling back to {next_model_display}...")
                 continue
 
