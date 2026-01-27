@@ -29,7 +29,9 @@ async def reviewer(state: AgentState) -> dict:
     git_diff = ""
     if os.path.exists(".git") and initial_commit_hash:
         try:
-            res = await run_command("git", ["diff", initial_commit_hash, "HEAD"], node="reviewer")
+            res = await run_command(
+                "git", ["diff", initial_commit_hash, "HEAD"], node="reviewer"
+            )
             if res["exit_code"] == 0:
                 git_diff = res["output"]
         except Exception as e:

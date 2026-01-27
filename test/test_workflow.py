@@ -57,6 +57,7 @@ class TestContinueFeature:
         # We can't actually run the workflow in tests without mocking,
         # but we can verify the method signature accepts the parameter
         import inspect
+
         sig = inspect.signature(workflow.run)
         assert "initial_state" in sig.parameters
         assert sig.parameters["initial_state"].default is None

@@ -152,7 +152,9 @@ class TestGetLastIncompleteNode:
         assert node == "reviewer"
         assert metadata["reason"] == "incomplete"
 
-    def test_reviewer_approved_should_resume_at_pr_creator(self, telemetry_with_temp_dir):
+    def test_reviewer_approved_should_resume_at_pr_creator(
+        self, telemetry_with_temp_dir
+    ):
         """Test when reviewer approved, should resume at pr_creator."""
         telemetry_with_temp_dir.log_status("coder", "active")
         telemetry_with_temp_dir.log_status("coder", "idle")

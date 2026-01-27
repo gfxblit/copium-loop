@@ -34,7 +34,9 @@ class TestPrCreatorNode:
 
             # Check that git push was called with --force
             push_call = [
-                call for call in mock_run.call_args_list if call[0][0] == "git" and "push" in call[0][1]
+                call
+                for call in mock_run.call_args_list
+                if call[0][0] == "git" and "push" in call[0][1]
             ][0]
             assert "--force" in push_call[0][1]
 
@@ -124,7 +126,9 @@ class TestPrCreatorNode:
 
             # Check that git push was called with --force
             push_call = [
-                call for call in mock_run.call_args_list if call[0][0] == "git" and "push" in call[0][1]
+                call
+                for call in mock_run.call_args_list
+                if call[0][0] == "git" and "push" in call[0][1]
             ][0]
             assert "--force" in push_call[0][1]
 
@@ -137,7 +141,9 @@ class TestPrCreatorNode:
             assert "--body" in args
             # The body is the argument immediately following --body
             body_arg_index = args.index("--body") + 1
-            assert "Closes https://github.com/org/repo/issues/123" in args[body_arg_index]
+            assert (
+                "Closes https://github.com/org/repo/issues/123" in args[body_arg_index]
+            )
 
     @pytest.mark.asyncio
     async def test_pr_creator_fails_on_rebase(self):

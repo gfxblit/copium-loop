@@ -243,9 +243,7 @@ class TestInvokeGemini:
             ]
 
             # invoke with [None, "backup-model"]
-            result = await utils.invoke_gemini(
-                "Hello", models=[None, "backup-model"]
-            )
+            result = await utils.invoke_gemini("Hello", models=[None, "backup-model"])
 
             assert result == "Response from backup model"
             assert mock_exec.call_count == 2

@@ -58,7 +58,9 @@ def _clean_chunk(chunk: str | bytes) -> str:
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
 
 
-async def run_command(command: str, args: list[str] | None = None, node: str | None = None) -> dict:
+async def run_command(
+    command: str, args: list[str] | None = None, node: str | None = None
+) -> dict:
     """
     Invokes a shell command and streams output to stdout.
     Returns the combined stdout/stderr output and exit code.
@@ -170,7 +172,9 @@ async def invoke_gemini(
     Streams output to stdout and returns the full response.
     """
     if verbose:
-        banner = f"--- [VERBOSE] {label} Prompt ---" if label else "--- [VERBOSE] Prompt ---"
+        banner = (
+            f"--- [VERBOSE] {label} Prompt ---" if label else "--- [VERBOSE] Prompt ---"
+        )
         print(f"\n{banner}")
         print(prompt)
         print("-" * len(banner) + "\n")
@@ -198,9 +202,7 @@ async def invoke_gemini(
                 continue
 
             # If we're on the last model and it failed, raise the error
-            raise Exception(
-                f"All models exhausted. Last error: {error_msg}"
-            ) from error
+            raise Exception(f"All models exhausted. Last error: {error_msg}") from error
     return ""
 
 
@@ -259,6 +261,7 @@ def get_package_manager() -> str:
         return "yarn"
     return "npm"
 
+
 def get_test_command() -> tuple[str, list[str]]:
     """Determines the test command based on the project structure."""
     test_cmd = "npm"
@@ -280,6 +283,7 @@ def get_test_command() -> tuple[str, list[str]]:
         test_args = ["--cov=src", "--cov-report=term-missing"]
 
     return test_cmd, test_args
+
 
 def get_build_command() -> tuple[str, list[str]]:
     """Determines the build command based on the project structure."""
@@ -305,6 +309,7 @@ def get_build_command() -> tuple[str, list[str]]:
         return "", []
 
     return build_cmd, build_args
+
 
 def get_lint_command() -> tuple[str, list[str]]:
     """Determines the lint command based on the project structure."""

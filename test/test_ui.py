@@ -24,6 +24,7 @@ def test_tail_renderable_basic():
     assert "line 1" not in output
     assert "line 2" not in output
 
+
 def test_tail_renderable_wrapping():
     """Test that TailRenderable handles line wrapping when calculating the tail."""
     # Line that will wrap into 2 lines if width is small
@@ -52,6 +53,7 @@ def test_tail_renderable_wrapping():
     assert "short 1" not in output
     assert "this is a very" not in output
 
+
 def test_tail_renderable_empty():
     """Test that TailRenderable handles an empty buffer."""
     renderable = TailRenderable([], status="idle")
@@ -60,6 +62,7 @@ def test_tail_renderable_empty():
         console.print(renderable)
     output = capture.get()
     assert output == ""
+
 
 def test_matrix_pillar_render_order():
     """Test that MatrixPillar renders logs in chronological order (oldest to newest)."""
@@ -87,6 +90,7 @@ def test_matrix_pillar_render_order():
     assert third_idx != -1
     assert first_idx < second_idx < third_idx
 
+
 def test_tail_renderable_styling():
     """Test that TailRenderable applies correct styles based on recency and status."""
     buffer = [f"line {i}" for i in range(15)]
@@ -113,6 +117,7 @@ def test_tail_renderable_styling():
     assert "  line 10" in output_active
     assert "  line 0" in output_active
 
+
 def test_matrix_pillar_status_and_duration():
     """Test that MatrixPillar correctly tracks status and duration."""
     pillar = MatrixPillar("Coder")
@@ -133,6 +138,7 @@ def test_matrix_pillar_status_and_duration():
     assert pillar.duration == 10.0
     assert pillar.completion_time is not None
 
+
 def test_matrix_pillar_buffer_limit():
     """Test that MatrixPillar respects its max_buffer size."""
     pillar = MatrixPillar("Coder")
@@ -145,9 +151,11 @@ def test_matrix_pillar_buffer_limit():
     assert pillar.buffer[0] == "line 5"
     assert pillar.buffer[-1] == "line 9"
 
+
 def test_session_column_rendering():
     """Test that SessionColumn renders its pillars."""
     from copium_loop.ui import SessionColumn
+
     session = SessionColumn("test_session")
 
     # Set some content and status
@@ -165,9 +173,11 @@ def test_session_column_rendering():
     assert "CODER" in output
     assert "coding..." in output
 
+
 def test_dashboard_extract_tmux_session():
     """Test that Dashboard.extract_tmux_session correctly parses session IDs."""
     from copium_loop.ui import Dashboard
+
     dash = Dashboard()
 
     assert dash.extract_tmux_session("my_session") == "my_session"

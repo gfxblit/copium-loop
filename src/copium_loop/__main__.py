@@ -20,9 +20,18 @@ async def async_main():
         type=str,
         help="Start node (coder, test_runner, reviewer, pr_creator)",
     )
-    parser.add_argument("--verbose", "-v", action="store_true", default=True, help="Verbose output")
-    parser.add_argument("--monitor", "-m", action="store_true", help="Start the Matrix visualization monitor")
-    parser.add_argument("--session", type=str, help="Specific session ID to monitor or continue")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", default=True, help="Verbose output"
+    )
+    parser.add_argument(
+        "--monitor",
+        "-m",
+        action="store_true",
+        help="Start the Matrix visualization monitor",
+    )
+    parser.add_argument(
+        "--session", type=str, help="Specific session ID to monitor or continue"
+    )
     parser.add_argument(
         "--continue",
         "-c",
@@ -88,7 +97,9 @@ async def async_main():
         start_node = resume_node
 
         # If we have a prompt from the logs, use it; otherwise use default
-        prompt = reconstructed_state.get("prompt", "Continue development and verify implementation.")
+        prompt = reconstructed_state.get(
+            "prompt", "Continue development and verify implementation."
+        )
     else:
         prompt = (
             " ".join(args.prompt)
