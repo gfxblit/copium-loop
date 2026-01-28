@@ -123,6 +123,75 @@ def _clean_chunk(chunk: str | bytes) -> str:
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
 
 
+async def _stream_subprocess(
+    command: str,
+    args: list[str],
+    env: dict,
+    node: str | None,
+    total_timeout: int | None,
+    capture_stderr: bool = True,
+    on_timeout_callback=None,
+) -> tuple[str, int, bool, str]:
+    """
+    Common helper to execute a subprocess and stream its output.
+    Returns (full_output, exit_code, timed_out, timeout_message).
+    """
+    start_time = time.monotonic()
+    stderr_target = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
+
+    process = await asyncio.create_subprocess_exec(
+        command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env
+    )
+
+    full_output = ""
+    logger = StreamLogger(node)
+
+    monitor = ProcessMonitor(
+        process,
+        start_time,
+        total_timeout,
+        INACTIVITY_TIMEOUT,
+        node,
+        on_timeout_callback=on_timeout_callback,
+    )
+    monitor_task = asyncio.create_task(monitor.run())
+
+    async def read_stream(stream, is_stderr):
+        nonlocal full_output
+        while True:
+            chunk = await stream.read(1024)
+            if not chunk:
+                break
+            monitor.update_activity()
+            decoded = _clean_chunk(chunk)
+            if decoded:
+                if not is_stderr:
+                    logger.process_chunk(decoded)
+                full_output += decoded
+
+    try:
+        tasks = [read_stream(process.stdout, False)]
+        if capture_stderr:
+            tasks.append(read_stream(process.stderr, True))
+        tasks.append(process.wait())
+        await asyncio.gather(*tasks)
+    finally:
+        if not monitor_task.done():
+            monitor_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await monitor_task
+
+    logger.flush()
+
+    if monitor.timed_out:
+        exit_code = -1
+    else:
+        # Ensure returncode is an integer, default to 0 if None
+        exit_code = process.returncode if process.returncode is not None else 0
+
+    return full_output, exit_code, monitor.timed_out, monitor.timeout_message
+
+
 async def run_command(
     command: str,
     args: list[str] | None = None,
@@ -143,66 +212,37 @@ async def run_command(
 
     # Prevent interactive prompts that would hang the agent
     env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_EDITOR"] = "true"
-    env["EDITOR"] = "true"
-    env["VISUAL"] = "true"
-    env["GIT_SEQUENCE_EDITOR"] = "true"
-    env["GH_PROMPT_DISABLED"] = "1"
-
-    start_time = time.monotonic()
-    process = await asyncio.create_subprocess_exec(
-        command, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
+    env.update(
+        {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_EDITOR": "true",
+            "EDITOR": "true",
+            "VISUAL": "true",
+            "GIT_SEQUENCE_EDITOR": "true",
+            "GH_PROMPT_DISABLED": "1",
+        }
     )
 
-    full_output = ""
-    stdout_logger = StreamLogger(node)
+    # Use a list to capture output from the callback
+    timeout_msg_list = []
 
     def on_timeout(msg):
-        nonlocal full_output
-        full_output += msg
+        timeout_msg_list.append(msg)
 
-    monitor = ProcessMonitor(
-        process,
-        start_time,
-        total_timeout,
-        INACTIVITY_TIMEOUT,
+    output, exit_code, _, _ = await _stream_subprocess(
+        command,
+        args,
+        env,
         node,
-        on_timeout_callback=on_timeout
+        total_timeout,
+        capture_stderr=True,
+        on_timeout_callback=on_timeout,
     )
-    monitor_task = asyncio.create_task(monitor.run())
 
-    async def read_stream(stream, is_stderr):
-        nonlocal full_output
-        while True:
-            line = await stream.read(1024)
-            if not line:
-                break
-            monitor.update_activity()
-            decoded_chunk = _clean_chunk(line)
-            if decoded_chunk:
-                if not is_stderr:
-                    stdout_logger.process_chunk(decoded_chunk)
-                full_output += decoded_chunk
-
-    try:
-        await asyncio.gather(
-            read_stream(process.stdout, False),
-            read_stream(process.stderr, True),
-            process.wait(),
-        )
-    finally:
-        if not monitor_task.done():
-            monitor_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await monitor_task
-
-    stdout_logger.flush()
-    if monitor.timed_out:
-        exit_code = -1
-    else:
-        # Ensure returncode is an integer, default to 0 if None
-        exit_code = process.returncode if process.returncode is not None else 0
+    # Combine streamed output with any timeout message
+    full_output = output
+    if timeout_msg_list:
+        full_output += "".join(timeout_msg_list)
 
     return {"output": full_output, "exit_code": exit_code}
 
@@ -229,65 +269,34 @@ async def _execute_gemini(
 
     # Prevent interactive prompts in sub-agents
     env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_EDITOR"] = "true"
-    env["EDITOR"] = "true"
-    env["VISUAL"] = "true"
-    env["GIT_SEQUENCE_EDITOR"] = "true"
-    env["GH_PROMPT_DISABLED"] = "1"
-
-    start_time = time.monotonic()
-    process = await asyncio.create_subprocess_exec(
-        "gemini", *cmd_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env
+    env.update(
+        {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_EDITOR": "true",
+            "EDITOR": "true",
+            "VISUAL": "true",
+            "GIT_SEQUENCE_EDITOR": "true",
+            "GH_PROMPT_DISABLED": "1",
+        }
     )
 
-    full_output = ""
-    logger = StreamLogger(node)
-
-    monitor = ProcessMonitor(
-        process,
-        start_time,
+    output, exit_code, timed_out, timeout_message = await _stream_subprocess(
+        "gemini",
+        cmd_args,
+        env,
+        node,
         total_timeout,
-        INACTIVITY_TIMEOUT,
-        node
+        capture_stderr=False,
     )
-    monitor_task = asyncio.create_task(monitor.run())
 
-    async def read_stdout():
-        nonlocal full_output
-        while True:
-            chunk = await process.stdout.read(1024)
-            if not chunk:
-                break
-            monitor.update_activity()
-            decoded = _clean_chunk(chunk)
-            if decoded:
-                logger.process_chunk(decoded)
-                full_output += decoded
-
-    try:
-        await asyncio.gather(read_stdout(), process.wait())
-    finally:
-        if not monitor_task.done():
-            monitor_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await monitor_task
-
-    logger.flush()
-    # If the process was timed out, we override the exit code to -1
-    if monitor.timed_out:
-        exit_code = -1
-    else:
-        # Ensure returncode is an integer, default to 0 if None
-        exit_code = process.returncode if process.returncode is not None else 0
-
-    if monitor.timed_out:
-        raise Exception(f"[TIMEOUT] Gemini CLI timed out: {monitor.timeout_message}")
+    if timed_out:
+        raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
 
     if exit_code != 0:
         raise Exception(f"Gemini CLI exited with code {exit_code}")
 
-    return full_output.strip()
+    return output.strip()
+
 
 
 async def invoke_gemini(
@@ -464,4 +473,3 @@ def get_lint_command() -> tuple[str, list[str]]:
         lint_args = ["check", "."]
 
     return lint_cmd, lint_args
-
