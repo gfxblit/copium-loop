@@ -301,6 +301,17 @@ class Dashboard:
         self.current_page = 0
         self.sessions_per_page = 3
 
+    def get_sorted_sessions(self) -> list[SessionColumn]:
+        """Returns sessions sorted by status, bucketed last_updated, and session_id."""
+
+        def sort_key(s):
+            is_running = 1 if s.workflow_status == "running" else 0
+            # bucket is integer division of timestamp by 60
+            bucket = int(s.last_updated / 60)
+            return (-is_running, -bucket, s.session_id)
+
+        return sorted(self.sessions.values(), key=sort_key)
+
     def make_layout(self) -> Layout:
         layout = Layout()
         layout.split_column(
@@ -308,10 +319,8 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
 
-        # Pagination logic - sort by last_updated descending
-        session_list = sorted(
-            self.sessions.values(), key=lambda s: s.last_updated, reverse=True
-        )
+        # Pagination logic - stable bucketed sorting
+        session_list = self.get_sorted_sessions()
         num_sessions = len(session_list)
         num_pages = (
             (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
@@ -491,10 +500,13 @@ class Dashboard:
                             self.current_page = (self.current_page - 1) % num_pages
                         elif key.lower() == "q":
                             break
+                        elif key.lower() == "r":
+                            # Manual refresh - update all logs immediately
+                            self.update_from_logs()
                         elif key.isdigit() and key != "0":  # Number keys 1-9
                             session_num = int(key)
                             # Get the session list for the current page
-                            session_list = list(self.sessions.values())[::-1]
+                            session_list = self.get_sorted_sessions()
                             start_idx = self.current_page * self.sessions_per_page
                             end_idx = start_idx + self.sessions_per_page
                             active_sessions = session_list[start_idx:end_idx]
