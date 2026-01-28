@@ -1,11 +1,13 @@
 """Core workflow implementation."""
 
+import asyncio
 import os
 import re
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
+from copium_loop.constants import INACTIVITY_TIMEOUT
 from copium_loop.nodes import (
     coder,
     pr_creator,
@@ -36,14 +38,53 @@ class WorkflowManager:
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
         await notify(title, message, priority)
 
+    def _wrap_node(self, node_name: str, node_func):
+        """Wraps a node function with a timeout."""
+
+        async def wrapper(state: AgentState):
+            try:
+                return await asyncio.wait_for(
+                    node_func(state), timeout=INACTIVITY_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                msg = f"Node '{node_name}' timed out after {INACTIVITY_TIMEOUT}s."
+                print(f"\n[TIMEOUT] {msg}")
+                telemetry = get_telemetry()
+                telemetry.log_output(node_name, f"\n[TIMEOUT] {msg}\n")
+                telemetry.log_status(node_name, "failed")
+
+                # Update retry count and return failure state
+                retry_count = state.get("retry_count", 0) + 1
+
+                if node_name == "tester":
+                    return {"test_output": f"FAIL: {msg}", "retry_count": retry_count}
+
+                if node_name in ("reviewer", "pr_creator", "coder"):
+                    response = {
+                        "retry_count": retry_count,
+                        "messages": [SystemMessage(content=msg)],
+                    }
+                    if node_name == "reviewer":
+                        response["review_status"] = "error"
+                    elif node_name == "pr_creator":
+                        response["review_status"] = "pr_failed"
+                    elif node_name == "coder":
+                        response["code_status"] = "failed"
+                        response["review_status"] = "rejected"
+                    return response
+
+                return {"error": msg, "retry_count": retry_count}
+
+        return wrapper
+
     def create_graph(self):
         workflow = StateGraph(AgentState)
 
         # Add Nodes
-        workflow.add_node("coder", coder)
-        workflow.add_node("tester", tester)
-        workflow.add_node("reviewer", reviewer)
-        workflow.add_node("pr_creator", pr_creator)
+        workflow.add_node("coder", self._wrap_node("coder", coder))
+        workflow.add_node("tester", self._wrap_node("tester", tester))
+        workflow.add_node("reviewer", self._wrap_node("reviewer", reviewer))
+        workflow.add_node("pr_creator", self._wrap_node("pr_creator", pr_creator))
 
         # Determine entry point
         valid_nodes = ["coder", "tester", "reviewer", "pr_creator"]
@@ -71,6 +112,7 @@ class WorkflowManager:
                 "pr_creator": "pr_creator",
                 "coder": "coder",
                 "reviewer": "reviewer",
+                "pr_failed": END,
                 END: END,
             },
         )

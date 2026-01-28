@@ -17,6 +17,7 @@ class TestHelpers:
             mock_proc.stdout.read = AsyncMock(side_effect=[b"file1\x00.txt\n", b""])
             mock_proc.stderr.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.returncode = 0
             mock_exec.return_value = mock_proc
 
             result = await utils.run_command("ls")
@@ -34,6 +35,7 @@ class TestHelpers:
             )
             mock_proc.stderr.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.returncode = 0
             mock_exec.return_value = mock_proc
 
             result = await utils.run_command("ls")
@@ -146,6 +148,7 @@ class TestExecuteGemini:
             mock_proc = AsyncMock()
             mock_proc.stdout.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.returncode = 0
             mock_exec.return_value = mock_proc
 
             await utils._execute_gemini("test prompt", "test-model")
@@ -170,6 +173,7 @@ class TestExecuteGemini:
             mock_proc = AsyncMock()
             mock_proc.stdout.read = AsyncMock(return_value=b"")
             mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.returncode = 0
             mock_exec.return_value = mock_proc
 
             await utils._execute_gemini("test prompt", None)
