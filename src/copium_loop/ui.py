@@ -208,6 +208,11 @@ class SessionColumn:
             "pr_creator": MatrixPillar("PR Creator"),
         }
 
+    @property
+    def last_updated(self) -> float:
+        """Returns the maximum last_update timestamp across all pillars."""
+        return max(pillar.last_update for pillar in self.pillars.values())
+
     def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
 
@@ -294,7 +299,7 @@ class Dashboard:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
         self.current_page = 0
-        self.sessions_per_page = 4
+        self.sessions_per_page = 3
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -303,8 +308,10 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
 
-        # Pagination logic - newest sessions first
-        session_list = list(self.sessions.values())[::-1]
+        # Pagination logic - sort by last_updated descending
+        session_list = sorted(
+            self.sessions.values(), key=lambda s: s.last_updated, reverse=True
+        )
         num_sessions = len(session_list)
         num_pages = (
             (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
