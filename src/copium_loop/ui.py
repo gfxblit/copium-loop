@@ -200,13 +200,24 @@ class SessionColumn:
 
     def __init__(self, session_id: str):
         self.session_id = session_id
-        self.workflow_status = "running"  # Track workflow-level status
+        self._workflow_status = "running"  # Track workflow-level status
+        self.activated_at = time.time()
         self.pillars = {
             "coder": MatrixPillar("Coder"),
             "tester": MatrixPillar("Tester"),
             "reviewer": MatrixPillar("Reviewer"),
             "pr_creator": MatrixPillar("PR Creator"),
         }
+
+    @property
+    def workflow_status(self) -> str:
+        return self._workflow_status
+
+    @workflow_status.setter
+    def workflow_status(self, value: str):
+        if value == "running" and self._workflow_status != "running":
+            self.activated_at = time.time()
+        self._workflow_status = value
 
     @property
     def last_updated(self) -> float:
@@ -302,13 +313,11 @@ class Dashboard:
         self.sessions_per_page = 3
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
-        """Returns sessions sorted by status, bucketed last_updated, and session_id."""
+        """Returns sessions sorted by status (running first) and then by activation time."""
 
         def sort_key(s):
             is_running = 1 if s.workflow_status == "running" else 0
-            # bucket is integer division of timestamp by 60
-            bucket = int(s.last_updated / 60)
-            return (-is_running, -bucket, s.session_id)
+            return (-is_running, s.activated_at, s.session_id)
 
         return sorted(self.sessions.values(), key=sort_key)
 
@@ -319,7 +328,7 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
 
-        # Pagination logic - stable bucketed sorting
+        # Pagination logic - stable sorting by active status
         session_list = self.get_sorted_sessions()
         num_sessions = len(session_list)
         num_pages = (
