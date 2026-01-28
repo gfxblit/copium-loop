@@ -64,7 +64,7 @@ async def run_command(
     command: str,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = TOTAL_TIMEOUT,
+    total_timeout: int | None = None,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -72,6 +72,9 @@ async def run_command(
     If total_timeout is provided, the process will be killed if it runs longer than total_timeout.
     If inactivity_timeout is exceeded (no output for INACTIVITY_TIMEOUT seconds), the process will be killed.
     """
+    if total_timeout is None:
+        total_timeout = TOTAL_TIMEOUT
+
     if args is None:
         args = []
 
@@ -171,9 +174,12 @@ async def _execute_gemini(
     model: str | None,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = INACTIVITY_TIMEOUT,
+    total_timeout: int | None = None,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
+    if total_timeout is None:
+        total_timeout = TOTAL_TIMEOUT
+
     if args is None:
         args = []
 
@@ -282,7 +288,7 @@ async def invoke_gemini(
     verbose: bool = False,
     label: str | None = None,
     node: str | None = None,
-    total_timeout: int | None = TOTAL_TIMEOUT,
+    total_timeout: int | None = None,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
