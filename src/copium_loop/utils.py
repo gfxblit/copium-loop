@@ -78,9 +78,14 @@ class ProcessMonitor:
 
             timeout_triggered = False
 
-            if self.total_timeout is not None and elapsed_total_time >= self.total_timeout:
+            if (
+                self.total_timeout is not None
+                and elapsed_total_time >= self.total_timeout
+            ):
                 timeout_triggered = True
-                self.timeout_message = f"Process exceeded total_timeout of {self.total_timeout}s."
+                self.timeout_message = (
+                    f"Process exceeded total_timeout of {self.total_timeout}s."
+                )
             elif elapsed_inactivity_time >= self.inactivity_timeout:
                 timeout_triggered = True
                 self.timeout_message = f"No output for {self.inactivity_timeout}s."
@@ -96,7 +101,10 @@ class ProcessMonitor:
                         telemetry.log_output(self.node, msg)
 
                     if self.on_timeout_callback:
-                        self.on_timeout_callback(msg)
+                        if asyncio.iscoroutinefunction(self.on_timeout_callback):
+                            await self.on_timeout_callback(msg)
+                        else:
+                            self.on_timeout_callback(msg)
                 except Exception as e:
                     print(f"\n[WARNING] Failed to kill process or log timeout: {e}\n")
                 break
@@ -226,7 +234,7 @@ async def run_command(
     # Use a list to capture output from the callback
     timeout_msg_list = []
 
-    def on_timeout(msg):
+    async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
     output, exit_code, _, _ = await _stream_subprocess(
@@ -296,7 +304,6 @@ async def _execute_gemini(
         raise Exception(f"Gemini CLI exited with code {exit_code}")
 
     return output.strip()
-
 
 
 async def invoke_gemini(
@@ -405,6 +412,7 @@ def get_package_manager() -> str:
         return "yarn"
     return "npm"
 
+
 def get_test_command() -> tuple[str, list[str]]:
     """Determines the test command based on the project structure."""
     test_cmd = "npm"
@@ -426,6 +434,7 @@ def get_test_command() -> tuple[str, list[str]]:
         test_args = ["--cov=src", "--cov-report=term-missing"]
 
     return test_cmd, test_args
+
 
 def get_build_command() -> tuple[str, list[str]]:
     """Determines the build command based on the project structure."""
@@ -451,6 +460,7 @@ def get_build_command() -> tuple[str, list[str]]:
         return "", []
 
     return build_cmd, build_args
+
 
 def get_lint_command() -> tuple[str, list[str]]:
     """Determines the lint command based on the project structure."""

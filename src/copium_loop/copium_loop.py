@@ -69,9 +69,8 @@ class WorkflowManager:
                     elif node_name == "pr_creator":
                         response["review_status"] = "pr_failed"
                     elif node_name == "coder":
-                        response.update(
-                            {"code_status": "failed", "review_status": "rejected"}
-                        )
+                        response["code_status"] = "failed"
+                        response["review_status"] = "rejected"
                     return response
 
                 return {"error": msg, "retry_count": retry_count}
