@@ -44,7 +44,7 @@ async def test_run_command_total_timeout_not_exceeded():
 
     # Assert that the command completed successfully
     assert result["exit_code"] == 0
-    assert "TIMED OUT" not in result["output"]
+    assert "[TIMEOUT]" not in result["output"]
 
 
 @pytest.mark.asyncio

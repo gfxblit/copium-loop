@@ -58,25 +58,20 @@ class WorkflowManager:
 
                 if node_name == "tester":
                     return {"test_output": f"FAIL: {msg}", "retry_count": retry_count}
-                if node_name == "reviewer":
-                    return {
-                        "review_status": "error",
+
+                if node_name in ("reviewer", "pr_creator", "coder"):
+                    response = {
                         "retry_count": retry_count,
                         "messages": [SystemMessage(content=msg)],
                     }
-                if node_name == "pr_creator":
-                    return {
-                        "review_status": "pr_failed",
-                        "retry_count": retry_count,
-                        "messages": [SystemMessage(content=msg)],
-                    }
-                if node_name == "coder":
-                    return {
-                        "code_status": "failed",
-                        "review_status": "rejected",
-                        "retry_count": retry_count,
-                        "messages": [SystemMessage(content=msg)],
-                    }
+                    if node_name == "reviewer":
+                        response["review_status"] = "error"
+                    elif node_name == "pr_creator":
+                        response["review_status"] = "pr_failed"
+                    elif node_name == "coder":
+                        response["code_status"] = "failed"
+                        response["review_status"] = "rejected"
+                    return response
 
                 return {"error": msg, "retry_count": retry_count}
 
