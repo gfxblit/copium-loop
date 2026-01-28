@@ -17,3 +17,6 @@ MAX_RETRIES = 10
 
 # Inactivity timeout in seconds (5 minutes)
 INACTIVITY_TIMEOUT = 300
+
+# Total timeout in seconds (10 minutes)
+TOTAL_TIMEOUT = 600

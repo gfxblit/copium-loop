@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from copium_loop.constants import DEFAULT_MODELS, INACTIVITY_TIMEOUT
+from copium_loop.constants import DEFAULT_MODELS, INACTIVITY_TIMEOUT, TOTAL_TIMEOUT
 from copium_loop.telemetry import get_telemetry
 
 
@@ -64,7 +64,7 @@ async def run_command(
     command: str,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = INACTIVITY_TIMEOUT,
+    total_timeout: int | None = TOTAL_TIMEOUT,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -282,7 +282,7 @@ async def invoke_gemini(
     verbose: bool = False,
     label: str | None = None,
     node: str | None = None,
-    total_timeout: int | None = INACTIVITY_TIMEOUT,
+    total_timeout: int | None = TOTAL_TIMEOUT,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
