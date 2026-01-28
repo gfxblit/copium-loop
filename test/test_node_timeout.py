@@ -11,6 +11,7 @@ async def test_node_timeout_wrapping():
     """
     Test that WorkflowManager._wrap_node correctly times out a slow node.
     """
+
     async def slow_node(_state):
         await asyncio.sleep(2)
         return {"test_output": "PASS"}
@@ -35,6 +36,7 @@ async def test_tester_node_timeout():
     """
     Test that WorkflowManager._wrap_node correctly handles a timeout for the tester node.
     """
+
     async def tester(_state):
         await asyncio.sleep(2)
         return {"test_output": "PASS"}
@@ -55,6 +57,7 @@ async def test_reviewer_node_timeout():
     """
     Test that WorkflowManager._wrap_node correctly handles a timeout for the reviewer node.
     """
+
     async def reviewer(_state):
         await asyncio.sleep(2)
         return {"review_status": "approved"}
@@ -76,6 +79,7 @@ async def test_default_node_timeout():
     """
     Test that WorkflowManager._wrap_node returns a default error state for unknown nodes.
     """
+
     async def unknown_node(_state):
         await asyncio.sleep(2)
         return {"foo": "bar"}

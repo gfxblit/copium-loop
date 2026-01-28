@@ -97,7 +97,9 @@ async def test_run_command_total_timeout_while_streaming():
         mock_exec.return_value = mock_proc
 
         start_time = asyncio.get_event_loop().time()
-        result = await utils.run_command("streaming_command", total_timeout=total_timeout)
+        result = await utils.run_command(
+            "streaming_command", total_timeout=total_timeout
+        )
         end_time = asyncio.get_event_loop().time()
 
         # Check if kill was called due to total timeout

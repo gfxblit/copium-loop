@@ -174,4 +174,7 @@ def test_input_reader_oserror_handling():
     ):
         assert reader.get_key() is None
         assert mock_stderr.write.called
-        assert "Error reading from stdin: Read error" in mock_stderr.write.call_args_list[0][0][0]
+        assert (
+            "Error reading from stdin: Read error"
+            in mock_stderr.write.call_args_list[0][0][0]
+        )
