@@ -22,14 +22,13 @@ async def test_run_command_strips_null_bytes():
         assert "\x00" not in result["output"]
         assert result["output"] == "file1.txt\n"
 
+
 @pytest.mark.asyncio
 async def test_run_command_strips_ansi():
     """Test that run_command strips ANSI codes."""
     with patch("asyncio.create_subprocess_exec") as mock_exec:
         mock_proc = AsyncMock()
-        mock_proc.stdout.read = AsyncMock(
-            side_effect=[b"\x1b[31mRed Text\x1b[0m", b""]
-        )
+        mock_proc.stdout.read = AsyncMock(side_effect=[b"\x1b[31mRed Text\x1b[0m", b""])
         mock_proc.stderr.read = AsyncMock(return_value=b"")
         mock_proc.wait = AsyncMock(return_value=0)
         mock_proc.returncode = 0
@@ -38,6 +37,7 @@ async def test_run_command_strips_ansi():
         result = await shell.run_command("ls")
 
         assert result["output"] == "Red Text"
+
 
 @pytest.mark.asyncio
 async def test_run_command_timeout():
@@ -49,6 +49,7 @@ async def test_run_command_timeout():
         class MockStream:
             def __init__(self):
                 self.calls = 0
+
             async def read(self, _n):
                 self.calls += 1
                 if self.calls == 1:

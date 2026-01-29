@@ -1,0 +1,127 @@
+import time
+from datetime import datetime
+
+from rich.panel import Panel
+from rich.text import Text
+
+from .renderable import TailRenderable
+
+
+class MatrixPillar:
+    """Manages the buffer and rendering for a single agent phase."""
+
+    def __init__(self, name: str):
+        self.name = name
+        self.buffer = []
+        self.status = "idle"
+        self.max_buffer = 10
+        self.last_update = time.time()
+        self.start_time = None
+        self.duration = None
+        self.completion_time = None
+
+    def add_line(self, line: str):
+        self.buffer.append(line)
+        if len(self.buffer) > self.max_buffer:
+            self.buffer.pop(0)
+        self.last_update = time.time()
+
+    def set_status(self, status: str, timestamp_str: str | None = None):
+        self.status = status
+        if timestamp_str:
+            try:
+                # Parse ISO format timestamp
+                ts = datetime.fromisoformat(timestamp_str).timestamp()
+                if status == "active":
+                    self.start_time = ts
+                    self.duration = None
+                    self.completion_time = None
+                elif self.start_time and status in [
+                    "success",
+                    "approved",
+                    "failed",
+                    "rejected",
+                    "error",
+                    "pr_failed",
+                    "coded",
+                ]:
+                    self.duration = ts - self.start_time
+                    self.completion_time = ts
+            except (ValueError, TypeError):
+                pass
+
+    def render(self) -> Panel:
+        # Visual Semantics:
+        # active -> bright white header, pulsing
+        # success/approved -> cyan checkmark
+        # error/rejected/failed -> red X
+        # idle with content -> grey checkmark (passed history)
+        # idle without content -> dim grey (never run)
+
+        has_content = len(self.buffer) > 0
+
+        # Calculate display time if applicable - human readable (e.g. 1m 5s)
+        time_suffix = ""
+        duration_val = (
+            self.duration
+            if self.duration is not None
+            else (
+                int(time.time() - self.start_time)
+                if self.start_time is not None and self.status == "active"
+                else None
+            )
+        )
+
+        if duration_val is not None:
+            secs = int(duration_val)
+            if secs >= 60:
+                mins = secs // 60
+                rem_secs = secs % 60
+                time_suffix = (
+                    f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
+                )
+            else:
+                time_suffix = f" [{secs}s]"
+
+        # Add completion time for completed steps
+        if self.completion_time is not None and self.status in [
+            "success",
+            "approved",
+            "failed",
+            "rejected",
+            "error",
+            "pr_failed",
+            "coded",
+        ]:
+            completion_dt = datetime.fromtimestamp(self.completion_time)
+            completion_str = completion_dt.strftime("%H:%M:%S")
+            time_suffix += f" @ {completion_str}"
+
+        if self.status == "active":
+            header_text = Text(
+                f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41"
+            )
+            border_style = "#00FF41"
+        elif self.status in ["success", "approved", "coded"]:
+            header_text = Text(
+                f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan"
+            )
+            border_style = "cyan"
+        elif self.status in ["error", "rejected", "failed", "pr_failed"]:
+            header_text = Text(
+                f"✘ {self.name.upper()}{time_suffix}", style="bold white on red"
+            )
+            border_style = "red"
+        elif has_content:
+            header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
+            border_style = "grey37"
+        else:
+            header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
+            border_style = "grey37"
+
+        return Panel(
+            TailRenderable(self.buffer, self.status),
+            title=header_text,
+            border_style=border_style,
+            expand=True,
+        )
