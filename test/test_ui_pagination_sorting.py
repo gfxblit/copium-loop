@@ -32,22 +32,22 @@ def test_session_column_last_updated():
 
 
 def test_dashboard_sorting_logic():
-    """Verify Dashboard.make_layout sorts sessions by created_at (oldest first)."""
+    """Verify Dashboard.make_layout sorts sessions by activated_at (oldest first) for running sessions."""
     dash = Dashboard()
     dash.console = Console(width=100)
 
-    # s1 created first
+    # s1 activated first
     s1 = SessionColumn("session_1")
-    s1.created_at = 1000
-    # s2 created second
+    s1.activated_at = 1000
+    # s2 activated second
     s2 = SessionColumn("session_2")
-    s2.created_at = 2000
-    # s3 created third
+    s2.activated_at = 2000
+    # s3 activated third
     s3 = SessionColumn("session_3")
-    s3.created_at = 3000
-    # s4 created fourth
+    s3.activated_at = 3000
+    # s4 activated fourth
     s4 = SessionColumn("session_4")
-    s4.created_at = 4000
+    s4.activated_at = 4000
 
     dash.sessions = {"session_1": s1, "session_2": s2, "session_3": s3, "session_4": s4}
 
@@ -77,30 +77,30 @@ def test_dashboard_sorting_logic():
 def test_dashboard_stable_sorting_logic():
     """Verify Dashboard.make_layout stable sorting logic:
     1. workflow_status == "running" comes first.
-    2. Preservation of oldest-first order within groups.
+    2. Preservation of oldest-first order (by activated_at) within running group.
     """
     dash = Dashboard()
     dash.console = Console(width=100)
 
-    # s1 created first, running
+    # s1 activated first, running
     s1 = SessionColumn("session_1")
     s1.workflow_status = "running"
-    s1.created_at = 1000
+    s1.activated_at = 1000
 
-    # s2 created second, running
+    # s2 activated second, running
     s2 = SessionColumn("session_2")
     s2.workflow_status = "running"
-    s2.created_at = 2000
+    s2.activated_at = 2000
 
-    # s3 created third, but not running (finished)
+    # s3 activated third, but not running (finished)
     s3 = SessionColumn("session_3")
     s3.workflow_status = "success"
-    s3.created_at = 3000
+    s3.completed_at = 5000  # Completed latest
 
-    # s4 created fourth, running
+    # s4 activated fourth, running
     s4 = SessionColumn("session_4")
     s4.workflow_status = "running"
-    s4.created_at = 4000
+    s4.activated_at = 4000
 
     dash.sessions = {"session_1": s1, "session_2": s2, "session_3": s3, "session_4": s4}
 
@@ -109,7 +109,7 @@ def test_dashboard_stable_sorting_logic():
         s.render = MagicMock(return_value=Layout(name=s.session_id))
 
     # Expected order:
-    # 1. Running sessions in creation order: s1, s2, s4
+    # 1. Running sessions in activation order: s1, s2, s4
     # 2. Non-running sessions: s3
 
     layout = dash.make_layout()
