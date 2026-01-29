@@ -1,6 +1,6 @@
 import json
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from rich.console import Console
 from rich.layout import Layout
@@ -12,6 +12,7 @@ from copium_loop.ui import (
     SessionColumn,
     TailRenderable,
     extract_tmux_session,
+    switch_to_tmux_session,
 )
 
 
@@ -430,6 +431,7 @@ def test_dashboard_completed_sessions_sorting():
 
 
 def test_session_removal_when_file_deleted(tmp_path):
+    """Test that sessions are removed if their log file is gone."""
     # Initialize Dashboard
     dash = Dashboard()
 
@@ -570,3 +572,224 @@ def test_extract_tmux_session_old_format_with_underscore_in_name():
     """Test old format where the session name itself contains an underscore."""
     session_id = "my_project_v2_%5"
     assert extract_tmux_session(session_id) == "my_project_v2"
+
+
+def test_dashboard_make_layout_no_sessions():
+    """Test layout when no sessions are present."""
+    dash = Dashboard()
+    layout = dash.make_layout()
+    assert isinstance(layout, Layout)
+
+    console = Console()
+    with console.capture() as capture:
+        console.print(layout)
+    output = capture.get()
+    assert "WAITING FOR SESSIONS..." in output
+
+
+def test_dashboard_pagination():
+    """Test dashboard pagination logic."""
+    dash = Dashboard()
+    dash.sessions_per_page = 2
+
+    for i in range(5):
+        sid = f"s{i}"
+        s = SessionColumn(sid)
+        s.workflow_status = "running"
+        s.activated_at = i
+        dash.sessions[sid] = s
+
+    # Page 0: s0, s1
+    layout0 = dash.make_layout()
+    with dash.console.capture() as capture:
+        dash.console.print(layout0)
+    output0 = capture.get()
+    assert "s0" in output0
+    assert "s1" in output0
+    assert "s2" not in output0
+
+    # Page 1
+    dash.current_page = 1
+    layout1 = dash.make_layout()
+    with dash.console.capture() as capture:
+        dash.console.print(layout1)
+    output1 = capture.get()
+    assert "s2" in output1
+    assert "s3" in output1
+    assert "s0" not in output1
+
+    # Page 2
+    dash.current_page = 2
+    layout2 = dash.make_layout()
+    with dash.console.capture() as capture:
+        dash.console.print(layout2)
+    output2 = capture.get()
+    assert "s4" in output2
+    assert "s0" not in output2
+
+
+def test_session_column_status_banners():
+    """Test workflow status banners in SessionColumn."""
+    s = SessionColumn("test")
+
+    # Success
+    s.workflow_status = "success"
+    layout = s.render()
+    console = Console()
+    with console.capture() as capture:
+        console.print(layout)
+    output = capture.get()
+    assert "WORKFLOW COMPLETED SUCCESSFULLY" in output
+
+    # Failed
+    s = SessionColumn("test_fail")
+    s.workflow_status = "failed"
+    layout = s.render()
+    with console.capture() as capture:
+        console.print(layout)
+    output = capture.get()
+    assert "WORKFLOW FAILED" in output
+
+
+def test_matrix_pillar_time_suffix():
+    """Test time suffix rendering in MatrixPillar."""
+    pillar = MatrixPillar("Coder")
+
+    # Active
+    pillar.start_time = time.time() - 65  # 1m 5s
+    pillar.status = "active"
+    panel = pillar.render()
+    console = Console()
+    with console.capture() as capture:
+        console.print(panel)
+    output = capture.get()
+    assert "1m 5s" in output
+
+    # Success with completion time
+    pillar.status = "success"
+    pillar.completion_time = time.time()
+    pillar.duration = 65
+    panel = pillar.render()
+    with console.capture() as capture:
+        console.print(panel)
+    output = capture.get()
+    assert "1m 5s" in output
+    assert "@" in output  # Time of completion
+
+
+def test_dashboard_switch_to_tmux_session():
+    """Test switching tmux sessions (mocked)."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
+        switch_to_tmux_session("target_session")
+        mock_run.assert_called_once_with(
+            ["tmux", "switch-client", "-t", "--", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
+def test_dashboard_update_from_logs(tmp_path):
+    """Test updating dashboard state from log files."""
+    dash = Dashboard()
+    dash.log_dir = tmp_path
+
+    # Create a dummy log file
+    log_file = tmp_path / "session1.jsonl"
+    events = [
+        {
+            "node": "workflow",
+            "event_type": "workflow_status",
+            "data": "running",
+            "timestamp": "2026-01-28T10:00:00",
+        },
+        {
+            "node": "coder",
+            "event_type": "status",
+            "data": "active",
+            "timestamp": "2026-01-28T10:00:01",
+        },
+        {
+            "node": "coder",
+            "event_type": "output",
+            "data": "starting code...\n",
+            "timestamp": "2026-01-28T10:00:02",
+        },
+    ]
+    with open(log_file, "w") as f:
+        for e in events:
+            f.write(json.dumps(e) + "\n")
+
+    dash.update_from_logs()
+
+    assert "session1" in dash.sessions
+    s = dash.sessions["session1"]
+    assert s.workflow_status == "running"
+    assert s.pillars["coder"].status == "active"
+    assert "starting code..." in s.pillars["coder"].buffer
+
+    # Update with more events
+    more_events = [
+        {
+            "node": "coder",
+            "event_type": "status",
+            "data": "success",
+            "timestamp": "2026-01-28T10:00:10",
+        },
+        {
+            "node": "workflow",
+            "event_type": "workflow_status",
+            "data": "success",
+            "timestamp": "2026-01-28T10:00:11",
+        },
+    ]
+    with open(log_file, "a") as f:
+        for e in more_events:
+            f.write(json.dumps(e) + "\n")
+
+    dash.update_from_logs()
+    assert s.pillars["coder"].status == "success"
+    assert s.workflow_status == "success"
+    assert s.completed_at > 0
+
+
+def test_dashboard_update_from_logs_error_handling(tmp_path, capsys):
+    """Test that Dashboard.update_from_logs reports errors to stderr."""
+    dash = Dashboard()
+    dash.log_dir = tmp_path
+
+    # Create a log file that we can't open
+    log_file = tmp_path / "error_session.jsonl"
+    log_file.write_text("{}")
+
+    # Use patch to make 'open' fail for this specific file
+    original_open = open
+
+    def mock_open(file, *args, **kwargs):
+        if str(file) == str(log_file):
+            raise Exception("Simulated file error")
+        return original_open(file, *args, **kwargs)
+
+    with patch("builtins.open", side_effect=mock_open):
+        dash.update_from_logs()
+
+    captured = capsys.readouterr()
+    assert f"Error processing log file {log_file}: Simulated file error" in captured.err
+
+
+def test_switch_to_tmux_session_error_handling(capsys):
+    """Test that switch_to_tmux_session reports unexpected errors to stderr."""
+    with (
+        patch("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+        patch("subprocess.run", side_effect=Exception("Simulated tmux error")),
+    ):
+        switch_to_tmux_session("target_session")
+
+    captured = capsys.readouterr()
+    assert (
+        "Unexpected error switching to tmux session 'target_session': Simulated tmux error"
+        in captured.err
+    )
