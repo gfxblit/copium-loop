@@ -175,12 +175,10 @@ def test_session_column_rendering():
 
 
 def test_dashboard_extract_tmux_session():
-    """Test that Dashboard.extract_tmux_session correctly parses session IDs."""
-    from copium_loop.ui import Dashboard
+    """Test that extract_tmux_session correctly parses session IDs."""
+    from copium_loop.ui import extract_tmux_session
 
-    dash = Dashboard()
-
-    assert dash.extract_tmux_session("my_session") == "my_session"
-    assert dash.extract_tmux_session("my_session_0") == "my_session"
-    assert dash.extract_tmux_session("my_session_%1") == "my_session"
-    assert dash.extract_tmux_session("session_12345678") is None
+    assert extract_tmux_session("my_session") == "my_session"
+    assert extract_tmux_session("my_session_0") == "my_session"
+    assert extract_tmux_session("my_session_%1") == "my_session"
+    assert extract_tmux_session("session_12345678") is None
