@@ -12,7 +12,24 @@ def test_get_test_command_pytest():
     with patch("os.path.exists", side_effect=side_effect):
         cmd, args = discovery.get_test_command()
         assert cmd == "pytest"
-        assert args == ["--cov=src", "--cov-report=term-missing"]
+        assert "--cov=src" in args
+        assert "--cov-report=term-missing" in args
+        assert "--cov-fail-under=80" in args
+
+
+def test_get_test_command_pytest_custom_coverage():
+    """Test that get_test_command respects COPIUM_MIN_COVERAGE."""
+
+    def side_effect(path):
+        return path == "pyproject.toml"
+
+    with (
+        patch("os.path.exists", side_effect=side_effect),
+        patch.dict("os.environ", {"COPIUM_MIN_COVERAGE": "90"}),
+    ):
+        cmd, args = discovery.get_test_command()
+        assert cmd == "pytest"
+        assert "--cov-fail-under=90" in args
 
 
 def test_get_test_command_npm_priority():

@@ -26,3 +26,6 @@ COMMAND_TIMEOUT = 1200
 
 # Max output size in bytes (1MB) to prevent memory exhaustion
 MAX_OUTPUT_SIZE = 1024 * 1024
+
+# Default minimum test coverage percentage
+DEFAULT_MIN_COVERAGE = 80

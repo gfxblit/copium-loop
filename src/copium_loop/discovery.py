@@ -1,5 +1,7 @@
 import os
 
+from copium_loop.constants import DEFAULT_MIN_COVERAGE
+
 
 def get_package_manager() -> str:
     """Detects the package manager based on lock files."""
@@ -27,8 +29,13 @@ def get_test_command() -> tuple[str, list[str]]:
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
     ):
+        min_cov = os.environ.get("COPIUM_MIN_COVERAGE", str(DEFAULT_MIN_COVERAGE))
         test_cmd = "pytest"
-        test_args = ["--cov=src", "--cov-report=term-missing"]
+        test_args = [
+            "--cov=src",
+            "--cov-report=term-missing",
+            f"--cov-fail-under={min_cov}",
+        ]
 
     return test_cmd, test_args
 
