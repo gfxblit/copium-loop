@@ -14,7 +14,7 @@ class TestReviewerNode:
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "APPROVED"
+            mock_gemini.return_value = "VERDICT: APPROVED"
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
@@ -27,13 +27,26 @@ class TestReviewerNode:
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "REJECTED: issues"
+            mock_gemini.return_value = "VERDICT: REJECTED\nissues"
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
             assert result["retry_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_reviewer_takes_last_verdict(self):
+        """Test that reviewer takes the last verdict found in the content."""
+        with patch(
+            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
+
+            state = {"test_output": "PASS", "retry_count": 0}
+            result = await reviewer(state)
+
+            assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
     async def test_reviewer_rejects_on_test_failure(self):
@@ -50,7 +63,7 @@ class TestReviewerNode:
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "Thinking...\nAPPROVED"
+            mock_gemini.return_value = "Thinking...\nVERDICT: APPROVED"
 
             state = {"test_output": "", "retry_count": 0}
             result = await reviewer(state)
@@ -91,7 +104,7 @@ class TestReviewerNode:
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "REJECTED"
+            mock_gemini.return_value = "VERDICT: REJECTED"
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
