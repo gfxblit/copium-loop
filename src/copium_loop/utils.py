@@ -6,7 +6,12 @@ import subprocess
 import sys
 import time
 
-from copium_loop.constants import COMMAND_TIMEOUT, DEFAULT_MODELS, INACTIVITY_TIMEOUT
+from copium_loop.constants import (
+    COMMAND_TIMEOUT,
+    DEFAULT_MODELS,
+    INACTIVITY_TIMEOUT,
+    MAX_OUTPUT_SIZE,
+)
 from copium_loop.telemetry import get_telemetry
 
 
@@ -175,7 +180,15 @@ async def _stream_subprocess(
             if decoded:
                 if not is_stderr:
                     logger.process_chunk(decoded)
-                full_output += decoded
+
+                # Limit capture size to prevent memory exhaustion
+                if len(full_output) < MAX_OUTPUT_SIZE:
+                    full_output += decoded
+                    if len(full_output) >= MAX_OUTPUT_SIZE:
+                        full_output = (
+                            full_output[:MAX_OUTPUT_SIZE]
+                            + "\n[... Output Truncated ...]"
+                        )
 
     try:
         tasks = [read_stream(process.stdout, False)]
@@ -188,6 +201,14 @@ async def _stream_subprocess(
             monitor_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await monitor_task
+
+        # Ensure process is killed if it's still running (e.g., on cancellation)
+        if process.returncode is None:
+            try:
+                process.kill()
+                await process.wait()
+            except Exception:
+                pass
 
     logger.flush()
 

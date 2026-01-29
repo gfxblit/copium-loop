@@ -23,3 +23,6 @@ NODE_TIMEOUT = 1800
 
 # Command execution total timeout in seconds (20 minutes)
 COMMAND_TIMEOUT = 1200
+
+# Max output size in bytes (1MB) to prevent memory exhaustion
+MAX_OUTPUT_SIZE = 1024 * 1024
