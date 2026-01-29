@@ -15,10 +15,9 @@ async def test_run_command_total_timeout_exceeded():
     # Use a sleep duration longer than the total_timeout
     sleep_duration = 5
     total_timeout = 2  # Shorter than sleep_duration
-
     start_time = time.monotonic()
     result = await run_command(
-        "sleep", [str(sleep_duration)], node="test", total_timeout=total_timeout
+        "sleep", [str(sleep_duration)], node="test", command_timeout=total_timeout
     )
     end_time = time.monotonic()
 
@@ -39,7 +38,7 @@ async def test_run_command_total_timeout_not_exceeded():
     total_timeout = 10  # Longer than sleep_duration
 
     result = await run_command(
-        "sleep", [str(sleep_duration)], node="test", total_timeout=total_timeout
+        "sleep", [str(sleep_duration)], node="test", command_timeout=total_timeout
     )
 
     # Assert that the command completed successfully
@@ -88,7 +87,7 @@ async def test_invoke_gemini_total_timeout(mock_create_subprocess_exec):
     start_time = time.monotonic()
     with pytest.raises(Exception) as excinfo:
         await invoke_gemini(
-            prompt, models=["test-model"], total_timeout=total_timeout, node="test"
+            prompt, models=["test-model"], command_timeout=total_timeout, node="test"
         )
     end_time = time.monotonic()
 

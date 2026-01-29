@@ -7,7 +7,7 @@ import re
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
-from copium_loop.constants import INACTIVITY_TIMEOUT
+from copium_loop.constants import NODE_TIMEOUT
 from copium_loop.nodes import (
     coder,
     pr_creator,
@@ -44,10 +44,10 @@ class WorkflowManager:
         async def wrapper(state: AgentState):
             try:
                 return await asyncio.wait_for(
-                    node_func(state), timeout=INACTIVITY_TIMEOUT
+                    node_func(state), timeout=NODE_TIMEOUT
                 )
             except asyncio.TimeoutError:
-                msg = f"Node '{node_name}' timed out after {INACTIVITY_TIMEOUT}s."
+                msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")
                 telemetry = get_telemetry()
                 telemetry.log_output(node_name, f"\n[TIMEOUT] {msg}\n")

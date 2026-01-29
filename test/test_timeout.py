@@ -98,14 +98,14 @@ async def test_run_command_total_timeout_while_streaming():
 
         start_time = asyncio.get_event_loop().time()
         result = await utils.run_command(
-            "streaming_command", total_timeout=total_timeout
+            "streaming_command", command_timeout=total_timeout
         )
         end_time = asyncio.get_event_loop().time()
 
         # Check if kill was called due to total timeout
         assert mock_proc.kill.called or mock_proc.terminate.called
         assert "[TIMEOUT]" in result["output"]
-        assert "Process exceeded total_timeout" in result["output"]
+        assert "Process exceeded command_timeout" in result["output"]
         assert (end_time - start_time) < 2.0  # Should be relatively quick
         assert (end_time - start_time) >= total_timeout - 0.1
 
@@ -145,10 +145,10 @@ async def test_run_command_default_inactivity_timeout():
 
 @pytest.mark.asyncio
 async def test_run_command_default_total_timeout_streaming():
-    """Test that run_command uses the default TOTAL_TIMEOUT even when streaming."""
+    """Test that run_command uses the default COMMAND_TIMEOUT even when streaming."""
     with (
         patch("copium_loop.utils.INACTIVITY_TIMEOUT", 10.0),
-        patch("copium_loop.utils.TOTAL_TIMEOUT", 0.3),
+        patch("copium_loop.utils.COMMAND_TIMEOUT", 0.3),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -172,6 +172,6 @@ async def test_run_command_default_total_timeout_streaming():
         end_time = asyncio.get_event_loop().time()
 
         assert mock_proc.kill.called
-        assert "exceeded total_timeout of 0.3s" in result["output"]
+        assert "exceeded command_timeout of 0.3s" in result["output"]
         assert (end_time - start_time) >= 0.3
         assert (end_time - start_time) < 0.6

@@ -6,7 +6,12 @@ import subprocess
 import sys
 import time
 
-from copium_loop.constants import DEFAULT_MODELS, INACTIVITY_TIMEOUT, TOTAL_TIMEOUT
+from copium_loop.constants import (
+    COMMAND_TIMEOUT,
+    DEFAULT_MODELS,
+    INACTIVITY_TIMEOUT,
+    MAX_OUTPUT_SIZE,
+)
 from copium_loop.telemetry import get_telemetry
 
 
@@ -46,14 +51,14 @@ class ProcessMonitor:
         self,
         process: asyncio.subprocess.Process,
         start_time: float,
-        total_timeout: int | None,
+        command_timeout: int | None,
         inactivity_timeout: int,
         node: str | None,
         on_timeout_callback=None,
     ):
         self.process = process
         self.start_time = start_time
-        self.total_timeout = total_timeout
+        self.command_timeout = command_timeout
         self.inactivity_timeout = inactivity_timeout
         self.node = node
         self.on_timeout_callback = on_timeout_callback
@@ -79,12 +84,12 @@ class ProcessMonitor:
             timeout_triggered = False
 
             if (
-                self.total_timeout is not None
-                and elapsed_total_time >= self.total_timeout
+                self.command_timeout is not None
+                and elapsed_total_time >= self.command_timeout
             ):
                 timeout_triggered = True
                 self.timeout_message = (
-                    f"Process exceeded total_timeout of {self.total_timeout}s."
+                    f"Process exceeded command_timeout of {self.command_timeout}s."
                 )
             elif elapsed_inactivity_time >= self.inactivity_timeout:
                 timeout_triggered = True
@@ -136,7 +141,7 @@ async def _stream_subprocess(
     args: list[str],
     env: dict,
     node: str | None,
-    total_timeout: int | None,
+    command_timeout: int | None,
     capture_stderr: bool = True,
     on_timeout_callback=None,
 ) -> tuple[str, int, bool, str]:
@@ -157,7 +162,7 @@ async def _stream_subprocess(
     monitor = ProcessMonitor(
         process,
         start_time,
-        total_timeout,
+        command_timeout,
         INACTIVITY_TIMEOUT,
         node,
         on_timeout_callback=on_timeout_callback,
@@ -175,7 +180,15 @@ async def _stream_subprocess(
             if decoded:
                 if not is_stderr:
                     logger.process_chunk(decoded)
-                full_output += decoded
+
+                # Limit capture size to prevent memory exhaustion
+                if len(full_output) < MAX_OUTPUT_SIZE:
+                    full_output += decoded
+                    if len(full_output) >= MAX_OUTPUT_SIZE:
+                        full_output = (
+                            full_output[:MAX_OUTPUT_SIZE]
+                            + "\n[... Output Truncated ...]"
+                        )
 
     try:
         tasks = [read_stream(process.stdout, False)]
@@ -188,6 +201,15 @@ async def _stream_subprocess(
             monitor_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await monitor_task
+
+        # Ensure process is killed if it's still running (e.g., on cancellation)
+        if process.returncode is None:
+            try:
+                process.kill()
+                await process.wait()
+            except ProcessLookupError:
+                # Process already terminated
+                pass
 
     logger.flush()
 
@@ -204,16 +226,16 @@ async def run_command(
     command: str,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = None,
+    command_timeout: int | None = None,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
     Returns the combined stdout/stderr output and exit code.
-    If total_timeout is provided, the process will be killed if it runs longer than total_timeout.
+    If command_timeout is provided, the process will be killed if it runs longer than command_timeout.
     If inactivity_timeout is exceeded (no output for INACTIVITY_TIMEOUT seconds), the process will be killed.
     """
-    if total_timeout is None:
-        total_timeout = TOTAL_TIMEOUT
+    if command_timeout is None:
+        command_timeout = COMMAND_TIMEOUT
 
     if args is None:
         args = []
@@ -242,7 +264,7 @@ async def run_command(
         args,
         env,
         node,
-        total_timeout,
+        command_timeout,
         capture_stderr=True,
         on_timeout_callback=on_timeout,
     )
@@ -260,11 +282,11 @@ async def _execute_gemini(
     model: str | None,
     args: list[str] | None = None,
     node: str | None = None,
-    total_timeout: int | None = None,
+    command_timeout: int | None = None,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
-    if total_timeout is None:
-        total_timeout = TOTAL_TIMEOUT
+    if command_timeout is None:
+        command_timeout = COMMAND_TIMEOUT
 
     if args is None:
         args = []
@@ -293,7 +315,7 @@ async def _execute_gemini(
         cmd_args,
         env,
         node,
-        total_timeout,
+        command_timeout,
         capture_stderr=False,
     )
 
@@ -313,7 +335,7 @@ async def invoke_gemini(
     verbose: bool = False,
     label: str | None = None,
     node: str | None = None,
-    total_timeout: int | None = None,
+    command_timeout: int | None = None,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
@@ -336,7 +358,7 @@ async def invoke_gemini(
             if verbose:
                 print(f"Using model: {model_display}")
             return await _execute_gemini(
-                prompt, model, args, node, total_timeout=total_timeout
+                prompt, model, args, node, command_timeout=command_timeout
             )
         except Exception as error:
             error_msg = str(error)
