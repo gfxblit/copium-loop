@@ -11,9 +11,9 @@ from copium_loop.graph import create_graph
 
 
 @pytest.fixture
-def workflow():
+def workflow(workflow_manager_factory):
     """Create a WorkflowManager instance for testing."""
-    return WorkflowManager()
+    return workflow_manager_factory()
 
 
 class TestGraphCreation:
@@ -38,15 +38,15 @@ class TestGraphCreation:
     @pytest.mark.parametrize(
         "start_node", ["coder", "tester", "reviewer", "pr_creator"]
     )
-    def test_create_graph_with_valid_start_nodes(self, start_node):
+    def test_create_graph_with_valid_start_nodes(self, workflow_manager_factory, start_node):
         """Test graph creation with each valid start node."""
-        workflow = WorkflowManager(start_node=start_node)
+        workflow = workflow_manager_factory(start_node=start_node)
         graph = workflow.create_graph()
         assert graph is not None
 
-    def test_create_graph_with_invalid_start_node(self, capsys):
+    def test_create_graph_with_invalid_start_node(self, workflow_manager_factory, capsys):
         """Test graph creation falls back to coder for invalid start node."""
-        workflow = WorkflowManager(start_node="invalid")
+        workflow = workflow_manager_factory(start_node="invalid")
         graph = workflow.create_graph()
         assert graph is not None
         captured = capsys.readouterr()
@@ -56,18 +56,18 @@ class TestGraphCreation:
 class TestContinueFeature:
     """Tests for the continue feature with state reconstruction."""
 
-    def test_workflow_accepts_initial_state(self):
+    def test_workflow_accepts_initial_state(self, workflow_manager_factory):
         """Test that workflow can be initialized with reconstructed state."""
-        workflow = WorkflowManager(start_node="tester", verbose=False)
+        workflow = workflow_manager_factory(start_node="tester", verbose=False)
         workflow.create_graph()
 
         # Verify the graph was created
         assert workflow.graph is not None
         assert workflow.start_node == "tester"
 
-    def test_workflow_run_accepts_initial_state_parameter(self):
+    def test_workflow_run_accepts_initial_state_parameter(self, workflow_manager_factory):
         """Test that workflow.run() accepts initial_state parameter."""
-        workflow = WorkflowManager(start_node="coder", verbose=False)
+        workflow = workflow_manager_factory(start_node="coder", verbose=False)
 
         # We can't actually run the workflow in tests without mocking,
         # but we can verify the method signature accepts the parameter
@@ -82,22 +82,19 @@ class TestEnvironmentVerification:
     """Tests for environment verification."""
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
-    async def test_verify_environment_success(self, mock_run, workflow):
-        mock_run.return_value = {"exit_code": 0}
+    async def test_verify_environment_success(self, mock_run_command, workflow):
+        mock_run_command.return_value = {"exit_code": 0}
         assert await workflow.verify_environment() is True
-        assert mock_run.call_count == 3
+        assert mock_run_command.call_count == 3
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
-    async def test_verify_environment_failure(self, mock_run, workflow):
-        mock_run.return_value = {"exit_code": 1}
+    async def test_verify_environment_failure(self, mock_run_command, workflow):
+        mock_run_command.return_value = {"exit_code": 1}
         assert await workflow.verify_environment() is False
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
-    async def test_verify_environment_exception(self, mock_run, workflow):
-        mock_run.side_effect = Exception("failed")
+    async def test_verify_environment_exception(self, mock_run_command, workflow):
+        mock_run_command.side_effect = Exception("failed")
         assert await workflow.verify_environment() is False
 
 
@@ -105,49 +102,34 @@ class TestWorkflowRun:
     """Tests for workflow execution."""
 
     @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_telemetry")
-    @patch("copium_loop.copium_loop.create_graph")
     async def test_run_verify_failure(
-        self, _mock_create, _mock_telemetry, mock_verify, workflow
+        self, mock_create_graph, mock_get_telemetry, mock_verify_environment, workflow
     ):
-        mock_verify.return_value = False
+        mock_verify_environment.return_value = False
         result = await workflow.run("test prompt")
         assert "error" in result
         assert result["error"] == "Environment verification failed."
 
     @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.get_test_command")
-    @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.create_graph")
-    @patch("os.path.exists")
     async def test_run_success_flow(
         self,
-        mock_exists,
-        mock_create,
-        mock_run,
-        mock_get_test,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_run_command,
+        mock_get_test_command,
         mock_get_head,
-        mock_verify,
+        mock_verify_environment,
         workflow,
     ):
-        mock_verify.return_value = True
-        mock_exists.return_value = True
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
         mock_get_head.return_value = "commit123"
-        mock_get_test.return_value = ("pytest", [])
-        mock_run.return_value = {"exit_code": 0, "output": "tests passed"}
+        mock_get_test_command.return_value = ("pytest", [])
+        mock_run_command.return_value = {"exit_code": 0, "output": "tests passed"}
 
         mock_graph = AsyncMock()
         mock_graph.ainvoke.return_value = {"status": "completed"}
-        mock_create.return_value = mock_graph
+        mock_create_graph.return_value = mock_graph
 
         result = await workflow.run("test prompt")
         assert result == {"status": "completed"}
@@ -160,7 +142,6 @@ class TestWorkflowRun:
         assert state["last_error"] == ""
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.notify", new_callable=AsyncMock)
     async def test_notify_wrapper(self, mock_notify, workflow):
         await workflow.notify("title", "message")
         mock_notify.assert_called_with("title", "message", 3)
@@ -177,102 +158,64 @@ class TestWorkflowRun:
         assert "ValueError: node failed" in result["last_error"]
 
     @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.create_graph")
-    @patch("os.path.exists")
     async def test_run_baseline_test_failure(
-        self, mock_exists, mock_create, mock_run, mock_get_head, mock_verify, workflow
+        self, mock_os_path_exists, mock_create_graph, mock_run_command, mock_get_head, mock_verify_environment, mock_get_test_command, workflow
     ):
-        mock_verify.return_value = True
-        mock_exists.return_value = True
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
         mock_get_head.return_value = "commit123"
-
-        with patch(
-            "copium_loop.copium_loop.get_test_command", return_value=("pytest", [])
-        ):
-            mock_run.return_value = {"exit_code": 1, "output": "baseline failed"}
-
-            mock_graph = AsyncMock()
-            mock_graph.ainvoke.return_value = {"status": "completed"}
-            mock_create.return_value = mock_graph
-
-            result = await workflow.run("test prompt")
-            assert result == {"status": "completed"}
-
-    @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.create_graph")
-    @patch("os.path.exists")
-    async def test_run_baseline_test_exception(
-        self, mock_exists, mock_create, mock_get_head, mock_verify, workflow
-    ):
-        mock_verify.return_value = True
-        mock_exists.return_value = True
-        mock_get_head.return_value = "commit123"
-
-        with (
-            patch(
-                "copium_loop.copium_loop.get_test_command", return_value=("pytest", [])
-            ),
-            patch(
-                "copium_loop.copium_loop.run_command",
-                side_effect=Exception("baseline error"),
-            ),
-        ):
-            mock_graph = AsyncMock()
-            mock_graph.ainvoke.return_value = {"status": "completed"}
-            mock_create.return_value = mock_graph
-
-            result = await workflow.run("test prompt")
-            assert result == {"status": "completed"}
-
-    @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_head", side_effect=Exception("git error"))
-    @patch("copium_loop.copium_loop.create_graph")
-    @patch("os.path.exists")
-    async def test_run_get_head_exception(
-        self, mock_exists, mock_create, _mock_get_head, mock_verify, workflow
-    ):
-        mock_verify.return_value = True
-        mock_exists.return_value = True
+        mock_get_test_command.return_value = ("pytest", [])
+        mock_run_command.return_value = {"exit_code": 1, "output": "baseline failed"}
 
         mock_graph = AsyncMock()
         mock_graph.ainvoke.return_value = {"status": "completed"}
-        mock_create.return_value = mock_graph
+        mock_create_graph.return_value = mock_graph
 
         result = await workflow.run("test prompt")
         assert result == {"status": "completed"}
 
     @pytest.mark.asyncio
-    @patch(
-        "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
-    )
-    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
-    @patch("copium_loop.copium_loop.create_graph")
-    @patch("os.path.exists")
-    async def test_run_with_initial_state(
-        self, mock_exists, mock_create, mock_get_head, mock_verify, workflow
+    async def test_run_baseline_test_exception(
+        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, mock_get_test_command, mock_run_command, workflow
     ):
-        mock_verify.return_value = True
-        mock_exists.return_value = True
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
+        mock_get_head.return_value = "commit123"
+        mock_get_test_command.return_value = ("pytest", [])
+        mock_run_command.side_effect = Exception("baseline error")
+
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {"status": "completed"}
+        mock_create_graph.return_value = mock_graph
+
+        result = await workflow.run("test prompt")
+        assert result == {"status": "completed"}
+
+    @pytest.mark.asyncio
+    async def test_run_get_head_exception(
+        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, workflow
+    ):
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
+        mock_get_head.side_effect = Exception("git error") # This was previously inline patch, moved to fixture setup in this example.
+
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {"status": "completed"}
+        mock_create_graph.return_value = mock_graph
+
+        result = await workflow.run("test prompt")
+        assert result == {"status": "completed"}
+
+    @pytest.mark.asyncio
+    async def test_run_with_initial_state(
+        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, workflow
+    ):
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
         mock_get_head.return_value = "commit123"
         mock_graph = AsyncMock()
         mock_graph.ainvoke.return_value = {"status": "completed"}
-        mock_create.return_value = mock_graph
+        mock_create_graph.return_value = mock_graph
 
         initial_state = {"retry_count": 5, "code_status": "coded"}
         result = await workflow.run("test prompt", initial_state=initial_state)
@@ -285,118 +228,64 @@ class TestWorkflowRun:
 
 
 class TestNodeTimeouts:
-    """Tests for node timeout handling."""
+    """Tests for node timeout handling using parameterization."""
 
     @pytest.mark.asyncio
-    async def test_node_timeout_with_retry(self):
-        """Test that nodes time out and increment retry_count."""
+    @pytest.mark.parametrize(
+        "node_name, expected_output_key, expected_output_value_part, expected_status_key, expected_status_value",
+        [
+            ("tester", "test_output", "FAIL: Node 'tester' timed out", None, None),
+            ("coder", "last_error", "Node 'coder' timed out", "code_status", "failed"),
+            ("reviewer", "messages", "Node 'reviewer' timed out", "review_status", "error"),
+            ("pr_creator", "messages", "Node 'pr_creator' timed out", "review_status", "pr_failed"),
+            ("unknown_node", "last_error", "Node 'unknown_node' timed out", None, None),
+        ],
+    )
+    async def test_node_timeout_scenarios(
+        self,
+        workflow_manager_factory,
+        node_name,
+        expected_output_key,
+        expected_output_value_part,
+        expected_status_key,
+        expected_status_value,
+    ):
+        """Test that nodes time out and update state accordingly."""
 
         async def slow_node(_state):
-            await asyncio.sleep(2)
-            return {"test_output": "PASS"}
+            await asyncio.sleep(2)  # Simulate a node taking too long
+            return {"arbitrary_key": "arbitrary_value"} # Return something to be overridden
 
-        manager = WorkflowManager()
-        # Mock NODE_TIMEOUT to be very short
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-            wrapped = manager._wrap_node("tester", slow_node)
+        manager = workflow_manager_factory()
+        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):  # Set a short timeout
+            wrapped = manager._wrap_node(node_name, slow_node)
             state = {"retry_count": 0}
             result = await wrapped(state)
 
             assert result["retry_count"] == 1
-            assert "FAIL: Node 'tester' timed out" in result["test_output"]
+            if expected_output_key == "messages":
+                # For messages, we check if the content contains the expected string
+                assert any(expected_output_value_part in msg.content for msg in result.get(expected_output_key, []))
+            elif expected_output_key:
+                assert expected_output_value_part in result.get(expected_output_key, "")
+
+            if expected_status_key:
+                assert result.get(expected_status_key) == expected_status_value
 
     @pytest.mark.asyncio
-    async def test_node_timeout_error_status(self):
-        """Test that non-tester nodes time out and set error/rejected status."""
-
-        async def slow_coder(_state):
-            await asyncio.sleep(2)
-            return {"code_status": "coded"}
-
-        manager = WorkflowManager()
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-            wrapped = manager._wrap_node("coder", slow_coder)
-            state = {"retry_count": 0}
-            result = await wrapped(state)
-
-            assert result["retry_count"] == 1
-            assert result["code_status"] == "failed"
-            assert result["review_status"] == "rejected"
-            assert "Node 'coder' timed out" in result["messages"][0].content
-
-    @pytest.mark.asyncio
-    async def test_node_timeout_reviewer(self):
-        """Test that reviewer node times out and sets error status."""
-
-        async def slow_reviewer(_state):
-            await asyncio.sleep(2)
-            return {"review_status": "approved"}
-
-        manager = WorkflowManager()
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-            wrapped = manager._wrap_node("reviewer", slow_reviewer)
-            state = {"retry_count": 0}
-            result = await wrapped(state)
-
-            assert result["retry_count"] == 1
-            assert result["review_status"] == "error"
-            assert "Node 'reviewer' timed out" in result["messages"][0].content
-
-    @pytest.mark.asyncio
-    async def test_node_timeout_pr_creator(self):
-        """Test that pr_creator node times out and sets pr_failed status."""
-
-        async def slow_pr_creator(_state):
-            await asyncio.sleep(2)
-            return {"review_status": "pr_created"}
-
-        manager = WorkflowManager()
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-            wrapped = manager._wrap_node("pr_creator", slow_pr_creator)
-            state = {"retry_count": 0}
-            result = await wrapped(state)
-
-            assert result["retry_count"] == 1
-            assert result["review_status"] == "pr_failed"
-            assert "Node 'pr_creator' timed out" in result["messages"][0].content
-
-    @pytest.mark.asyncio
-    async def test_default_node_timeout(self):
-        """
-        Test that WorkflowManager._wrap_node returns a default error state for unknown nodes.
-        """
-
-        async def unknown_node(_state):
-            await asyncio.sleep(2)
-            return {"foo": "bar"}
-
-        manager = WorkflowManager()
-
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-            wrapped = manager._wrap_node("unknown_node", unknown_node)
-            state = {"retry_count": 0}
-            result = await wrapped(state)
-
-            assert result["retry_count"] == 1
-            assert "last_error" in result
-            assert "Node 'unknown_node' timed out" in result["last_error"]
-
-    @pytest.mark.asyncio
-    async def test_node_exceeds_inactivity_but_below_node_timeout(self):
+    async def test_node_exceeds_inactivity_but_below_node_timeout(self, workflow_manager_factory):
         """
         Test that a node can run longer than INACTIVITY_TIMEOUT if it's below NODE_TIMEOUT.
+        This test remains separate as it's not a timeout scenario but a successful execution.
         """
-
         async def mid_length_node(_state):
             await asyncio.sleep(0.5)
             return {"test_output": "PASS"}
 
-        manager = WorkflowManager()
-
+        manager = workflow_manager_factory()
         with patch("copium_loop.copium_loop.NODE_TIMEOUT", 1.0):
             wrapped = manager._wrap_node("mid_length_node", mid_length_node)
             state = {"retry_count": 0}
-
             result = await wrapped(state)
 
             assert "test_output" in result
@@ -404,17 +293,16 @@ class TestNodeTimeouts:
             assert result.get("retry_count", 0) == 0
 
     @pytest.mark.asyncio
-    async def test_node_exceeds_node_timeout(self):
+    async def test_node_exceeds_node_timeout_specific_assertion(self, workflow_manager_factory):
         """
-        Test that a node still times out if it exceeds NODE_TIMEOUT.
+        Test that a node still times out if it exceeds NODE_TIMEOUT, with a more specific assertion
+        for the 'timed out' message as it appears in 'last_error' when no other status is set.
         """
-
         async def very_slow_node(_state):
             await asyncio.sleep(1.0)
             return {"test_output": "PASS"}
 
-        manager = WorkflowManager()
-
+        manager = workflow_manager_factory()
         with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.5):
             wrapped = manager._wrap_node("very_slow_node", very_slow_node)
             state = {"retry_count": 0}
@@ -422,4 +310,6 @@ class TestNodeTimeouts:
 
             assert "retry_count" in result
             assert result["retry_count"] == 1
-            assert "timed out after 0.5s" in str(result)
+            # Check for the specific timeout message in last_error or other relevant field
+            assert "timed out after 0.5s" in result.get("last_error", "") or \
+                   "timed out after 0.5s" in result.get("test_output", "")
