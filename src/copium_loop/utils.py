@@ -207,7 +207,8 @@ async def _stream_subprocess(
             try:
                 process.kill()
                 await process.wait()
-            except Exception:
+            except ProcessLookupError:
+                # Process already terminated
                 pass
 
     logger.flush()
