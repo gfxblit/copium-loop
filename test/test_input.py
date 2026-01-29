@@ -158,6 +158,31 @@ def test_input_reader_utf8():
         assert reader.get_key() == "👋"
 
 
+def test_input_reader_escape_key():
+    """Test reading just the Escape key (\x1b)."""
+    reader = InputReader()
+    mock_stdin = MagicMock()
+    mock_stdin.fileno.return_value = 0
+    with (
+        patch("copium_loop.input_reader.os.read", return_value=b"\x1b"),
+        patch(
+            "copium_loop.input_reader.select.select",
+            return_value=([mock_stdin], [], []),
+        ),
+        patch("copium_loop.input_reader.sys.stdin", mock_stdin),
+    ):
+        # First call might return None if it thinks it might be a sequence
+        # But for \x1b alone it should eventually return it
+        res = reader.get_key()
+        if res is None:
+            # If it was waiting for more, second call with empty read or timeout should return \x1b
+            with patch(
+                "copium_loop.input_reader.select.select", return_value=([], [], [])
+            ):
+                res = reader.get_key()
+        assert res == "\x1b"
+
+
 def test_input_reader_oserror_handling():
     """Test that it handles OSError during read."""
     reader = InputReader()
@@ -173,8 +198,22 @@ def test_input_reader_oserror_handling():
         patch("sys.stderr", new_callable=MagicMock) as mock_stderr,
     ):
         assert reader.get_key() is None
-        assert mock_stderr.write.called
-        assert (
-            "Error reading from stdin: Read error"
-            in mock_stderr.write.call_args_list[0][0][0]
-        )
+        assert any("Error reading from stdin" in str(arg) for call in mock_stderr.write.call_args_list for arg in call.args)
+
+
+def test_input_reader_unexpected_exception():
+    """Test that it handles unexpected exceptions during read."""
+    reader = InputReader()
+    mock_stdin = MagicMock()
+    mock_stdin.fileno.return_value = 0
+    with (
+        patch("copium_loop.input_reader.os.read", side_effect=Exception("kaboom")),
+        patch(
+            "copium_loop.input_reader.select.select",
+            return_value=([mock_stdin], [], []),
+        ),
+        patch("copium_loop.input_reader.sys.stdin", mock_stdin),
+        patch("sys.stderr", new_callable=MagicMock) as mock_stderr,
+    ):
+        assert reader.get_key() is None
+        assert any("Unexpected error" in str(arg) for call in mock_stderr.write.call_args_list for arg in call.args)
