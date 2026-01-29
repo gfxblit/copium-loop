@@ -127,3 +127,26 @@ class TestReviewerNode:
 
             # Expected: it should be "error" because no REAL verdict was given
             assert result["review_status"] == "error"
+
+    @pytest.mark.asyncio
+    @patch("copium_loop.nodes.reviewer.os.path.exists")
+    @patch("copium_loop.nodes.reviewer.get_diff", new_callable=AsyncMock)
+    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_exists):
+        """Test that reviewer handles failure to get git diff."""
+        mock_exists.return_value = True
+        mock_get_diff.side_effect = Exception("git diff error")
+
+        with patch(
+            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: APPROVED"
+
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
+            result = await reviewer(state)
+
+            assert result["review_status"] == "approved"
+            mock_get_diff.assert_called_once()

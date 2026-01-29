@@ -204,6 +204,85 @@ class TestWorkflowRun:
             result = await workflow.run("test prompt")
             assert result == {"status": "completed"}
 
+    @pytest.mark.asyncio
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
+    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
+    @patch("copium_loop.copium_loop.create_graph")
+    @patch("os.path.exists")
+    async def test_run_baseline_test_exception(
+        self, mock_exists, mock_create, mock_get_head, mock_verify, workflow
+    ):
+        mock_verify.return_value = True
+        mock_exists.return_value = True
+        mock_get_head.return_value = "commit123"
+
+        with (
+            patch(
+                "copium_loop.copium_loop.get_test_command", return_value=("pytest", [])
+            ),
+            patch(
+                "copium_loop.copium_loop.run_command",
+                side_effect=Exception("baseline error"),
+            ),
+        ):
+            mock_graph = AsyncMock()
+            mock_graph.ainvoke.return_value = {"status": "completed"}
+            mock_create.return_value = mock_graph
+
+            result = await workflow.run("test prompt")
+            assert result == {"status": "completed"}
+
+    @pytest.mark.asyncio
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
+    @patch("copium_loop.copium_loop.get_head", side_effect=Exception("git error"))
+    @patch("copium_loop.copium_loop.create_graph")
+    @patch("os.path.exists")
+    async def test_run_get_head_exception(
+        self, mock_exists, mock_create, _mock_get_head, mock_verify, workflow
+    ):
+        mock_verify.return_value = True
+        mock_exists.return_value = True
+
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {"status": "completed"}
+        mock_create.return_value = mock_graph
+
+        result = await workflow.run("test prompt")
+        assert result == {"status": "completed"}
+
+    @pytest.mark.asyncio
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
+    @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
+    @patch("copium_loop.copium_loop.create_graph")
+    @patch("os.path.exists")
+    async def test_run_with_initial_state(
+        self, mock_exists, mock_create, mock_get_head, mock_verify, workflow
+    ):
+        mock_verify.return_value = True
+        mock_exists.return_value = True
+        mock_get_head.return_value = "commit123"
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {"status": "completed"}
+        mock_create.return_value = mock_graph
+
+        initial_state = {"retry_count": 5, "code_status": "coded"}
+        result = await workflow.run("test prompt", initial_state=initial_state)
+
+        assert result == {"status": "completed"}
+        state = mock_graph.ainvoke.call_args[0][0]
+        assert state["retry_count"] == 5
+        assert state["code_status"] == "coded"
+        assert state["initial_commit_hash"] == "commit123"
+
 
 class TestNodeTimeouts:
     """Tests for node timeout handling."""

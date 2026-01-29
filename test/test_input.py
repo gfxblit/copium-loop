@@ -198,7 +198,11 @@ def test_input_reader_oserror_handling():
         patch("sys.stderr", new_callable=MagicMock) as mock_stderr,
     ):
         assert reader.get_key() is None
-        assert any("Error reading from stdin" in str(arg) for call in mock_stderr.write.call_args_list for arg in call.args)
+        assert any(
+            "Error reading from stdin" in str(arg)
+            for call in mock_stderr.write.call_args_list
+            for arg in call.args
+        )
 
 
 def test_input_reader_unexpected_exception():
@@ -216,4 +220,8 @@ def test_input_reader_unexpected_exception():
         patch("sys.stderr", new_callable=MagicMock) as mock_stderr,
     ):
         assert reader.get_key() is None
-        assert any("Unexpected error" in str(arg) for call in mock_stderr.write.call_args_list for arg in call.args)
+        assert any(
+            "Unexpected error" in str(arg)
+            for call in mock_stderr.write.call_args_list
+            for arg in call.args
+        )
