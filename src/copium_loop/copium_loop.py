@@ -43,9 +43,7 @@ class WorkflowManager:
 
         async def wrapper(state: AgentState):
             try:
-                return await asyncio.wait_for(
-                    node_func(state), timeout=NODE_TIMEOUT
-                )
+                return await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")

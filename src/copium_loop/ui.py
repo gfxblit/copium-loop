@@ -447,6 +447,14 @@ class Dashboard:
     def update_from_logs(self):
         """Reads .jsonl files and updates session states."""
         log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
+        active_sids = {f.stem for f in log_files}
+
+        # Remove stale sessions
+        stale_sids = [sid for sid in self.sessions if sid not in active_sids]
+        for sid in stale_sids:
+            del self.sessions[sid]
+            if sid in self.log_offsets:
+                del self.log_offsets[sid]
 
         for target_file in log_files:
             sid = target_file.stem
