@@ -1,4 +1,3 @@
-
 import asyncio
 import contextlib
 import os
@@ -53,7 +52,7 @@ except KeyboardInterrupt:
 
     async def mock_subprocess_exec(*args, **kwargs):
         process = await original_create_subprocess_exec(*args, **kwargs)
-        process_spy['process'] = process
+        process_spy["process"] = process
         return process
 
     with pytest.MonkeyPatch.context() as m:
@@ -64,8 +63,8 @@ except KeyboardInterrupt:
         # Give it time to start
         await asyncio.sleep(0.5)
 
-        assert 'process' in process_spy, "Subprocess should have started"
-        proc = process_spy['process']
+        assert "process" in process_spy, "Subprocess should have started"
+        proc = process_spy["process"]
         pid = proc.pid
 
         # Check if process is running (signal 0)
@@ -90,7 +89,10 @@ except KeyboardInterrupt:
         except OSError:
             is_running = False
 
-        assert not is_running, f"Subprocess {pid} should have been killed after task cancellation"
+        assert not is_running, (
+            f"Subprocess {pid} should have been killed after task cancellation"
+        )
+
 
 @pytest.mark.asyncio
 async def test_unbounded_output_limit():
@@ -118,4 +120,6 @@ print("A" * 1024 * 1024 * 10) # 10MB
     output_len = len(res["output"])
 
     # This assertion is expected to fail currently
-    assert output_len <= LIMIT + 1024, f"Output length {output_len} exceeds limit {LIMIT}"
+    assert output_len <= LIMIT + 1024, (
+        f"Output length {output_len} exceeds limit {LIMIT}"
+    )

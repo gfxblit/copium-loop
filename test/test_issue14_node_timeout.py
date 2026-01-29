@@ -11,6 +11,7 @@ async def test_node_exceeds_inactivity_but_below_node_timeout():
     """
     Test that a node can run longer than INACTIVITY_TIMEOUT if it's below NODE_TIMEOUT.
     """
+
     async def mid_length_node(_state):
         # Sleep for longer than INACTIVITY_TIMEOUT but less than what NODE_TIMEOUT will be
         # We'll mock these to small values for speed
@@ -38,6 +39,7 @@ async def test_node_exceeds_node_timeout():
     """
     Test that a node still times out if it exceeds NODE_TIMEOUT.
     """
+
     async def very_slow_node(_state):
         await asyncio.sleep(1.0)
         return {"test_output": "PASS"}
@@ -47,7 +49,6 @@ async def test_node_exceeds_node_timeout():
     # We want it to timeout at NODE_TIMEOUT (0.5s)
 
     with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.5):
-
         wrapped = manager._wrap_node("very_slow_node", very_slow_node)
         state = {"retry_count": 0}
         result = await wrapped(state)
