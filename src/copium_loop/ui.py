@@ -200,6 +200,10 @@ class SessionColumn:
 
     def __init__(self, session_id: str):
         self.session_id = session_id
+        self._workflow_status = "idle"
+        self.created_at = 0
+        self.activated_at = 0
+        self.completed_at = 0
         self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
             "coder": MatrixPillar("Coder"),
@@ -207,6 +211,23 @@ class SessionColumn:
             "reviewer": MatrixPillar("Reviewer"),
             "pr_creator": MatrixPillar("PR Creator"),
         }
+
+    @property
+    def workflow_status(self) -> str:
+        return self._workflow_status
+
+    @workflow_status.setter
+    def workflow_status(self, value: str):
+        if value == "running" and self._workflow_status != "running":
+            self.activated_at = time.time()
+        elif value in ["success", "failed"] and self._workflow_status == "running":
+            self.completed_at = time.time()
+        self._workflow_status = value
+
+    @property
+    def last_updated(self) -> float:
+        """Returns the maximum last_update timestamp across all pillars."""
+        return max(pillar.last_update for pillar in self.pillars.values())
 
     def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
@@ -294,7 +315,22 @@ class Dashboard:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
         self.current_page = 0
-        self.sessions_per_page = 4
+        self.sessions_per_page = 3
+
+    def get_sorted_sessions(self) -> list[SessionColumn]:
+        """Returns sessions sorted by status (running first) and then by activation/completion time."""
+
+        def sort_key(s):
+            is_running = s.workflow_status == "running"
+            if is_running:
+                # Group 0: Running sessions, sorted by activation time (oldest first)
+                return (0, s.activated_at, s.session_id)
+            else:
+                # Group 1: Completed sessions, sorted by completion time (newest first)
+                # We use negative timestamp to get newest first in an ascending sort
+                return (1, -s.completed_at, s.session_id)
+
+        return sorted(self.sessions.values(), key=sort_key)
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -303,8 +339,8 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
 
-        # Pagination logic - newest sessions first
-        session_list = list(self.sessions.values())[::-1]
+        # Pagination logic - sort by running status and creation order
+        session_list = self.get_sorted_sessions()
         num_sessions = len(session_list)
         num_pages = (
             (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
@@ -427,10 +463,37 @@ class Dashboard:
                             node = event.get("node")
                             etype = event.get("event_type")
                             data = event.get("data")
+                            ts_str = event.get("timestamp")
+
+                            # Use the first event's timestamp as the creation time
+                            if ts_str:
+                                try:
+                                    ts = datetime.fromisoformat(ts_str).timestamp()
+                                    # Only set if it's the first time or earlier than current
+                                    if (
+                                        self.sessions[sid].created_at == 0
+                                        or ts < self.sessions[sid].created_at
+                                    ):
+                                        self.sessions[sid].created_at = ts
+                                        # Also initialize activated_at to the first evidence of life
+                                        if (
+                                            self.sessions[sid].activated_at == 0
+                                            or ts < self.sessions[sid].activated_at
+                                        ):
+                                            self.sessions[sid].activated_at = ts
+                                except (ValueError, TypeError):
+                                    pass
 
                             # Handle workflow-level status events
                             if node == "workflow" and etype == "workflow_status":
                                 self.sessions[sid].workflow_status = data
+                                # If it just finished in the log, update completed_at from the log timestamp
+                                if data in ["success", "failed"] and ts_str:
+                                    try:
+                                        ts = datetime.fromisoformat(ts_str).timestamp()
+                                        self.sessions[sid].completed_at = ts
+                                    except (ValueError, TypeError):
+                                        pass
                             elif node in self.sessions[sid].pillars:
                                 if etype == "output":
                                     for line in data.splitlines():
@@ -484,10 +547,13 @@ class Dashboard:
                             self.current_page = (self.current_page - 1) % num_pages
                         elif key.lower() == "q":
                             break
+                        elif key.lower() == "r":
+                            # Manual refresh - update all logs immediately
+                            self.update_from_logs()
                         elif key.isdigit() and key != "0":  # Number keys 1-9
                             session_num = int(key)
                             # Get the session list for the current page
-                            session_list = list(self.sessions.values())[::-1]
+                            session_list = self.get_sorted_sessions()
                             start_idx = self.current_page * self.sessions_per_page
                             end_idx = start_idx + self.sessions_per_page
                             active_sessions = session_list[start_idx:end_idx]
