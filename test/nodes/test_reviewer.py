@@ -41,7 +41,9 @@ class TestReviewerNode:
         with patch(
             "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
+            mock_gemini.return_value = (
+                "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
+            )
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await reviewer(state)
