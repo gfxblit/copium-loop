@@ -18,8 +18,8 @@ async def test_node_timeout_wrapping():
 
     manager = WorkflowManager()
 
-    # Mock INACTIVITY_TIMEOUT to 0.1s for testing
-    with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
+    # Mock NODE_TIMEOUT to 0.1s for testing
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
         wrapped = manager._wrap_node("slow_node", slow_node)
         state = {"retry_count": 0}
         result = await wrapped(state)
@@ -43,7 +43,7 @@ async def test_tester_node_timeout():
 
     manager = WorkflowManager()
 
-    with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
         wrapped = manager._wrap_node("tester", tester)
         state = {"retry_count": 5}
         result = await wrapped(state)
@@ -64,7 +64,7 @@ async def test_reviewer_node_timeout():
 
     manager = WorkflowManager()
 
-    with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
         wrapped = manager._wrap_node("reviewer", reviewer)
         state = {"retry_count": 2}
         result = await wrapped(state)
@@ -86,7 +86,7 @@ async def test_default_node_timeout():
 
     manager = WorkflowManager()
 
-    with patch("copium_loop.copium_loop.INACTIVITY_TIMEOUT", 0.1):
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
         wrapped = manager._wrap_node("unknown_node", unknown_node)
         state = {"retry_count": 0}
         result = await wrapped(state)

@@ -18,5 +18,8 @@ MAX_RETRIES = 10
 # Inactivity timeout in seconds (5 minutes)
 INACTIVITY_TIMEOUT = 300
 
-# Total timeout in seconds (10 minutes)
-TOTAL_TIMEOUT = 600
+# Node-level hard timeout in seconds (30 minutes)
+NODE_TIMEOUT = 1800
+
+# Command execution total timeout in seconds (20 minutes)
+COMMAND_TIMEOUT = 1200
