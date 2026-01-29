@@ -470,10 +470,16 @@ class Dashboard:
                                 try:
                                     ts = datetime.fromisoformat(ts_str).timestamp()
                                     # Only set if it's the first time or earlier than current
-                                    if self.sessions[sid].created_at == 0 or ts < self.sessions[sid].created_at:
+                                    if (
+                                        self.sessions[sid].created_at == 0
+                                        or ts < self.sessions[sid].created_at
+                                    ):
                                         self.sessions[sid].created_at = ts
                                         # Also initialize activated_at to the first evidence of life
-                                        if self.sessions[sid].activated_at == 0 or ts < self.sessions[sid].activated_at:
+                                        if (
+                                            self.sessions[sid].activated_at == 0
+                                            or ts < self.sessions[sid].activated_at
+                                        ):
                                             self.sessions[sid].activated_at = ts
                                 except (ValueError, TypeError):
                                     pass

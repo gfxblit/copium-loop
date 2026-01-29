@@ -25,11 +25,7 @@ def test_dashboard_new_sorting_logic():
     sC.workflow_status = "running"
 
     # Simulate initial discovery order
-    dash.sessions = {
-        "session_A": sA,
-        "session_B": sB,
-        "session_C": sC
-    }
+    dash.sessions = {"session_A": sA, "session_B": sB, "session_C": sC}
 
     # Mock render
     for s in dash.sessions.values():
@@ -37,7 +33,11 @@ def test_dashboard_new_sorting_logic():
 
     # Initial order should be A, B, C
     sorted_sessions = dash.get_sorted_sessions()
-    assert [s.session_id for s in sorted_sessions] == ["session_A", "session_B", "session_C"]
+    assert [s.session_id for s in sorted_sessions] == [
+        "session_A",
+        "session_B",
+        "session_C",
+    ]
 
     # 1. Update session_B to be more recent than A
     # New requirement: preserve initial order.
@@ -46,7 +46,11 @@ def test_dashboard_new_sorting_logic():
 
     sorted_sessions = dash.get_sorted_sessions()
     # Should still be A, B, C
-    assert [s.session_id for s in sorted_sessions] == ["session_A", "session_B", "session_C"]
+    assert [s.session_id for s in sorted_sessions] == [
+        "session_A",
+        "session_B",
+        "session_C",
+    ]
 
     # 2. Add new active session D
     sD = SessionColumn("session_D")
@@ -56,7 +60,12 @@ def test_dashboard_new_sorting_logic():
 
     sorted_sessions = dash.get_sorted_sessions()
     # Should be A, B, C, D
-    assert [s.session_id for s in sorted_sessions] == ["session_A", "session_B", "session_C", "session_D"]
+    assert [s.session_id for s in sorted_sessions] == [
+        "session_A",
+        "session_B",
+        "session_C",
+        "session_D",
+    ]
 
     # 3. Make session_B inactive
     sB.workflow_status = "success"
@@ -64,7 +73,12 @@ def test_dashboard_new_sorting_logic():
     sorted_sessions = dash.get_sorted_sessions()
     # Active (A, C, D) should be above Inactive (B)
     # A, C, D should preserve their relative order
-    assert [s.session_id for s in sorted_sessions] == ["session_A", "session_C", "session_D", "session_B"]
+    assert [s.session_id for s in sorted_sessions] == [
+        "session_A",
+        "session_C",
+        "session_D",
+        "session_B",
+    ]
 
     # 4. Make session_B active again
     # "Append new active sessions at the end of the active list"
@@ -73,7 +87,12 @@ def test_dashboard_new_sorting_logic():
     sorted_sessions = dash.get_sorted_sessions()
     # A, C, D were already active. B just became active.
     # It should go to the end of the active list.
-    assert [s.session_id for s in sorted_sessions] == ["session_A", "session_C", "session_D", "session_B"]
+    assert [s.session_id for s in sorted_sessions] == [
+        "session_A",
+        "session_C",
+        "session_D",
+        "session_B",
+    ]
 
 
 def test_dashboard_completed_sessions_sorting():

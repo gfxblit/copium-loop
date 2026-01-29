@@ -12,6 +12,7 @@ def test_dashboard_sessions_per_page():
     dash = Dashboard()
     assert dash.sessions_per_page == 3
 
+
 def test_session_column_last_updated():
     """Verify SessionColumn.last_updated calculates the maximum last_update across pillars."""
     session = SessionColumn("test_session")
@@ -28,6 +29,7 @@ def test_session_column_last_updated():
     # Update one pillar
     session.pillars["reviewer"].last_update = now + 10
     assert session.last_updated == now + 10
+
 
 def test_dashboard_sorting_logic():
     """Verify Dashboard.make_layout sorts sessions by created_at (oldest first)."""
@@ -47,12 +49,7 @@ def test_dashboard_sorting_logic():
     s4 = SessionColumn("session_4")
     s4.created_at = 4000
 
-    dash.sessions = {
-        "session_1": s1,
-        "session_2": s2,
-        "session_3": s3,
-        "session_4": s4
-    }
+    dash.sessions = {"session_1": s1, "session_2": s2, "session_3": s3, "session_4": s4}
 
     # We'll mock render to just return a Layout with a recognizable name
     for s in dash.sessions.values():
@@ -75,6 +72,7 @@ def test_dashboard_sorting_logic():
     active_sessions_layout = layout["main"].children
     assert len(active_sessions_layout) == 1
     assert active_sessions_layout[0].renderable.name == "session_4"
+
 
 def test_dashboard_stable_sorting_logic():
     """Verify Dashboard.make_layout stable sorting logic:
@@ -104,12 +102,7 @@ def test_dashboard_stable_sorting_logic():
     s4.workflow_status = "running"
     s4.created_at = 4000
 
-    dash.sessions = {
-        "session_1": s1,
-        "session_2": s2,
-        "session_3": s3,
-        "session_4": s4
-    }
+    dash.sessions = {"session_1": s1, "session_2": s2, "session_3": s3, "session_4": s4}
 
     # Mock render
     for s in dash.sessions.values():
