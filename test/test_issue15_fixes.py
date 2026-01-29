@@ -94,4 +94,6 @@ print("A" * 1024 * 1024 * 10) # 10MB
     output_len = len(res["output"])
 
     # This assertion is expected to pass because we have MAX_OUTPUT_SIZE in shell.py
-    assert output_len <= LIMIT + 2048, f"Output length {output_len} exceeds limit {LIMIT}"
+    assert output_len <= LIMIT + 2048, (
+        f"Output length {output_len} exceeds limit {LIMIT}"
+    )

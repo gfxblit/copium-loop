@@ -24,6 +24,7 @@ def extract_tmux_session(session_id: str) -> str | None:
     # Otherwise, the session_id is the tmux session name
     return session_id
 
+
 def switch_to_tmux_session(session_name: str):
     """Switches the current tmux client to the specified session."""
     # Check if we're running inside tmux
@@ -40,6 +41,10 @@ def switch_to_tmux_session(session_name: str):
     except subprocess.CalledProcessError:
         # Session doesn't exist or other error, silently ignore
         pass
-    except Exception:
-        # Any other error, silently ignore
-        pass
+    except Exception as e:
+        import sys
+
+        print(
+            f"Unexpected error switching to tmux session '{session_name}': {e}",
+            file=sys.stderr,
+        )

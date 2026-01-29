@@ -92,23 +92,40 @@ class TestWorkflowRun:
     """Tests for workflow execution."""
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.WorkflowManager.verify_environment", new_callable=AsyncMock)
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
     @patch("copium_loop.copium_loop.get_telemetry")
     @patch("copium_loop.copium_loop.create_graph")
-    async def test_run_verify_failure(self, _mock_create, _mock_telemetry, mock_verify, workflow):
+    async def test_run_verify_failure(
+        self, _mock_create, _mock_telemetry, mock_verify, workflow
+    ):
         mock_verify.return_value = False
         result = await workflow.run("test prompt")
         assert "error" in result
         assert result["error"] == "Environment verification failed."
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.WorkflowManager.verify_environment", new_callable=AsyncMock)
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
     @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
     @patch("copium_loop.copium_loop.get_test_command")
     @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
     @patch("copium_loop.copium_loop.create_graph")
     @patch("os.path.exists")
-    async def test_run_success_flow(self, mock_exists, mock_create, mock_run, mock_get_test, mock_get_head, mock_verify, workflow):
+    async def test_run_success_flow(
+        self,
+        mock_exists,
+        mock_create,
+        mock_run,
+        mock_get_test,
+        mock_get_head,
+        mock_verify,
+        workflow,
+    ):
         mock_verify.return_value = True
         mock_exists.return_value = True
         mock_get_head.return_value = "commit123"
@@ -147,12 +164,17 @@ class TestWorkflowRun:
         assert "ValueError: node failed" in result["last_error"]
 
     @pytest.mark.asyncio
-    @patch("copium_loop.copium_loop.WorkflowManager.verify_environment", new_callable=AsyncMock)
+    @patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    )
     @patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock)
     @patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock)
     @patch("copium_loop.copium_loop.create_graph")
     @patch("os.path.exists")
-    async def test_run_baseline_test_failure(self, mock_exists, mock_create, mock_run, mock_get_head, mock_verify, workflow):
+    async def test_run_baseline_test_failure(
+        self, mock_exists, mock_create, mock_run, mock_get_head, mock_verify, workflow
+    ):
         mock_verify.return_value = True
         mock_exists.return_value = True
         mock_get_head.return_value = "commit123"
@@ -160,7 +182,9 @@ class TestWorkflowRun:
         # Inside run(), it calls get_head().
         # Then it calls get_test_command() and run_command().
 
-        with patch("copium_loop.copium_loop.get_test_command", return_value=("pytest", [])):
+        with patch(
+            "copium_loop.copium_loop.get_test_command", return_value=("pytest", [])
+        ):
             mock_run.return_value = {"exit_code": 1, "output": "baseline failed"}
 
             mock_graph = AsyncMock()

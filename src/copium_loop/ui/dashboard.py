@@ -187,8 +187,8 @@ class Dashboard:
                         except json.JSONDecodeError:
                             continue
                     self.log_offsets[sid] = f.tell()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error processing log file {target_file}: {e}", file=sys.stderr)
 
     def run_monitor(self, _session_id: str | None = None):
         """Runs the live dashboard."""

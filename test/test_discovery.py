@@ -5,6 +5,7 @@ from copium_loop import discovery
 
 def test_get_test_command_pytest():
     """Test that get_test_command returns pytest for python projects."""
+
     def side_effect(path):
         return path == "pyproject.toml"
 
@@ -13,8 +14,10 @@ def test_get_test_command_pytest():
         assert cmd == "pytest"
         assert args == ["--cov=src", "--cov-report=term-missing"]
 
+
 def test_get_test_command_npm_priority():
     """Test that get_test_command returns npm if package.json exists, even if pyproject.toml exists."""
+
     def side_effect(path):
         return path in ["package.json", "pyproject.toml", "package-lock.json"]
 
@@ -22,6 +25,7 @@ def test_get_test_command_npm_priority():
         cmd, args = discovery.get_test_command()
         assert cmd == "npm"
         assert args == ["test"]
+
 
 def test_get_package_manager_detection():
     """Test detection of different package managers."""
@@ -43,8 +47,10 @@ def test_get_package_manager_detection():
     with patch("os.path.exists", side_effect=yarn_side_effect):
         assert discovery.get_package_manager() == "yarn"
 
+
 def test_get_test_command_pnpm_priority():
     """Test that get_test_command returns pnpm if package.json and pnpm-lock.yaml exist."""
+
     def side_effect(path):
         return path in ["package.json", "pnpm-lock.yaml"]
 
@@ -53,8 +59,10 @@ def test_get_test_command_pnpm_priority():
         assert cmd == "pnpm"
         assert args == ["test"]
 
+
 def test_get_lint_command_ruff():
     """Test that get_lint_command returns ruff for python projects."""
+
     def side_effect(path):
         return path == "pyproject.toml"
 
@@ -63,8 +71,10 @@ def test_get_lint_command_ruff():
         assert cmd == "ruff"
         assert args == ["check", "."]
 
+
 def test_get_lint_command_npm_priority():
     """Test that get_lint_command returns npm if package.json exists, even if pyproject.toml exists."""
+
     def side_effect(path):
         return path in ["package.json", "pyproject.toml"]
 
@@ -73,6 +83,7 @@ def test_get_lint_command_npm_priority():
         assert cmd == "npm"
         assert args == ["run", "lint"]
 
+
 def test_get_test_command_env_override():
     """Test that get_test_command respects COPIUM_TEST_CMD environment variable."""
     with patch.dict("os.environ", {"COPIUM_TEST_CMD": "mytest --fast"}):
@@ -80,13 +91,17 @@ def test_get_test_command_env_override():
         assert cmd == "mytest"
         assert args == ["--fast"]
 
+
 def test_get_build_command_npm():
     """Test that get_build_command returns npm for node projects."""
-    with patch("os.path.exists", return_value=True), \
-         patch("copium_loop.discovery.get_package_manager", return_value="npm"):
+    with (
+        patch("os.path.exists", return_value=True),
+        patch("copium_loop.discovery.get_package_manager", return_value="npm"),
+    ):
         cmd, args = discovery.get_build_command()
         assert cmd == "npm"
         assert args == ["run", "build"]
+
 
 def test_get_build_command_env_override():
     """Test that get_build_command respects COPIUM_BUILD_CMD environment variable."""
@@ -95,8 +110,10 @@ def test_get_build_command_env_override():
         assert cmd == "mybuild"
         assert args == ["--prod"]
 
+
 def test_get_build_command_python_empty():
     """Test that get_build_command returns empty for python projects without explicit build."""
+
     def side_effect(path):
         return path == "pyproject.toml"
 
@@ -104,6 +121,7 @@ def test_get_build_command_python_empty():
         cmd, args = discovery.get_build_command()
         assert cmd == ""
         assert args == []
+
 
 def test_get_lint_command_env_override():
     """Test that get_lint_command respects COPIUM_LINT_CMD environment variable."""

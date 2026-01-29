@@ -37,7 +37,7 @@ async def pr_creator(state: AgentState) -> dict:
         # 1. Check feature branch
         branch_name = await get_current_branch()
 
-        if branch_name in ["main", "master", ""] :
+        if branch_name in ["main", "master", ""]:
             msg = "Not on a feature branch. Skipping PR creation.\n"
             telemetry.log_output("pr_creator", msg)
             print(msg, end="")
@@ -57,7 +57,9 @@ async def pr_creator(state: AgentState) -> dict:
             return {
                 "review_status": "needs_commit",
                 "messages": [
-                    SystemMessage(content="Uncommitted changes found. Please ensure all changes are committed before creating a PR.")
+                    SystemMessage(
+                        content="Uncommitted changes found. Please ensure all changes are committed before creating a PR."
+                    )
                 ],
                 "retry_count": retry_count + 1,
             }
@@ -75,7 +77,11 @@ async def pr_creator(state: AgentState) -> dict:
             print(msg, end="")
             await rebase_abort()
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
-            await notify("Workflow: Rebase Conflict", "Automatic rebase failed. Manual resolution required by coder.", 4)
+            await notify(
+                "Workflow: Rebase Conflict",
+                "Automatic rebase failed. Manual resolution required by coder.",
+                4,
+            )
             telemetry.log_status("pr_creator", "failed")
             return {
                 "review_status": "pr_failed",
@@ -89,7 +95,9 @@ async def pr_creator(state: AgentState) -> dict:
         print(msg, end="")
         res_push = await push(force=True, branch=branch_name)
         if res_push["exit_code"] != 0:
-            raise Exception(f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}")
+            raise Exception(
+                f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"
+            )
 
         # 5. Create PR
         msg = "Creating Pull Request...\n"
@@ -110,7 +118,9 @@ async def pr_creator(state: AgentState) -> dict:
                     "pr_url": pr_url,
                     "messages": [SystemMessage(content=f"PR already exists: {pr_url}")],
                 }
-            raise Exception(f"PR creation failed (exit {res_pr['exit_code']}): {res_pr['output'].strip()}")
+            raise Exception(
+                f"PR creation failed (exit {res_pr['exit_code']}): {res_pr['output'].strip()}"
+            )
 
         pr_output_clean = res_pr["output"].strip()
         msg = f"PR created: {pr_output_clean}\n"
@@ -124,11 +134,19 @@ async def pr_creator(state: AgentState) -> dict:
             print(msg, end="")
             try:
                 # Get current body
-                res_view = await run_command("gh", ["pr", "view", pr_output_clean, "--json", "body", "--jq", ".body"], node="pr_creator")
+                res_view = await run_command(
+                    "gh",
+                    ["pr", "view", pr_output_clean, "--json", "body", "--jq", ".body"],
+                    node="pr_creator",
+                )
                 if res_view["exit_code"] == 0:
                     current_body = res_view["output"].strip()
                     new_body = f"{current_body}\n\nCloses {issue_url}"
-                    await run_command("gh", ["pr", "edit", pr_output_clean, "--body", new_body], node="pr_creator")
+                    await run_command(
+                        "gh",
+                        ["pr", "edit", pr_output_clean, "--body", new_body],
+                        node="pr_creator",
+                    )
                     msg = "PR body updated with issue reference.\n"
                     telemetry.log_output("pr_creator", msg)
                     print(msg, end="")
@@ -148,7 +166,11 @@ async def pr_creator(state: AgentState) -> dict:
         msg = f"Error in PR creation: {error}\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
-        message = "Max retries exceeded. Aborting." if retry_count >= MAX_RETRIES else f"Failed to create PR: {error}"
+        message = (
+            "Max retries exceeded. Aborting."
+            if retry_count >= MAX_RETRIES
+            else f"Failed to create PR: {error}"
+        )
         await notify("Workflow: PR Failed", message, 5)
         telemetry.log_status("pr_creator", "failed")
         return {

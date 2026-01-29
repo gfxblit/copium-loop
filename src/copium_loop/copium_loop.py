@@ -65,7 +65,9 @@ class WorkflowManager:
 
         return wrapper
 
-    def _handle_error(self, state: AgentState, node_name: str, msg: str, trace: str | None = None):
+    def _handle_error(
+        self, state: AgentState, node_name: str, msg: str, trace: str | None = None
+    ):
         """Handles node errors by updating state and retry counts."""
         retry_count = state.get("retry_count", 0) + 1
         last_error = msg
@@ -76,13 +78,13 @@ class WorkflowManager:
             return {
                 "test_output": f"FAIL: {msg}",
                 "retry_count": retry_count,
-                "last_error": last_error
+                "last_error": last_error,
             }
 
         response = {
             "retry_count": retry_count,
             "messages": [SystemMessage(content=msg)],
-            "last_error": last_error
+            "last_error": last_error,
         }
 
         if node_name == "reviewer":
@@ -171,14 +173,18 @@ class WorkflowManager:
             "messages": [HumanMessage(content=input_prompt)],
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
-            "test_output": "" if self.start_node not in ["reviewer", "pr_creator"] else "",
+            "test_output": ""
+            if self.start_node not in ["reviewer", "pr_creator"]
+            else "",
             "code_status": "pending",
-            "review_status": "approved" if self.start_node == "pr_creator" else "pending",
+            "review_status": "approved"
+            if self.start_node == "pr_creator"
+            else "pending",
             "pr_url": "",
             "initial_commit_hash": initial_commit_hash,
             "git_diff": "",
             "verbose": self.verbose,
-            "last_error": ""
+            "last_error": "",
         }
 
         # Merge reconstructed state if provided

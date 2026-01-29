@@ -15,7 +15,9 @@ class TestNotifications:
         if "NTFY_CHANNEL" in os.environ:
             del os.environ["NTFY_CHANNEL"]
 
-        with patch("copium_loop.notifications.run_command", new_callable=AsyncMock) as mock_run:
+        with patch(
+            "copium_loop.notifications.run_command", new_callable=AsyncMock
+        ) as mock_run:
             await notifications.notify("Title", "Message")
             mock_run.assert_not_called()
 
@@ -25,8 +27,13 @@ class TestNotifications:
         os.environ["NTFY_CHANNEL"] = "test-channel"
 
         with (
-            patch("copium_loop.notifications.get_tmux_session", return_value="test-session"),
-            patch("copium_loop.notifications.run_command", new_callable=AsyncMock) as mock_run,
+            patch(
+                "copium_loop.notifications.get_tmux_session",
+                return_value="test-session",
+            ),
+            patch(
+                "copium_loop.notifications.run_command", new_callable=AsyncMock
+            ) as mock_run,
         ):
             await notifications.notify("Title", "Message", 4)
 
@@ -35,6 +42,7 @@ class TestNotifications:
             assert "Title: Title" in args
             assert "Priority: 4" in args
             assert "test-channel" in args[-1]
+
 
 @pytest.mark.asyncio
 async def test_get_tmux_session():
@@ -46,6 +54,7 @@ async def test_get_tmux_session():
 
         session = await notifications.get_tmux_session()
         assert session == "my-session"
+
 
 @pytest.mark.asyncio
 async def test_get_tmux_session_no_tmux():

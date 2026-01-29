@@ -10,7 +10,9 @@ from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-async def _run_stage(stage_name: str, cmd: str, args: list[str], telemetry) -> tuple[bool, str]:
+async def _run_stage(
+    stage_name: str, cmd: str, args: list[str], telemetry
+) -> tuple[bool, str]:
     """Runs a single stage (lint, build, or test) and logs telemetry."""
     msg = f"Running {stage_name}: {cmd} {' '.join(args)}...\n"
     telemetry.log_output("tester", msg)
@@ -59,7 +61,12 @@ async def tester(state: AgentState) -> dict:
         return {
             "test_output": "FAIL (Lint):\n" + output,
             "retry_count": retry_count + 1,
-            "messages": [SystemMessage(content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n" + output)],
+            "messages": [
+                SystemMessage(
+                    content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n"
+                    + output
+                )
+            ],
         }
 
     # 2. Build
@@ -70,14 +77,23 @@ async def tester(state: AgentState) -> dict:
             return {
                 "test_output": "FAIL (Build):\n" + output,
                 "retry_count": retry_count + 1,
-                "messages": [SystemMessage(content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n" + output)],
+                "messages": [
+                    SystemMessage(
+                        content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n"
+                        + output
+                    )
+                ],
             }
 
     # 3. Test
     test_cmd, test_args = get_test_command()
     success, output = await _run_stage("unit tests", test_cmd, test_args, telemetry)
     if not success:
-        message = "Max retries exceeded. Aborting." if retry_count >= MAX_RETRIES else "Unit tests failed. Returning to coder."
+        message = (
+            "Max retries exceeded. Aborting."
+            if retry_count >= MAX_RETRIES
+            else "Unit tests failed. Returning to coder."
+        )
         telemetry.log_output("tester", f"{message}\n")
         await notify("Workflow: Tests Failed", message, 4)
         return {

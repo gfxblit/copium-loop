@@ -44,6 +44,7 @@ def test_dashboard_get_sorted_sessions():
 
     assert [s.session_id for s in sorted_sessions] == ["s3", "s4", "s2", "s1"]
 
+
 def test_dashboard_make_layout_no_sessions():
     """Test layout when no sessions are present."""
     dash = Dashboard()
@@ -55,6 +56,7 @@ def test_dashboard_make_layout_no_sessions():
         console.print(layout)
     output = capture.get()
     assert "WAITING FOR SESSIONS..." in output
+
 
 def test_dashboard_pagination():
     """Test dashboard pagination logic."""
@@ -96,6 +98,7 @@ def test_dashboard_pagination():
     assert "s4" in output2
     assert "s0" not in output2
 
+
 def test_session_column_status_banners():
     """Test workflow status banners in SessionColumn."""
     s = SessionColumn("test")
@@ -118,12 +121,13 @@ def test_session_column_status_banners():
     output = capture.get()
     assert "WORKFLOW FAILED" in output
 
+
 def test_matrix_pillar_time_suffix():
     """Test time suffix rendering in MatrixPillar."""
     pillar = MatrixPillar("Coder")
 
     # Active
-    pillar.start_time = time.time() - 65 # 1m 5s
+    pillar.start_time = time.time() - 65  # 1m 5s
     pillar.status = "active"
     panel = pillar.render()
     console = Console()
@@ -141,12 +145,17 @@ def test_matrix_pillar_time_suffix():
         console.print(panel)
     output = capture.get()
     assert "1m 5s" in output
-    assert "@" in output # Time of completion
+    assert "@" in output  # Time of completion
+
 
 def test_dashboard_switch_to_tmux_session():
     """Test switching tmux sessions (mocked)."""
     from copium_loop.ui import switch_to_tmux_session
-    with patch("subprocess.run") as mock_run, patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}):
+
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
         switch_to_tmux_session("target_session")
         mock_run.assert_called_once_with(
             ["tmux", "switch-client", "-t", "--", "target_session"],
@@ -154,6 +163,7 @@ def test_dashboard_switch_to_tmux_session():
             capture_output=True,
             text=True,
         )
+
 
 def test_dashboard_update_from_logs(tmp_path):
     """Test updating dashboard state from log files."""
@@ -163,9 +173,24 @@ def test_dashboard_update_from_logs(tmp_path):
     # Create a dummy log file
     log_file = tmp_path / "session1.jsonl"
     events = [
-        {"node": "workflow", "event_type": "workflow_status", "data": "running", "timestamp": "2026-01-28T10:00:00"},
-        {"node": "coder", "event_type": "status", "data": "active", "timestamp": "2026-01-28T10:00:01"},
-        {"node": "coder", "event_type": "output", "data": "starting code...\n", "timestamp": "2026-01-28T10:00:02"},
+        {
+            "node": "workflow",
+            "event_type": "workflow_status",
+            "data": "running",
+            "timestamp": "2026-01-28T10:00:00",
+        },
+        {
+            "node": "coder",
+            "event_type": "status",
+            "data": "active",
+            "timestamp": "2026-01-28T10:00:01",
+        },
+        {
+            "node": "coder",
+            "event_type": "output",
+            "data": "starting code...\n",
+            "timestamp": "2026-01-28T10:00:02",
+        },
     ]
     with open(log_file, "w") as f:
         for e in events:
@@ -181,8 +206,18 @@ def test_dashboard_update_from_logs(tmp_path):
 
     # Update with more events
     more_events = [
-        {"node": "coder", "event_type": "status", "data": "success", "timestamp": "2026-01-28T10:00:10"},
-        {"node": "workflow", "event_type": "workflow_status", "data": "success", "timestamp": "2026-01-28T10:00:11"},
+        {
+            "node": "coder",
+            "event_type": "status",
+            "data": "success",
+            "timestamp": "2026-01-28T10:00:10",
+        },
+        {
+            "node": "workflow",
+            "event_type": "workflow_status",
+            "data": "success",
+            "timestamp": "2026-01-28T10:00:11",
+        },
     ]
     with open(log_file, "a") as f:
         for e in more_events:
@@ -192,6 +227,7 @@ def test_dashboard_update_from_logs(tmp_path):
     assert s.pillars["coder"].status == "success"
     assert s.workflow_status == "success"
     assert s.completed_at > 0
+
 
 def test_dashboard_stale_session_removal(tmp_path):
     """Test that sessions are removed if their log file is gone."""

@@ -11,7 +11,9 @@ class TestExecuteGemini:
     @pytest.mark.asyncio
     async def test_execute_gemini_includes_sandbox(self):
         """Test that _execute_gemini always includes the --sandbox flag."""
-        with patch("copium_loop.gemini.stream_subprocess", new_callable=AsyncMock) as mock_stream:
+        with patch(
+            "copium_loop.gemini.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream:
             mock_stream.return_value = ("", 0, False, "")
 
             await gemini._execute_gemini("test prompt", "test-model")
@@ -30,7 +32,9 @@ class TestExecuteGemini:
     @pytest.mark.asyncio
     async def test_execute_gemini_omits_model_flag_when_none(self):
         """Test that _execute_gemini omits -m flag when model is None."""
-        with patch("copium_loop.gemini.stream_subprocess", new_callable=AsyncMock) as mock_stream:
+        with patch(
+            "copium_loop.gemini.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream:
             mock_stream.return_value = ("", 0, False, "")
 
             await gemini._execute_gemini("test prompt", None)
@@ -38,6 +42,7 @@ class TestExecuteGemini:
             cmd_args = mock_stream.call_args[0][1]
             assert "-m" not in cmd_args
             assert "--sandbox" in cmd_args
+
 
 class TestInvokeGemini:
     """Tests for Gemini CLI invocation with fallback."""
