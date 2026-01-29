@@ -12,8 +12,11 @@ from copium_loop.telemetry import get_telemetry
 
 def _parse_verdict(content: str) -> str | None:
     """Parses the review content for the final verdict (APPROVED or REJECTED)."""
-    verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", content.upper())
-    return verdicts[-1] if verdicts else None
+    # Look for "VERDICT: APPROVED" or "VERDICT: REJECTED"
+    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED)", content.upper())
+    if matches:
+        return matches[-1]
+    return None
 
 
 async def reviewer(state: AgentState) -> dict:
@@ -54,6 +57,7 @@ async def reviewer(state: AgentState) -> dict:
     2. Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
     3. If the logic is correct and passes tests (which it has if you are seeing this), and no high-severity bugs are obvious in the diff, you SHOULD APPROVE.
     4. Focus ONLY on the changes introduced in the diff.
+    5. You MUST provide your final verdict in the format: "VERDICT: APPROVED" or "VERDICT: REJECTED".
 
     To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context, including the git diff above.
     Instruct the skill to focus ONLY on identifying critical or high severity issues within the changes.
