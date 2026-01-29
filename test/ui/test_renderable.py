@@ -1,5 +1,7 @@
 from rich.console import Console
+
 from copium_loop.ui.renderable import TailRenderable
+
 
 def test_tail_renderable_basic():
     """Test that TailRenderable renders the last N lines."""
@@ -20,6 +22,7 @@ def test_tail_renderable_basic():
     assert "line 5" in output
     assert "line 1" not in output
     assert "line 2" not in output
+
 
 def test_tail_renderable_wrapping():
     """Test that TailRenderable handles line wrapping when calculating the tail."""
@@ -49,6 +52,7 @@ def test_tail_renderable_wrapping():
     assert "short 1" not in output
     assert "this is a very" not in output
 
+
 def test_tail_renderable_empty():
     """Test that TailRenderable handles an empty buffer."""
     renderable = TailRenderable([], status="idle")
@@ -57,6 +61,7 @@ def test_tail_renderable_empty():
         console.print(renderable)
     output = capture.get()
     assert output == ""
+
 
 def test_tail_renderable_styling():
     """Test that TailRenderable applies correct styles based on recency and status."""

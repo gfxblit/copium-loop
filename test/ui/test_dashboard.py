@@ -1,17 +1,19 @@
 import json
 import time
 from unittest.mock import MagicMock, patch
-import sys
 
 from rich.console import Console
 from rich.layout import Layout
-from copium_loop.ui.dashboard import Dashboard
+
 from copium_loop.ui.column import SessionColumn
+from copium_loop.ui.dashboard import Dashboard
+
 
 def test_dashboard_sessions_per_page():
     """Verify Dashboard default sessions_per_page is 3."""
     dash = Dashboard()
     assert dash.sessions_per_page == 3
+
 
 def test_dashboard_sorting_logic():
     """Verify Dashboard.make_layout sorts sessions by activated_at (oldest first) for running sessions."""
@@ -54,6 +56,7 @@ def test_dashboard_sorting_logic():
     active_sessions_layout = layout["main"].children
     assert len(active_sessions_layout) == 1
     assert active_sessions_layout[0].renderable.name == "session_4"
+
 
 def test_dashboard_stable_sorting_logic():
     """Verify Dashboard.make_layout stable sorting logic:
@@ -104,6 +107,7 @@ def test_dashboard_stable_sorting_logic():
     layout = dash.make_layout()
     active_sessions_layout = layout["main"].children
     assert active_sessions_layout[0].renderable.name == "session_3"
+
 
 def test_dashboard_new_sorting_logic():
     """
@@ -193,6 +197,7 @@ def test_dashboard_new_sorting_logic():
         "session_B",
     ]
 
+
 def test_dashboard_completed_sessions_sorting():
     """Verify completed sessions are sorted by completion time (newest first)."""
     dash = Dashboard()
@@ -223,6 +228,7 @@ def test_dashboard_completed_sessions_sorting():
 
     sorted_sessions = dash.get_sorted_sessions()
     assert [s.session_id for s in sorted_sessions] == ["s4", "s2", "s3", "s1"]
+
 
 def test_session_removal_when_file_deleted(tmp_path):
     """Test that sessions are removed if their log file is gone."""
@@ -281,6 +287,7 @@ def test_session_removal_when_file_deleted(tmp_path):
     )
     assert "session2" in dash.log_offsets
 
+
 def test_pagination_clamping_after_removal(tmp_path):
     dash = Dashboard()
     dash.log_dir = tmp_path
@@ -328,6 +335,7 @@ def test_pagination_clamping_after_removal(tmp_path):
     assert len(dash.sessions) == 0
     assert dash.current_page == 0
 
+
 def test_dashboard_make_layout_no_sessions():
     """Test layout when no sessions are present."""
     dash = Dashboard()
@@ -339,6 +347,7 @@ def test_dashboard_make_layout_no_sessions():
         console.print(layout)
     output = capture.get()
     assert "WAITING FOR SESSIONS..." in output
+
 
 def test_dashboard_pagination():
     """Test dashboard pagination logic."""
@@ -379,6 +388,7 @@ def test_dashboard_pagination():
     output2 = capture.get()
     assert "s4" in output2
     assert "s0" not in output2
+
 
 def test_dashboard_update_from_logs(tmp_path):
     """Test updating dashboard state from log files."""
@@ -442,6 +452,7 @@ def test_dashboard_update_from_logs(tmp_path):
     assert s.pillars["coder"].status == "success"
     assert s.workflow_status == "success"
     assert s.completed_at > 0
+
 
 def test_dashboard_update_from_logs_error_handling(tmp_path, capsys):
     """Test that Dashboard.update_from_logs reports errors to stderr."""

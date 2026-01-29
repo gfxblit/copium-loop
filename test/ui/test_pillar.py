@@ -1,7 +1,10 @@
 import time
+
 from rich.console import Console
 from rich.panel import Panel
+
 from copium_loop.ui.pillar import MatrixPillar
+
 
 def test_matrix_pillar_render_order():
     """Test that MatrixPillar renders logs in chronological order (oldest to newest)."""
@@ -29,6 +32,7 @@ def test_matrix_pillar_render_order():
     assert third_idx != -1
     assert first_idx < second_idx < third_idx
 
+
 def test_matrix_pillar_status_and_duration():
     """Test that MatrixPillar correctly tracks status and duration."""
     pillar = MatrixPillar("Coder")
@@ -49,6 +53,7 @@ def test_matrix_pillar_status_and_duration():
     assert pillar.duration == 10.0
     assert pillar.completion_time is not None
 
+
 def test_matrix_pillar_buffer_limit():
     """Test that MatrixPillar respects its max_buffer size."""
     pillar = MatrixPillar("Coder")
@@ -60,6 +65,7 @@ def test_matrix_pillar_buffer_limit():
     assert len(pillar.buffer) == 5
     assert pillar.buffer[0] == "line 5"
     assert pillar.buffer[-1] == "line 9"
+
 
 def test_matrix_pillar_time_suffix():
     """Test time suffix rendering in MatrixPillar."""

@@ -1,6 +1,9 @@
 import time
+
 from rich.console import Console
+
 from copium_loop.ui.column import SessionColumn
+
 
 def test_session_column_rendering():
     """Test that SessionColumn renders its pillars."""
@@ -21,6 +24,7 @@ def test_session_column_rendering():
     assert "CODER" in output
     assert "coding..." in output
 
+
 def test_session_column_last_updated():
     """Verify SessionColumn.last_updated calculates the maximum last_update across pillars."""
     session = SessionColumn("test_session")
@@ -37,6 +41,7 @@ def test_session_column_last_updated():
     # Update one pillar
     session.pillars["reviewer"].last_update = now + 10
     assert session.last_updated == now + 10
+
 
 def test_session_column_status_banners():
     """Test workflow status banners in SessionColumn."""
