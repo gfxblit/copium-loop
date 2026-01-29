@@ -40,7 +40,6 @@ def test_dashboard_new_sorting_logic():
     assert [s.session_id for s in sorted_sessions] == ["session_A", "session_B", "session_C"]
 
     # 1. Update session_B to be more recent than A
-    # Current code would move B before A if it moves to a new bucket.
     # New requirement: preserve initial order.
     sB.pillars["coder"].last_update = time.time() + 100
     sA.pillars["coder"].last_update = time.time()
@@ -69,12 +68,41 @@ def test_dashboard_new_sorting_logic():
 
     # 4. Make session_B active again
     # "Append new active sessions at the end of the active list"
-    # If it was inactive and becomes active, does it go to the end?
-    # Requirement: "append new active sessions at the end of the active list"
-    # This might mean when it *becomes* active.
     sB.workflow_status = "running"
 
     sorted_sessions = dash.get_sorted_sessions()
     # A, C, D were already active. B just became active.
-    # It should probably go to the end of the active list.
+    # It should go to the end of the active list.
     assert [s.session_id for s in sorted_sessions] == ["session_A", "session_C", "session_D", "session_B"]
+
+
+def test_dashboard_completed_sessions_sorting():
+    """Verify completed sessions are sorted by completion time (newest first)."""
+    dash = Dashboard()
+
+    s1 = SessionColumn("s1")
+    s1.workflow_status = "success"
+    s1.completed_at = 1000
+
+    s2 = SessionColumn("s2")
+    s2.workflow_status = "failed"
+    s2.completed_at = 3000
+
+    s3 = SessionColumn("s3")
+    s3.workflow_status = "success"
+    s3.completed_at = 2000
+
+    dash.sessions = {"s1": s1, "s2": s2, "s3": s3}
+
+    # Expected: s2 (3000), s3 (2000), s1 (1000)
+    sorted_sessions = dash.get_sorted_sessions()
+    assert [s.session_id for s in sorted_sessions] == ["s2", "s3", "s1"]
+
+    # Add a running session - it should come first regardless of time
+    s4 = SessionColumn("s4")
+    s4.workflow_status = "running"
+    s4.activated_at = 5000
+    dash.sessions["s4"] = s4
+
+    sorted_sessions = dash.get_sorted_sessions()
+    assert [s.session_id for s in sorted_sessions] == ["s4", "s2", "s3", "s1"]

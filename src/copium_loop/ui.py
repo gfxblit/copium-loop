@@ -203,6 +203,7 @@ class SessionColumn:
         self._workflow_status = "idle"
         self.created_at = 0
         self.activated_at = 0
+        self.completed_at = 0
         self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
             "coder": MatrixPillar("Coder"),
@@ -219,6 +220,8 @@ class SessionColumn:
     def workflow_status(self, value: str):
         if value == "running" and self._workflow_status != "running":
             self.activated_at = time.time()
+        elif value in ["success", "failed"] and self._workflow_status == "running":
+            self.completed_at = time.time()
         self._workflow_status = value
 
     @property
@@ -315,12 +318,17 @@ class Dashboard:
         self.sessions_per_page = 3
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
-        """Returns sessions sorted by status (running first) and then by activation time."""
+        """Returns sessions sorted by status (running first) and then by activation/completion time."""
 
         def sort_key(s):
             is_running = s.workflow_status == "running"
-            # Sort by running status first (False/0 for running), then by activation time
-            return (not is_running, s.activated_at, s.session_id)
+            if is_running:
+                # Group 0: Running sessions, sorted by activation time (oldest first)
+                return (0, s.activated_at, s.session_id)
+            else:
+                # Group 1: Completed sessions, sorted by completion time (newest first)
+                # We use negative timestamp to get newest first in an ascending sort
+                return (1, -s.completed_at, s.session_id)
 
         return sorted(self.sessions.values(), key=sort_key)
 
@@ -473,6 +481,13 @@ class Dashboard:
                             # Handle workflow-level status events
                             if node == "workflow" and etype == "workflow_status":
                                 self.sessions[sid].workflow_status = data
+                                # If it just finished in the log, update completed_at from the log timestamp
+                                if data in ["success", "failed"] and ts_str:
+                                    try:
+                                        ts = datetime.fromisoformat(ts_str).timestamp()
+                                        self.sessions[sid].completed_at = ts
+                                    except (ValueError, TypeError):
+                                        pass
                             elif node in self.sessions[sid].pillars:
                                 if etype == "output":
                                     for line in data.splitlines():
