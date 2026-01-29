@@ -191,6 +191,7 @@ def test_dashboard_extract_tmux_session():
     assert extract_tmux_session("my_session_%1") == "my_session"
     assert extract_tmux_session("session_12345678") is None
 
+
 def test_dashboard_sessions_per_page():
     """Verify Dashboard default sessions_per_page is 3."""
     dash = Dashboard()
