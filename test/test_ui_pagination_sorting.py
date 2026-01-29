@@ -30,15 +30,22 @@ def test_session_column_last_updated():
     assert session.last_updated == now + 10
 
 def test_dashboard_sorting_logic():
-    """Verify Dashboard.make_layout sorts sessions by activated_at (discovery order)."""
+    """Verify Dashboard.make_layout sorts sessions by created_at (oldest first)."""
     dash = Dashboard()
     dash.console = Console(width=100)
 
-    # Creation order: 1, 2, 3, 4
+    # s1 created first
     s1 = SessionColumn("session_1")
+    s1.created_at = 1000
+    # s2 created second
     s2 = SessionColumn("session_2")
+    s2.created_at = 2000
+    # s3 created third
     s3 = SessionColumn("session_3")
+    s3.created_at = 3000
+    # s4 created fourth
     s4 = SessionColumn("session_4")
+    s4.created_at = 4000
 
     dash.sessions = {
         "session_1": s1,
@@ -53,7 +60,7 @@ def test_dashboard_sorting_logic():
 
     layout = dash.make_layout()
 
-    # In Dashboard.make_layout, it should sort them: s1, s2, s3, s4 (discovery order)
+    # In Dashboard.make_layout, it should sort them: s1, s2, s3, s4 (oldest first)
     # On page 0 with sessions_per_page=3, it should show s1, s2, s3
 
     active_sessions_layout = layout["main"].children
@@ -72,26 +79,30 @@ def test_dashboard_sorting_logic():
 def test_dashboard_stable_sorting_logic():
     """Verify Dashboard.make_layout stable sorting logic:
     1. workflow_status == "running" comes first.
-    2. Preservation of initial presentation order (discovery/activation order).
+    2. Preservation of oldest-first order within groups.
     """
     dash = Dashboard()
     dash.console = Console(width=100)
 
-    # s1 created first
+    # s1 created first, running
     s1 = SessionColumn("session_1")
     s1.workflow_status = "running"
+    s1.created_at = 1000
 
-    # s2 created second
+    # s2 created second, running
     s2 = SessionColumn("session_2")
     s2.workflow_status = "running"
+    s2.created_at = 2000
 
-    # s3 created third, but not running
+    # s3 created third, but not running (finished)
     s3 = SessionColumn("session_3")
     s3.workflow_status = "success"
+    s3.created_at = 3000
 
-    # s4 created fourth
+    # s4 created fourth, running
     s4 = SessionColumn("session_4")
     s4.workflow_status = "running"
+    s4.created_at = 4000
 
     dash.sessions = {
         "session_1": s1,

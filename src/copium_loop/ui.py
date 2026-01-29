@@ -200,8 +200,10 @@ class SessionColumn:
 
     def __init__(self, session_id: str):
         self.session_id = session_id
-        self._workflow_status = "running"  # Track workflow-level status
-        self.activated_at = time.time()
+        self._workflow_status = "idle"
+        self.created_at = 0
+        self.activated_at = 0
+        self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
             "coder": MatrixPillar("Coder"),
             "tester": MatrixPillar("Tester"),
@@ -316,8 +318,9 @@ class Dashboard:
         """Returns sessions sorted by status (running first) and then by activation time."""
 
         def sort_key(s):
-            is_running = 1 if s.workflow_status == "running" else 0
-            return (-is_running, s.activated_at, s.session_id)
+            is_running = s.workflow_status == "running"
+            # Sort by running status first (False/0 for running), then by activation time
+            return (not is_running, s.activated_at, s.session_id)
 
         return sorted(self.sessions.values(), key=sort_key)
 
@@ -328,7 +331,7 @@ class Dashboard:
             Layout(name="footer", size=3),
         )
 
-        # Pagination logic - stable sorting by active status
+        # Pagination logic - sort by running status and creation order
         session_list = self.get_sorted_sessions()
         num_sessions = len(session_list)
         num_pages = (
@@ -452,6 +455,20 @@ class Dashboard:
                             node = event.get("node")
                             etype = event.get("event_type")
                             data = event.get("data")
+                            ts_str = event.get("timestamp")
+
+                            # Use the first event's timestamp as the creation time
+                            if ts_str:
+                                try:
+                                    ts = datetime.fromisoformat(ts_str).timestamp()
+                                    # Only set if it's the first time or earlier than current
+                                    if self.sessions[sid].created_at == 0 or ts < self.sessions[sid].created_at:
+                                        self.sessions[sid].created_at = ts
+                                        # Also initialize activated_at to the first evidence of life
+                                        if self.sessions[sid].activated_at == 0 or ts < self.sessions[sid].activated_at:
+                                            self.sessions[sid].activated_at = ts
+                                except (ValueError, TypeError):
+                                    pass
 
                             # Handle workflow-level status events
                             if node == "workflow" and etype == "workflow_status":
