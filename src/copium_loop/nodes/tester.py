@@ -3,86 +3,27 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MAX_RETRIES
+from copium_loop.discovery import get_build_command, get_lint_command, get_test_command
+from copium_loop.notifications import notify
+from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
-from copium_loop.utils import (
-    get_build_command,
-    get_lint_command,
-    get_test_command,
-    notify,
-    run_command,
-)
 
 
-async def tester(state: AgentState) -> dict:
-    telemetry = get_telemetry()
-    telemetry.log_status("tester", "active")
-    telemetry.log_output("tester", "--- Test Runner Node ---\n")
-    print("--- Test Runner Node ---")
-    retry_count = state.get("retry_count", 0)
+async def _run_stage(stage_name: str, cmd: str, args: list[str], telemetry) -> tuple[bool, str]:
+    """Runs a single stage (lint, build, or test) and logs telemetry."""
+    msg = f"Running {stage_name}: {cmd} {' '.join(args)}...\n"
+    telemetry.log_output("tester", msg)
+    print(msg, end="")
 
-    try:
-        # 1. Run Linter
-        lint_cmd, lint_args = get_lint_command()
-        msg = f"Running {lint_cmd} {' '.join(lint_args)}...\n"
-        telemetry.log_output("tester", msg)
-        print(msg, end="")
-        lint_result = await run_command(lint_cmd, lint_args, node="tester")
-        lint_output = lint_result["output"]
+    result = await run_command(cmd, args, node="tester")
+    output = result["output"]
+    exit_code = result["exit_code"]
 
-        if lint_result["exit_code"] != 0:
-            telemetry.log_output("tester", "Linter failed.\n")
-            print("Linter failed.")
-            telemetry.log_status("tester", "failed")
+    success = exit_code == 0
 
-            return {
-                "test_output": "FAIL (Lint):\n" + lint_output,
-                "retry_count": retry_count + 1,
-                "messages": [
-                    SystemMessage(
-                        content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n"
-                        + lint_output
-                    )
-                ],
-            }
-
-        # 2. Run Build
-        build_cmd, build_args = get_build_command()
-        if build_cmd:
-            msg = f"Running {build_cmd} {' '.join(build_args)}...\n"
-            telemetry.log_output("tester", msg)
-            print(msg, end="")
-            build_result = await run_command(build_cmd, build_args, node="tester")
-            build_output = build_result["output"]
-
-            if build_result["exit_code"] != 0:
-                telemetry.log_output("tester", "Build failed.\n")
-                print("Build failed.")
-                telemetry.log_status("tester", "failed")
-                return {
-                    "test_output": "FAIL (Build):\n" + build_output,
-                    "retry_count": retry_count + 1,
-                    "messages": [
-                        SystemMessage(
-                            content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n"
-                            + build_output
-                        )
-                    ],
-                }
-
-        # 3. Run Unit Tests
-        test_cmd, test_args = get_test_command()
-
-        msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
-        telemetry.log_output("tester", msg)
-        print(msg, end="")
-        result = await run_command(test_cmd, test_args, node="tester")
-        unit_output = result["output"]
-        exit_code = result["exit_code"]
-
-        # More robust test failure detection
-        # We look for common patterns in pytest, npm test, etc.
-        # We are conservative if exit_code is 0 to avoid false positives.
+    # Special failure detection for unit tests
+    if stage_name == "unit tests" and success:
         failure_patterns = [
             r"\b[1-9]\d* failed\b",
             r"\b[1-9]\d* errors?\b",
@@ -92,37 +33,58 @@ async def tester(state: AgentState) -> dict:
             r"^\s*FAILED\b",
             r"^\s*error:",
         ]
+        for pattern in failure_patterns:
+            if re.search(pattern, output, re.MULTILINE):
+                success = False
+                break
 
-        has_failed = exit_code != 0
-        if not has_failed:
-            for pattern in failure_patterns:
-                if re.search(pattern, unit_output, re.MULTILINE):
-                    has_failed = True
-                    break
+    if not success:
+        telemetry.log_output("tester", f"{stage_name.capitalize()} failed.\n")
+        print(f"{stage_name.capitalize()} failed.")
 
-        if has_failed:
-            message = (
-                "Max retries exceeded. Aborting."
-                if retry_count >= MAX_RETRIES
-                else "Unit tests failed. Returning to coder."
-            )
-            telemetry.log_output("tester", f"{message}\n")
-            await notify("Workflow: Tests Failed", message, 4)
-            telemetry.log_status("tester", "failed")
+    return success, output
 
+
+async def tester(state: AgentState) -> dict:
+    telemetry = get_telemetry()
+    telemetry.log_status("tester", "active")
+    telemetry.log_output("tester", "--- Test Runner Node ---\n")
+    print("--- Test Runner Node ---")
+    retry_count = state.get("retry_count", 0)
+
+    # 1. Lint
+    lint_cmd, lint_args = get_lint_command()
+    success, output = await _run_stage("linting", lint_cmd, lint_args, telemetry)
+    if not success:
+        return {
+            "test_output": "FAIL (Lint):\n" + output,
+            "retry_count": retry_count + 1,
+            "messages": [SystemMessage(content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n" + output)],
+        }
+
+    # 2. Build
+    build_cmd, build_args = get_build_command()
+    if build_cmd:
+        success, output = await _run_stage("build", build_cmd, build_args, telemetry)
+        if not success:
             return {
-                "test_output": "FAIL (Unit):\n" + unit_output,
+                "test_output": "FAIL (Build):\n" + output,
                 "retry_count": retry_count + 1,
-                "messages": [
-                    SystemMessage(content="Tests failed (Unit):\n" + unit_output)
-                ],
+                "messages": [SystemMessage(content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n" + output)],
             }
 
-        telemetry.log_status("tester", "success")
-        return {"test_output": "PASS"}
-    except Exception as error:
-        telemetry.log_status("tester", "failed")
+    # 3. Test
+    test_cmd, test_args = get_test_command()
+    success, output = await _run_stage("unit tests", test_cmd, test_args, telemetry)
+    if not success:
+        message = "Max retries exceeded. Aborting." if retry_count >= MAX_RETRIES else "Unit tests failed. Returning to coder."
+        telemetry.log_output("tester", f"{message}\n")
+        await notify("Workflow: Tests Failed", message, 4)
         return {
-            "test_output": "FAIL: " + str(error),
+            "test_output": "FAIL (Unit):\n" + output,
             "retry_count": retry_count + 1,
+            "messages": [SystemMessage(content="Tests failed (Unit):\n" + output)],
         }
+
+    telemetry.log_status("tester", "success")
+    return {"test_output": "PASS"}

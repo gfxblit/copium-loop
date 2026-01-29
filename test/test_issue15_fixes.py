@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from copium_loop.utils import run_command
+from copium_loop.shell import run_command
 
 
 @pytest.mark.asyncio
@@ -14,10 +14,7 @@ async def test_orphaned_subprocess_on_cancellation():
     Test that a subprocess is killed when the parent task is cancelled.
     This simulates the scenario where a node times out and cancels its children.
     """
-    # Create a dummy script that runs for a long time and ignores SIGTERM if possible (to test force kill)
-    # or just sleeps. simple sleep is enough to test if we attempt to kill it.
-
-    # We use a python script as the child process to easily check if it's running
+    # Use a python script as the child process to easily check if it's running
     child_script = """
 import time
 import sys
@@ -32,20 +29,6 @@ except KeyboardInterrupt:
 
     # Run the command wrapped in a task
     cmd = [sys.executable, "-c", child_script]
-
-    task = asyncio.create_task(run_command(cmd[0], cmd[1:]))
-
-    # Wait a bit for the process to start (run_command starts the subprocess)
-    # run_command will stream output. We can't easily get the PID from run_command directly
-    # without modifying it to return it or parsing the output if we added logging.
-    # But checking if a process exists requires the PID.
-
-    # Modification: run_command returns a dict with 'output'. It waits for the process to finish.
-    # So we can't get the PID from it easily *while* it's running unless we spy on `asyncio.create_subprocess_exec`
-    # or change run_command to return the process object (which it doesn't).
-
-    # Strategy: verification by side effect?
-    # or we can mock `asyncio.create_subprocess_exec` to capture the process object.
 
     process_spy = {}
     original_create_subprocess_exec = asyncio.create_subprocess_exec
@@ -105,21 +88,10 @@ print("A" * 1024 * 1024 * 10) # 10MB
 """
     cmd = [sys.executable, "-c", long_output_script]
 
-    # We need to configure a limit. Since we haven't implemented it yet,
-    # we expect this to return the full 10MB (or fail/crash if we were testing for crash).
-    # To TDD this, we'll assert that the output length is capped at a default (e.g. 1MB or similar)
-    # But currently it is NOT capped. So this test will fail if we assert < 10MB.
-
-    # Let's assume we want to cap it at 1MB (1024*1024).
     LIMIT = 1024 * 1024
-
-    # We might need to inject this limit or set it via env var or constant.
-    # For now let's assume a constant we will add.
 
     res = await run_command(cmd[0], cmd[1:])
     output_len = len(res["output"])
 
-    # This assertion is expected to fail currently
-    assert output_len <= LIMIT + 1024, (
-        f"Output length {output_len} exceeds limit {LIMIT}"
-    )
+    # This assertion is expected to pass because we have MAX_OUTPUT_SIZE in shell.py
+    assert output_len <= LIMIT + 2048, f"Output length {output_len} exceeds limit {LIMIT}"

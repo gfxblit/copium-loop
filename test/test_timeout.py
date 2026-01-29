@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from copium_loop import utils
+from copium_loop import gemini, shell
 
 
 @pytest.mark.asyncio
@@ -13,7 +13,7 @@ async def test_run_command_inactivity_timeout():
     """Test that run_command kills the process after inactivity timeout."""
     # We'll mock the timeout to be very short for the test
     with (
-        patch("copium_loop.utils.INACTIVITY_TIMEOUT", 0.01),
+        patch("copium_loop.shell.INACTIVITY_TIMEOUT", 0.01),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -33,7 +33,7 @@ async def test_run_command_inactivity_timeout():
         mock_proc.terminate = unittest.mock.MagicMock(side_effect=killed_event.set)
         mock_exec.return_value = mock_proc
 
-        result = await utils.run_command("slow_command")
+        result = await shell.run_command("slow_command")
 
         # Check if kill or terminate was called
         assert mock_proc.kill.called or mock_proc.terminate.called
@@ -44,7 +44,7 @@ async def test_run_command_inactivity_timeout():
 async def test_execute_gemini_inactivity_timeout():
     """Test that _execute_gemini kills the process after inactivity timeout."""
     with (
-        patch("copium_loop.utils.INACTIVITY_TIMEOUT", 0.01),
+        patch("copium_loop.shell.INACTIVITY_TIMEOUT", 0.01),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -63,7 +63,7 @@ async def test_execute_gemini_inactivity_timeout():
         mock_exec.return_value = mock_proc
 
         with pytest.raises(Exception) as excinfo:
-            await utils._execute_gemini("prompt", "model")
+            await gemini._execute_gemini("prompt", "model")
 
         assert "TIMEOUT" in str(excinfo.value)
         assert mock_proc.kill.called or mock_proc.terminate.called
@@ -75,7 +75,7 @@ async def test_run_command_total_timeout_while_streaming():
     # Mock INACTIVITY_TIMEOUT to be large, and total_timeout to be small
     total_timeout = 0.5
     with (
-        patch("copium_loop.utils.INACTIVITY_TIMEOUT", 10.0),
+        patch("copium_loop.shell.INACTIVITY_TIMEOUT", 10.0),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -97,7 +97,7 @@ async def test_run_command_total_timeout_while_streaming():
         mock_exec.return_value = mock_proc
 
         start_time = asyncio.get_event_loop().time()
-        result = await utils.run_command(
+        result = await shell.run_command(
             "streaming_command", command_timeout=total_timeout
         )
         end_time = asyncio.get_event_loop().time()
@@ -113,9 +113,8 @@ async def test_run_command_total_timeout_while_streaming():
 @pytest.mark.asyncio
 async def test_run_command_default_inactivity_timeout():
     """Test that run_command uses the default INACTIVITY_TIMEOUT from constants."""
-    # We patch the constant in constants.py and see if utils uses it
     with (
-        patch("copium_loop.utils.INACTIVITY_TIMEOUT", 0.2),
+        patch("copium_loop.shell.INACTIVITY_TIMEOUT", 0.2),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -134,7 +133,7 @@ async def test_run_command_default_inactivity_timeout():
 
         start_time = asyncio.get_event_loop().time()
         # No timeouts passed, should use defaults
-        result = await utils.run_command("default_timeout_command")
+        result = await shell.run_command("default_timeout_command")
         end_time = asyncio.get_event_loop().time()
 
         assert mock_proc.kill.called
@@ -147,8 +146,8 @@ async def test_run_command_default_inactivity_timeout():
 async def test_run_command_default_total_timeout_streaming():
     """Test that run_command uses the default COMMAND_TIMEOUT even when streaming."""
     with (
-        patch("copium_loop.utils.INACTIVITY_TIMEOUT", 10.0),
-        patch("copium_loop.utils.COMMAND_TIMEOUT", 0.3),
+        patch("copium_loop.shell.INACTIVITY_TIMEOUT", 10.0),
+        patch("copium_loop.shell.COMMAND_TIMEOUT", 0.3),
         patch("asyncio.create_subprocess_exec") as mock_exec,
     ):
         mock_proc = AsyncMock()
@@ -168,7 +167,7 @@ async def test_run_command_default_total_timeout_streaming():
         mock_exec.return_value = mock_proc
 
         start_time = asyncio.get_event_loop().time()
-        result = await utils.run_command("default_total_timeout_command")
+        result = await shell.run_command("default_total_timeout_command")
         end_time = asyncio.get_event_loop().time()
 
         assert mock_proc.kill.called
