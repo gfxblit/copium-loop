@@ -4,7 +4,8 @@ import unittest.mock
 
 import pytest
 
-from copium_loop.utils import invoke_gemini, run_command
+from copium_loop.gemini import invoke_gemini
+from copium_loop.shell import run_command
 
 
 @pytest.mark.asyncio
@@ -13,8 +14,8 @@ async def test_run_command_total_timeout_exceeded():
     Test that run_command kills a process if total_timeout is exceeded.
     """
     # Use a sleep duration longer than the total_timeout
-    sleep_duration = 5
-    total_timeout = 2  # Shorter than sleep_duration
+    sleep_duration = 2
+    total_timeout = 0.5  # Shorter than sleep_duration
     start_time = time.monotonic()
     result = await run_command(
         "sleep", [str(sleep_duration)], node="test", command_timeout=total_timeout
@@ -34,8 +35,8 @@ async def test_run_command_total_timeout_not_exceeded():
     """
     Test that run_command completes successfully if total_timeout is not exceeded.
     """
-    sleep_duration = 1
-    total_timeout = 10  # Longer than sleep_duration
+    sleep_duration = 0.1
+    total_timeout = 2  # Longer than sleep_duration
 
     result = await run_command(
         "sleep", [str(sleep_duration)], node="test", command_timeout=total_timeout
@@ -81,7 +82,7 @@ async def test_invoke_gemini_total_timeout(mock_create_subprocess_exec):
     mock_create_subprocess_exec.return_value = mock_process
 
     # Set total_timeout shorter than the wait
-    total_timeout = 1
+    total_timeout = 0.5
     prompt = "test prompt"
 
     start_time = time.monotonic()
@@ -94,5 +95,5 @@ async def test_invoke_gemini_total_timeout(mock_create_subprocess_exec):
     # Assertions
     assert "TIMEOUT" in str(excinfo.value)
     assert mock_process.kill.called
-    assert (end_time - start_time) < 5
+    assert (end_time - start_time) < 2
     assert (end_time - start_time) >= total_timeout - 0.2

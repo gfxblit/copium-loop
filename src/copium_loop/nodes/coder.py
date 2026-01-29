@@ -1,9 +1,9 @@
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import DEFAULT_MODELS
+from copium_loop.gemini import invoke_gemini
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
-from copium_loop.utils import invoke_gemini
 
 
 async def coder(state: AgentState) -> dict:
@@ -62,12 +62,12 @@ async def coder(state: AgentState) -> dict:
     {last_message.content}
 
     Please fix any issues (e.g., git push failures, branch issues) and try again.
-    Original request: {initial_request}"""
+    Original request: {initial_request}."""
         system_prompt += "\n\nMake sure to commit your fixes if necessary."
     if review_status == "needs_commit":
         system_prompt = f"""You have uncommitted changes that prevent PR creation.
     Please review your changes and commit them using git.
-    Original request: {initial_request}"""
+    Original request: {initial_request}."""
 
     # Start with "auto" (None), then fallback to default models
     coder_models = [None] + DEFAULT_MODELS

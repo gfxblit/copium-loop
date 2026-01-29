@@ -17,3 +17,4 @@ class AgentState(TypedDict):
     initial_commit_hash: str
     git_diff: str
     verbose: bool
+    last_error: str

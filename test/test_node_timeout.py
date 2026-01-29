@@ -7,71 +7,80 @@ from copium_loop.copium_loop import WorkflowManager
 
 
 @pytest.mark.asyncio
-async def test_node_timeout_wrapping():
-    """
-    Test that WorkflowManager._wrap_node correctly times out a slow node.
-    """
+async def test_node_timeout_with_retry():
+    """Test that nodes time out and increment retry_count."""
 
     async def slow_node(_state):
         await asyncio.sleep(2)
         return {"test_output": "PASS"}
 
     manager = WorkflowManager()
-
-    # Mock NODE_TIMEOUT to 0.1s for testing
+    # Mock NODE_TIMEOUT to be very short
     with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-        wrapped = manager._wrap_node("slow_node", slow_node)
+        wrapped = manager._wrap_node("tester", slow_node)
         state = {"retry_count": 0}
         result = await wrapped(state)
 
         assert result["retry_count"] == 1
-        # The node name in wrapper is obtained via node_name argument
-        # For our local slow_node, it's "slow_node"
-        # Since it's not "tester", "reviewer" etc, it should return default {"retry_count": 1}
-        assert "test_output" not in result
-
-
-@pytest.mark.asyncio
-async def test_tester_node_timeout():
-    """
-    Test that WorkflowManager._wrap_node correctly handles a timeout for the tester node.
-    """
-
-    async def tester(_state):
-        await asyncio.sleep(2)
-        return {"test_output": "PASS"}
-
-    manager = WorkflowManager()
-
-    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-        wrapped = manager._wrap_node("tester", tester)
-        state = {"retry_count": 5}
-        result = await wrapped(state)
-
-        assert result["retry_count"] == 6
         assert "FAIL: Node 'tester' timed out" in result["test_output"]
 
 
 @pytest.mark.asyncio
-async def test_reviewer_node_timeout():
-    """
-    Test that WorkflowManager._wrap_node correctly handles a timeout for the reviewer node.
-    """
+async def test_node_timeout_error_status():
+    """Test that non-tester nodes time out and set error/rejected status."""
 
-    async def reviewer(_state):
+    async def slow_coder(_state):
+        await asyncio.sleep(2)
+        return {"code_status": "coded"}
+
+    manager = WorkflowManager()
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
+        wrapped = manager._wrap_node("coder", slow_coder)
+        state = {"retry_count": 0}
+        result = await wrapped(state)
+
+        assert result["retry_count"] == 1
+        assert result["code_status"] == "failed"
+        assert result["review_status"] == "rejected"
+        assert "Node 'coder' timed out" in result["messages"][0].content
+
+
+@pytest.mark.asyncio
+async def test_node_timeout_reviewer():
+    """Test that reviewer node times out and sets error status."""
+
+    async def slow_reviewer(_state):
         await asyncio.sleep(2)
         return {"review_status": "approved"}
 
     manager = WorkflowManager()
-
     with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
-        wrapped = manager._wrap_node("reviewer", reviewer)
-        state = {"retry_count": 2}
+        wrapped = manager._wrap_node("reviewer", slow_reviewer)
+        state = {"retry_count": 0}
         result = await wrapped(state)
 
-        assert result["retry_count"] == 3
+        assert result["retry_count"] == 1
         assert result["review_status"] == "error"
         assert "Node 'reviewer' timed out" in result["messages"][0].content
+
+
+@pytest.mark.asyncio
+async def test_node_timeout_pr_creator():
+    """Test that pr_creator node times out and sets pr_failed status."""
+
+    async def slow_pr_creator(_state):
+        await asyncio.sleep(2)
+        return {"review_status": "pr_created"}
+
+    manager = WorkflowManager()
+    with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):
+        wrapped = manager._wrap_node("pr_creator", slow_pr_creator)
+        state = {"retry_count": 0}
+        result = await wrapped(state)
+
+        assert result["retry_count"] == 1
+        assert result["review_status"] == "pr_failed"
+        assert "Node 'pr_creator' timed out" in result["messages"][0].content
 
 
 @pytest.mark.asyncio
@@ -92,5 +101,5 @@ async def test_default_node_timeout():
         result = await wrapped(state)
 
         assert result["retry_count"] == 1
-        assert "error" in result
-        assert "Node 'unknown_node' timed out" in result["error"]
+        assert "last_error" in result
+        assert "Node 'unknown_node' timed out" in result["last_error"]

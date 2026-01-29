@@ -8,7 +8,6 @@ import time
 
 from copium_loop.constants import (
     COMMAND_TIMEOUT,
-    DEFAULT_MODELS,
     INACTIVITY_TIMEOUT,
     MAX_OUTPUT_SIZE,
 )
@@ -136,7 +135,7 @@ def _clean_chunk(chunk: str | bytes) -> str:
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
 
 
-async def _stream_subprocess(
+async def stream_subprocess(
     command: str,
     args: list[str],
     env: dict,
@@ -259,7 +258,7 @@ async def run_command(
     async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
-    output, exit_code, _, _ = await _stream_subprocess(
+    output, exit_code, _, _ = await stream_subprocess(
         command,
         args,
         env,
@@ -275,233 +274,3 @@ async def run_command(
         full_output += "".join(timeout_msg_list)
 
     return {"output": full_output, "exit_code": exit_code}
-
-
-async def _execute_gemini(
-    prompt: str,
-    model: str | None,
-    args: list[str] | None = None,
-    node: str | None = None,
-    command_timeout: int | None = None,
-) -> str:
-    """Internal method to execute the Gemini CLI with a specific model."""
-    if command_timeout is None:
-        command_timeout = COMMAND_TIMEOUT
-
-    if args is None:
-        args = []
-
-    cmd_args = ["--sandbox"] + args
-    if model:
-        cmd_args.extend(["-m", model])
-
-    cmd_args.append(prompt)
-
-    # Prevent interactive prompts in sub-agents
-    env = os.environ.copy()
-    env.update(
-        {
-            "GIT_TERMINAL_PROMPT": "0",
-            "GIT_EDITOR": "true",
-            "EDITOR": "true",
-            "VISUAL": "true",
-            "GIT_SEQUENCE_EDITOR": "true",
-            "GH_PROMPT_DISABLED": "1",
-        }
-    )
-
-    output, exit_code, timed_out, timeout_message = await _stream_subprocess(
-        "gemini",
-        cmd_args,
-        env,
-        node,
-        command_timeout,
-        capture_stderr=False,
-    )
-
-    if timed_out:
-        raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
-
-    if exit_code != 0:
-        raise Exception(f"Gemini CLI exited with code {exit_code}")
-
-    return output.strip()
-
-
-async def invoke_gemini(
-    prompt: str,
-    args: list[str] | None = None,
-    models: list[str | None] | None = None,
-    verbose: bool = False,
-    label: str | None = None,
-    node: str | None = None,
-    command_timeout: int | None = None,
-) -> str:
-    """
-    Invokes the Gemini CLI with a prompt, supporting model fallback.
-    Streams output to stdout and returns the full response.
-    """
-    if verbose:
-        banner = (
-            f"--- [VERBOSE] {label} Prompt ---" if label else "--- [VERBOSE] Prompt ---"
-        )
-        print(f"\n{banner}")
-        print(prompt)
-        print("-" * len(banner) + "\n")
-
-    if args is None:
-        args = []
-    model_list = models if models is not None else DEFAULT_MODELS
-    for i, model in enumerate(model_list):
-        try:
-            model_display = model if model else "auto"
-            if verbose:
-                print(f"Using model: {model_display}")
-            return await _execute_gemini(
-                prompt, model, args, node, command_timeout=command_timeout
-            )
-        except Exception as error:
-            error_msg = str(error)
-            is_last_model = i == len(model_list) - 1
-
-            # Always fallback to next model on any error (unless it's the last model)
-            # This handles quota errors, rate limits, and other transient failures
-            if not is_last_model:
-                next_model = model_list[i + 1]
-                next_model_display = next_model if next_model else "auto"
-                print(f"Error with {model_display}: {error_msg}")
-                # If it's a timeout, we might want to log it specifically but still fallback
-                print(f"Falling back to {next_model_display}...")
-                continue
-
-            # If we're on the last model and it failed, raise the error
-            raise Exception(f"All models exhausted. Last error: {error_msg}") from error
-    return ""
-
-
-async def get_tmux_session() -> str:
-    """Retrieves the current tmux session name."""
-    try:
-        process = await asyncio.create_subprocess_exec(
-            "tmux",
-            "display-message",
-            "-p",
-            "#S",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        stdout, _ = await process.communicate()
-        output = stdout.decode().strip()
-        if output:
-            return output
-    except Exception:
-        pass
-    return "no-tmux"
-
-
-async def notify(title: str, message: str, priority: int = 3):
-    """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
-    channel = os.environ.get("NTFY_CHANNEL")
-    if not channel:
-        return
-
-    session_name = await get_tmux_session()
-    full_message = f"Session: {session_name}\n{message}"
-
-    try:
-        await run_command(
-            "curl",
-            [
-                "-sS",
-                "-H",
-                f"Title: {title}",
-                "-H",
-                f"Priority: {priority}",
-                "-d",
-                full_message,
-                f"https://ntfy.sh/{channel}",
-            ],
-        )
-    except Exception as e:
-        print(f"Failed to send notification: {e}")
-
-
-def get_package_manager() -> str:
-    """Detects the package manager based on lock files."""
-    if os.path.exists("pnpm-lock.yaml"):
-        return "pnpm"
-    if os.path.exists("yarn.lock"):
-        return "yarn"
-    return "npm"
-
-
-def get_test_command() -> tuple[str, list[str]]:
-    """Determines the test command based on the project structure."""
-    test_cmd = "npm"
-    test_args = ["test"]
-
-    if os.environ.get("COPIUM_TEST_CMD"):
-        parts = os.environ.get("COPIUM_TEST_CMD").split()
-        test_cmd = parts[0]
-        test_args = parts[1:]
-    elif os.path.exists("package.json"):
-        test_cmd = get_package_manager()
-        test_args = ["test"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
-        test_cmd = "pytest"
-        test_args = ["--cov=src", "--cov-report=term-missing"]
-
-    return test_cmd, test_args
-
-
-def get_build_command() -> tuple[str, list[str]]:
-    """Determines the build command based on the project structure."""
-    build_cmd = "npm"
-    build_args = ["run", "build"]
-
-    if os.environ.get("COPIUM_BUILD_CMD"):
-        parts = os.environ.get("COPIUM_BUILD_CMD").split()
-        build_cmd = parts[0]
-        build_args = parts[1:]
-    elif os.path.exists("package.json"):
-        build_cmd = get_package_manager()
-        build_args = ["run", "build"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
-        # For Python, build often means building the package or just checking types/compiling
-        # If there's no explicit build command, we might just return None or a placeholder
-        # For now, let's see if there's a common one. Often it's just 'pip install -e .' or 'python -m build'
-        # But if we don't know, we'll return None to signal skipping build.
-        return "", []
-
-    return build_cmd, build_args
-
-
-def get_lint_command() -> tuple[str, list[str]]:
-    """Determines the lint command based on the project structure."""
-    lint_cmd = "npm"
-    lint_args = ["run", "lint"]
-
-    if os.environ.get("COPIUM_LINT_CMD"):
-        parts = os.environ.get("COPIUM_LINT_CMD").split()
-        lint_cmd = parts[0]
-        lint_args = parts[1:]
-    elif os.path.exists("package.json"):
-        lint_cmd = get_package_manager()
-        lint_args = ["run", "lint"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
-        lint_cmd = "ruff"
-        lint_args = ["check", "."]
-
-    return lint_cmd, lint_args

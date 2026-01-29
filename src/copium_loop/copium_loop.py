@@ -1,25 +1,20 @@
-"""Core workflow implementation."""
+"Core workflow implementation."
 
 import asyncio
 import os
 import re
+import traceback
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, START, StateGraph
 
 from copium_loop.constants import NODE_TIMEOUT
-from copium_loop.nodes import (
-    coder,
-    pr_creator,
-    reviewer,
-    should_continue_from_pr_creator,
-    should_continue_from_review,
-    should_continue_from_test,
-    tester,
-)
+from copium_loop.discovery import get_test_command
+from copium_loop.git import get_head
+from copium_loop.graph import create_graph
+from copium_loop.notifications import notify
+from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
-from copium_loop.utils import get_test_command, notify, run_command
 
 
 class WorkflowManager:
@@ -33,102 +28,92 @@ class WorkflowManager:
         self.start_node = start_node
         self.verbose = verbose
 
-    # Re-expose notify for external use if needed, or consumers can import it
     async def notify(self, title: str, message: str, priority: int = 3):
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
         await notify(title, message, priority)
 
+    def create_graph(self):
+        """Creates and compiles the workflow graph."""
+        valid_nodes = ["coder", "tester", "reviewer", "pr_creator"]
+        if self.start_node and self.start_node not in valid_nodes:
+            print(f'Warning: Invalid start node "{self.start_node}".')
+            print(f"Valid nodes are: {', '.join(valid_nodes)}")
+            print('Falling back to "coder".')
+        self.graph = create_graph(self._wrap_node, self.start_node)
+        return self.graph
+
     def _wrap_node(self, node_name: str, node_func):
-        """Wraps a node function with a timeout."""
+        """Wraps a node function with a timeout and error handling."""
 
         async def wrapper(state: AgentState):
+            telemetry = get_telemetry()
             try:
                 return await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")
-                telemetry = get_telemetry()
                 telemetry.log_output(node_name, f"\n[TIMEOUT] {msg}\n")
                 telemetry.log_status(node_name, "failed")
-
-                # Update retry count and return failure state
-                retry_count = state.get("retry_count", 0) + 1
-
-                if node_name == "tester":
-                    return {"test_output": f"FAIL: {msg}", "retry_count": retry_count}
-
-                if node_name in ("reviewer", "pr_creator", "coder"):
-                    response = {
-                        "retry_count": retry_count,
-                        "messages": [SystemMessage(content=msg)],
-                    }
-                    if node_name == "reviewer":
-                        response["review_status"] = "error"
-                    elif node_name == "pr_creator":
-                        response["review_status"] = "pr_failed"
-                    elif node_name == "coder":
-                        response["code_status"] = "failed"
-                        response["review_status"] = "rejected"
-                    return response
-
-                return {"error": msg, "retry_count": retry_count}
+                return self._handle_error(state, node_name, msg)
+            except Exception as e:
+                error_trace = traceback.format_exc()
+                msg = f"Node '{node_name}' failed with error: {str(e)}"
+                print(f"\n[ERROR] {msg}")
+                telemetry.log_output(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
+                telemetry.log_status(node_name, "failed")
+                return self._handle_error(state, node_name, msg, error_trace)
 
         return wrapper
 
-    def create_graph(self):
-        workflow = StateGraph(AgentState)
+    def _handle_error(self, state: AgentState, node_name: str, msg: str, trace: str | None = None):
+        """Handles node errors by updating state and retry counts."""
+        retry_count = state.get("retry_count", 0) + 1
+        last_error = msg
+        if trace:
+            last_error += f"\n{trace}"
 
-        # Add Nodes
-        workflow.add_node("coder", self._wrap_node("coder", coder))
-        workflow.add_node("tester", self._wrap_node("tester", tester))
-        workflow.add_node("reviewer", self._wrap_node("reviewer", reviewer))
-        workflow.add_node("pr_creator", self._wrap_node("pr_creator", pr_creator))
+        if node_name == "tester":
+            return {
+                "test_output": f"FAIL: {msg}",
+                "retry_count": retry_count,
+                "last_error": last_error
+            }
 
-        # Determine entry point
-        valid_nodes = ["coder", "tester", "reviewer", "pr_creator"]
-        entry_node = self.start_node if self.start_node in valid_nodes else "coder"
+        response = {
+            "retry_count": retry_count,
+            "messages": [SystemMessage(content=msg)],
+            "last_error": last_error
+        }
 
-        if self.start_node and self.start_node not in valid_nodes:
-            print(f'Warning: Invalid start node "{self.start_node}".')
-            print(f"Valid nodes are: {', '.join(valid_nodes)}")
-            print('Falling back to "coder".')
+        if node_name == "reviewer":
+            response["review_status"] = "error"
+        elif node_name == "pr_creator":
+            response["review_status"] = "pr_failed"
+        elif node_name == "coder":
+            response["code_status"] = "failed"
+            response["review_status"] = "rejected"
 
-        # Edges
-        workflow.add_edge(START, entry_node)
-        workflow.add_edge("coder", "tester")
+        return response
 
-        workflow.add_conditional_edges(
-            "tester",
-            should_continue_from_test,
-            {"reviewer": "reviewer", "coder": "coder", END: END},
-        )
-
-        workflow.add_conditional_edges(
-            "reviewer",
-            should_continue_from_review,
-            {
-                "pr_creator": "pr_creator",
-                "coder": "coder",
-                "reviewer": "reviewer",
-                "pr_failed": END,
-                END: END,
-            },
-        )
-
-        workflow.add_conditional_edges(
-            "pr_creator", should_continue_from_pr_creator, {END: END, "coder": "coder"}
-        )
-
-        self.graph = workflow.compile()
-        return self.graph
+    async def verify_environment(self) -> bool:
+        """Verifies that the necessary CLI tools are installed."""
+        tools = ["git", "gh", "gemini"]
+        for tool in tools:
+            try:
+                res = await run_command(tool, ["--version"])
+                if res["exit_code"] != 0:
+                    print(f"Error: {tool} is not working correctly.")
+                    return False
+            except Exception:
+                print(f"Error: {tool} is not installed or not in PATH.")
+                return False
+        return True
 
     async def run(self, input_prompt: str, initial_state: dict | None = None):
-        """Run the workflow with the given prompt.
+        """Run the workflow with the given prompt."""
+        if not await self.verify_environment():
+            return {"error": "Environment verification failed."}
 
-        Args:
-            input_prompt: The prompt to run the workflow with
-            initial_state: Optional reconstructed state from a previous session
-        """
         telemetry = get_telemetry()
         issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
 
@@ -143,17 +128,15 @@ class WorkflowManager:
         )
 
         if not self.graph:
-            self.create_graph()
+            self.graph = create_graph(self._wrap_node, self.start_node)
 
         initial_commit_hash = ""
         if os.path.exists(".git"):
             try:
-                res = await run_command("git", ["rev-parse", "HEAD"])
-                if res["exit_code"] == 0:
-                    initial_commit_hash = res["output"].strip()
-                    msg = f"Initial commit hash: {initial_commit_hash}\n"
-                    telemetry.log_output(self.start_node, msg)
-                    print(msg, end="")
+                initial_commit_hash = await get_head()
+                msg = f"Initial commit hash: {initial_commit_hash}\n"
+                telemetry.log_output(self.start_node, msg)
+                print(msg, end="")
             except Exception as e:
                 msg = f"Warning: Failed to capture initial commit hash: {e}\n"
                 telemetry.log_output(self.start_node, msg)
@@ -169,8 +152,6 @@ class WorkflowManager:
                 msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
                 telemetry.log_output(self.start_node, msg)
                 print(msg, end="")
-                # We don't necessarily want to fail the whole workflow if baseline tests fail,
-                # but we should definitely inform the user.
                 res = await run_command(test_cmd, test_args, node=self.start_node)
                 if res["exit_code"] != 0:
                     msg = "Warning: Baseline tests failed. Proceeding anyway, but be aware.\n"
@@ -190,25 +171,21 @@ class WorkflowManager:
             "messages": [HumanMessage(content=input_prompt)],
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
-            "test_output": ""
-            if self.start_node not in ["reviewer", "pr_creator"]
-            else "",
+            "test_output": "" if self.start_node not in ["reviewer", "pr_creator"] else "",
             "code_status": "pending",
-            "review_status": "approved"
-            if self.start_node == "pr_creator"
-            else "pending",
+            "review_status": "approved" if self.start_node == "pr_creator" else "pending",
             "pr_url": "",
             "initial_commit_hash": initial_commit_hash,
             "git_diff": "",
             "verbose": self.verbose,
+            "last_error": ""
         }
 
         # Merge reconstructed state if provided
         if initial_state:
             print(f"Merging reconstructed state: {initial_state}")
-            # Keep messages from default, but override other fields from reconstructed state
             for key, value in initial_state.items():
-                if key != "prompt":  # Don't override with prompt key
+                if key != "prompt":
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)

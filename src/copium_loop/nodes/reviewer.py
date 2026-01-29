@@ -4,9 +4,16 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import REVIEWER_MODELS
+from copium_loop.gemini import invoke_gemini
+from copium_loop.git import get_diff
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
-from copium_loop.utils import invoke_gemini, run_command
+
+
+def _parse_verdict(content: str) -> str | None:
+    """Parses the review content for the final verdict (APPROVED or REJECTED)."""
+    verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", content.upper())
+    return verdicts[-1] if verdicts else None
 
 
 async def reviewer(state: AgentState) -> dict:
@@ -29,11 +36,7 @@ async def reviewer(state: AgentState) -> dict:
     git_diff = ""
     if os.path.exists(".git") and initial_commit_hash:
         try:
-            res = await run_command(
-                "git", ["diff", initial_commit_hash, "HEAD"], node="reviewer"
-            )
-            if res["exit_code"] == 0:
-                git_diff = res["output"]
+            git_diff = await get_diff(initial_commit_hash, node="reviewer")
         except Exception as e:
             msg = f"Warning: Failed to get git diff: {e}\n"
             telemetry.log_output("reviewer", msg)
@@ -77,9 +80,8 @@ async def reviewer(state: AgentState) -> dict:
             "retry_count": retry_count + 1,
         }
 
-    # Robustly check for the final verdict by looking for the last occurrence of APPROVED or REJECTED
-    verdicts = re.findall(r"\b(APPROVED|REJECTED)\b", review_content.upper())
-    if not verdicts:
+    verdict = _parse_verdict(review_content)
+    if not verdict:
         msg = "\nReview decision: Error (no verdict found)\n"
         telemetry.log_output("reviewer", msg)
         print(msg, end="")
@@ -90,7 +92,7 @@ async def reviewer(state: AgentState) -> dict:
             "retry_count": retry_count + 1,
         }
 
-    is_approved = verdicts[-1] == "APPROVED"
+    is_approved = verdict == "APPROVED"
     msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
     telemetry.log_output("reviewer", msg)
     print(msg, end="")
