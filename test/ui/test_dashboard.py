@@ -1,220 +1,17 @@
 import json
 import time
 from unittest.mock import MagicMock, patch
+import sys
 
 from rich.console import Console
 from rich.layout import Layout
-from rich.panel import Panel
-
-from copium_loop.ui import (
-    Dashboard,
-    MatrixPillar,
-    SessionColumn,
-    TailRenderable,
-    extract_tmux_session,
-    switch_to_tmux_session,
-)
-
-
-def test_tail_renderable_basic():
-    """Test that TailRenderable renders the last N lines."""
-    buffer = ["line 1", "line 2", "line 3", "line 4", "line 5"]
-    # We want to fit 3 lines
-    renderable = TailRenderable(buffer, status="idle")
-
-    console = Console(width=20, height=3)
-    # Mocking options or similar might be needed if TailRenderable uses it
-    # For now, let's just see if it handles height
-    with console.capture() as capture:
-        console.print(renderable)
-
-    output = capture.get()
-    # If height is 3, it should show line 3, 4, 5
-    assert "line 3" in output
-    assert "line 4" in output
-    assert "line 5" in output
-    assert "line 1" not in output
-    assert "line 2" not in output
-
-
-def test_tail_renderable_wrapping():
-    """Test that TailRenderable handles line wrapping when calculating the tail."""
-    # Line that will wrap into 2 lines if width is small
-    buffer = ["short 1", "this is a very long line that should wrap", "short 2"]
-    # width=20, "  this is a very long line that should wrap" is ~44 chars
-    # It should wrap into 3 lines:
-    # "  this is a very"
-    # "long line that"
-    # "should wrap"
-
-    # height=3 should show "short 2" and the last 2 lines of the wrapped line
-    # Wait, height=3, and we have:
-    # L1: "short 2" (1 line)
-    # L2: "should wrap" (wrapped part of long line)
-    # L3: "long line that" (wrapped part of long line)
-
-    renderable = TailRenderable(buffer, status="idle")
-    console = Console(width=20, height=3)
-    with console.capture() as capture:
-        console.print(renderable)
-
-    output = capture.get()
-    assert "short 2" in output
-    assert "should wrap" in output
-    assert "long line that" in output
-    assert "short 1" not in output
-    assert "this is a very" not in output
-
-
-def test_tail_renderable_empty():
-    """Test that TailRenderable handles an empty buffer."""
-    renderable = TailRenderable([], status="idle")
-    console = Console()
-    with console.capture() as capture:
-        console.print(renderable)
-    output = capture.get()
-    assert output == ""
-
-
-def test_matrix_pillar_render_order():
-    """Test that MatrixPillar renders logs in chronological order (oldest to newest)."""
-    pillar = MatrixPillar("Coder")
-    pillar.add_line("first")
-    pillar.add_line("second")
-    pillar.add_line("third")
-
-    panel = pillar.render()
-    assert isinstance(panel, Panel)
-
-    # We need to verify the content of the panel
-    console = Console(width=20)
-    with console.capture() as capture:
-        console.print(panel)
-
-    output = capture.get()
-    # Chronological order: first, second, third (top to bottom)
-    first_idx = output.find("first")
-    second_idx = output.find("second")
-    third_idx = output.find("third")
-
-    assert first_idx != -1
-    assert second_idx != -1
-    assert third_idx != -1
-    assert first_idx < second_idx < third_idx
-
-
-def test_tail_renderable_styling():
-    """Test that TailRenderable applies correct styles based on recency and status."""
-    buffer = [f"line {i}" for i in range(15)]
-    # newest is line 14
-
-    # Test active status (white with > prefix)
-    renderable_active = TailRenderable(buffer, status="active")
-    console = Console(width=20)
-    with console.capture() as capture:
-        console.print(renderable_active)
-    output_active = capture.get()
-    assert "> line 14" in output_active
-
-    # Test idle status (should ALWAYS have > prefix for newest line now)
-    renderable_idle = TailRenderable(buffer, status="idle")
-    with console.capture() as capture:
-        console.print(renderable_idle)
-    output_idle = capture.get()
-    assert "> line 14" in output_idle
-    assert "  line 14" not in output_idle
-
-    # others should have "  "
-    assert "  line 13" in output_active
-    assert "  line 10" in output_active
-    assert "  line 0" in output_active
-
-
-def test_matrix_pillar_status_and_duration():
-    """Test that MatrixPillar correctly tracks status and duration."""
-    pillar = MatrixPillar("Coder")
-
-    # Initial state
-    assert pillar.status == "idle"
-    assert pillar.duration is None
-
-    # Set to active
-    timestamp = "2026-01-25T12:00:00"
-    pillar.set_status("active", timestamp)
-    assert pillar.status == "active"
-
-    # Set to success after 10 seconds
-    timestamp_end = "2026-01-25T12:00:10"
-    pillar.set_status("success", timestamp_end)
-    assert pillar.status == "success"
-    assert pillar.duration == 10.0
-    assert pillar.completion_time is not None
-
-
-def test_matrix_pillar_buffer_limit():
-    """Test that MatrixPillar respects its max_buffer size."""
-    pillar = MatrixPillar("Coder")
-    pillar.max_buffer = 5
-
-    for i in range(10):
-        pillar.add_line(f"line {i}")
-
-    assert len(pillar.buffer) == 5
-    assert pillar.buffer[0] == "line 5"
-    assert pillar.buffer[-1] == "line 9"
-
-
-def test_session_column_rendering():
-    """Test that SessionColumn renders its pillars."""
-    session = SessionColumn("test_session")
-
-    # Set some content and status
-    session.pillars["coder"].add_line("coding...")
-    session.pillars["coder"].set_status("active")
-
-    layout = session.render(column_width=40)
-
-    # Verify it renders to console without crashing
-    console = Console(width=40)
-    with console.capture() as capture:
-        console.print(layout)
-    output = capture.get()
-    assert "test_session" in output
-    assert "CODER" in output
-    assert "coding..." in output
-
-
-def test_dashboard_extract_tmux_session():
-    """Test that extract_tmux_session correctly parses session IDs."""
-    assert extract_tmux_session("my_session") == "my_session"
-    assert extract_tmux_session("my_session_0") == "my_session"
-    assert extract_tmux_session("my_session_%1") == "my_session"
-    assert extract_tmux_session("session_12345678") is None
-
+from copium_loop.ui.dashboard import Dashboard
+from copium_loop.ui.column import SessionColumn
 
 def test_dashboard_sessions_per_page():
     """Verify Dashboard default sessions_per_page is 3."""
     dash = Dashboard()
     assert dash.sessions_per_page == 3
-
-
-def test_session_column_last_updated():
-    """Verify SessionColumn.last_updated calculates the maximum last_update across pillars."""
-    session = SessionColumn("test_session")
-
-    # Manually set last_update for pillars
-    now = time.time()
-    session.pillars["coder"].last_update = now - 100
-    session.pillars["tester"].last_update = now - 50
-    session.pillars["reviewer"].last_update = now - 150
-    session.pillars["pr_creator"].last_update = now - 200
-
-    assert session.last_updated == now - 50
-
-    # Update one pillar
-    session.pillars["reviewer"].last_update = now + 10
-    assert session.last_updated == now + 10
-
 
 def test_dashboard_sorting_logic():
     """Verify Dashboard.make_layout sorts sessions by activated_at (oldest first) for running sessions."""
@@ -257,7 +54,6 @@ def test_dashboard_sorting_logic():
     active_sessions_layout = layout["main"].children
     assert len(active_sessions_layout) == 1
     assert active_sessions_layout[0].renderable.name == "session_4"
-
 
 def test_dashboard_stable_sorting_logic():
     """Verify Dashboard.make_layout stable sorting logic:
@@ -308,7 +104,6 @@ def test_dashboard_stable_sorting_logic():
     layout = dash.make_layout()
     active_sessions_layout = layout["main"].children
     assert active_sessions_layout[0].renderable.name == "session_3"
-
 
 def test_dashboard_new_sorting_logic():
     """
@@ -398,7 +193,6 @@ def test_dashboard_new_sorting_logic():
         "session_B",
     ]
 
-
 def test_dashboard_completed_sessions_sorting():
     """Verify completed sessions are sorted by completion time (newest first)."""
     dash = Dashboard()
@@ -429,7 +223,6 @@ def test_dashboard_completed_sessions_sorting():
 
     sorted_sessions = dash.get_sorted_sessions()
     assert [s.session_id for s in sorted_sessions] == ["s4", "s2", "s3", "s1"]
-
 
 def test_session_removal_when_file_deleted(tmp_path):
     """Test that sessions are removed if their log file is gone."""
@@ -488,7 +281,6 @@ def test_session_removal_when_file_deleted(tmp_path):
     )
     assert "session2" in dash.log_offsets
 
-
 def test_pagination_clamping_after_removal(tmp_path):
     dash = Dashboard()
     dash.log_dir = tmp_path
@@ -536,45 +328,6 @@ def test_pagination_clamping_after_removal(tmp_path):
     assert len(dash.sessions) == 0
     assert dash.current_page == 0
 
-
-def test_extract_tmux_session_new_format():
-    """Test that extract_tmux_session handles the new session-only format."""
-    session_id = "my-awesome-session"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
-
-
-def test_extract_tmux_session_old_format_with_percent():
-    """Test that extract_tmux_session still handles the old format with % pane ID."""
-    session_id = "my-awesome-session_%179"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
-
-
-def test_extract_tmux_session_old_format_without_percent():
-    """Test that extract_tmux_session handles the old format with numeric pane ID."""
-    session_id = "my-awesome-session_123"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
-
-
-def test_extract_tmux_session_not_tmux():
-    """Test that extract_tmux_session returns None for non-tmux session IDs."""
-    session_id = "session_1234567890"
-    assert extract_tmux_session(session_id) is None
-
-
-def test_extract_tmux_session_name_with_underscore():
-    """Test that extract_tmux_session handles session names that contain underscores."""
-    # If the session name itself has an underscore and we use the new format
-    session_id = "my_project_v2"
-    # It should return the whole thing because it doesn't end in a pane-like suffix
-    assert extract_tmux_session(session_id) == "my_project_v2"
-
-
-def test_extract_tmux_session_old_format_with_underscore_in_name():
-    """Test old format where the session name itself contains an underscore."""
-    session_id = "my_project_v2_%5"
-    assert extract_tmux_session(session_id) == "my_project_v2"
-
-
 def test_dashboard_make_layout_no_sessions():
     """Test layout when no sessions are present."""
     dash = Dashboard()
@@ -586,7 +339,6 @@ def test_dashboard_make_layout_no_sessions():
         console.print(layout)
     output = capture.get()
     assert "WAITING FOR SESSIONS..." in output
-
 
 def test_dashboard_pagination():
     """Test dashboard pagination logic."""
@@ -627,71 +379,6 @@ def test_dashboard_pagination():
     output2 = capture.get()
     assert "s4" in output2
     assert "s0" not in output2
-
-
-def test_session_column_status_banners():
-    """Test workflow status banners in SessionColumn."""
-    s = SessionColumn("test")
-
-    # Success
-    s.workflow_status = "success"
-    layout = s.render()
-    console = Console()
-    with console.capture() as capture:
-        console.print(layout)
-    output = capture.get()
-    assert "WORKFLOW COMPLETED SUCCESSFULLY" in output
-
-    # Failed
-    s = SessionColumn("test_fail")
-    s.workflow_status = "failed"
-    layout = s.render()
-    with console.capture() as capture:
-        console.print(layout)
-    output = capture.get()
-    assert "WORKFLOW FAILED" in output
-
-
-def test_matrix_pillar_time_suffix():
-    """Test time suffix rendering in MatrixPillar."""
-    pillar = MatrixPillar("Coder")
-
-    # Active
-    pillar.start_time = time.time() - 65  # 1m 5s
-    pillar.status = "active"
-    panel = pillar.render()
-    console = Console()
-    with console.capture() as capture:
-        console.print(panel)
-    output = capture.get()
-    assert "1m 5s" in output
-
-    # Success with completion time
-    pillar.status = "success"
-    pillar.completion_time = time.time()
-    pillar.duration = 65
-    panel = pillar.render()
-    with console.capture() as capture:
-        console.print(panel)
-    output = capture.get()
-    assert "1m 5s" in output
-    assert "@" in output  # Time of completion
-
-
-def test_dashboard_switch_to_tmux_session():
-    """Test switching tmux sessions (mocked)."""
-    with (
-        patch("subprocess.run") as mock_run,
-        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
-    ):
-        switch_to_tmux_session("target_session")
-        mock_run.assert_called_once_with(
-            ["tmux", "switch-client", "-t", "--", "target_session"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
 
 def test_dashboard_update_from_logs(tmp_path):
     """Test updating dashboard state from log files."""
@@ -756,7 +443,6 @@ def test_dashboard_update_from_logs(tmp_path):
     assert s.workflow_status == "success"
     assert s.completed_at > 0
 
-
 def test_dashboard_update_from_logs_error_handling(tmp_path, capsys):
     """Test that Dashboard.update_from_logs reports errors to stderr."""
     dash = Dashboard()
@@ -779,18 +465,3 @@ def test_dashboard_update_from_logs_error_handling(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert f"Error processing log file {log_file}: Simulated file error" in captured.err
-
-
-def test_switch_to_tmux_session_error_handling(capsys):
-    """Test that switch_to_tmux_session reports unexpected errors to stderr."""
-    with (
-        patch("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
-        patch("subprocess.run", side_effect=Exception("Simulated tmux error")),
-    ):
-        switch_to_tmux_session("target_session")
-
-    captured = capsys.readouterr()
-    assert (
-        "Unexpected error switching to tmux session 'target_session': Simulated tmux error"
-        in captured.err
-    )
