@@ -1,6 +1,6 @@
 from langgraph.graph import END
 
-from copium_loop.constants import MAX_RETRIES
+from copium_loop import constants
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -11,7 +11,7 @@ def should_continue_from_test(state: AgentState) -> str:
         telemetry.log_status("tester", "success")
         return "reviewer"
 
-    if state.get("retry_count", 0) > MAX_RETRIES:
+    if state.get("retry_count", 0) > constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("tester", "error")
         telemetry.log_workflow_status("failed")
@@ -27,7 +27,7 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_status("reviewer", "success")
         return "pr_creator"
 
-    if state.get("retry_count", 0) > MAX_RETRIES:
+    if state.get("retry_count", 0) > constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("reviewer", "error")
         telemetry.log_workflow_status("failed")
@@ -49,7 +49,7 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
         telemetry.log_status("pr_creator", "success")
         return END
 
-    if state.get("retry_count", 0) > MAX_RETRIES:
+    if state.get("retry_count", 0) > constants.MAX_RETRIES:
         print("Max retries exceeded in PR Creator. Aborting.")
         telemetry.log_status("pr_creator", "error")
         telemetry.log_workflow_status("failed")

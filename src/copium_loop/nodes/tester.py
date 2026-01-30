@@ -2,7 +2,7 @@ import re
 
 from langchain_core.messages import SystemMessage
 
-from copium_loop.constants import MAX_RETRIES
+from copium_loop import constants
 from copium_loop.discovery import get_build_command, get_lint_command, get_test_command
 from copium_loop.notifications import notify
 from copium_loop.shell import run_command
@@ -91,7 +91,7 @@ async def tester(state: AgentState) -> dict:
     if not success:
         message = (
             "Max retries exceeded. Aborting."
-            if retry_count >= MAX_RETRIES
+            if retry_count >= constants.MAX_RETRIES
             else "Unit tests failed. Returning to coder."
         )
 
