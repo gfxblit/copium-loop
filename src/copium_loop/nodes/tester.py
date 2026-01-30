@@ -94,12 +94,33 @@ async def tester(state: AgentState) -> dict:
             if retry_count >= MAX_RETRIES
             else "Unit tests failed. Returning to coder."
         )
+
+        # Check for coverage failures
+        coverage_patterns = [
+            r"Required test coverage of \d+% not reached\. Total coverage: ([\d.]+)%",
+            r"Jest: Coverage for .+? \(([\d.]+)%\) does not meet global threshold \(([\d.]+)%\)",
+            r"Coverage check failed",
+        ]
+        is_coverage_failure = any(
+            re.search(p, output, re.MULTILINE) for p in coverage_patterns
+        )
+
+        fail_type = "Coverage" if is_coverage_failure else "Unit"
+        fail_prefix = f"FAIL ({fail_type}):"
+
+        if is_coverage_failure:
+            message = (
+                "Max retries exceeded. Aborting."
+                if retry_count >= MAX_RETRIES
+                else "Test coverage threshold not met. Returning to coder."
+            )
+
         telemetry.log_output("tester", f"{message}\n")
         await notify("Workflow: Tests Failed", message, 4)
         return {
-            "test_output": "FAIL (Unit):\n" + output,
+            "test_output": f"{fail_prefix}\n" + output,
             "retry_count": retry_count + 1,
-            "messages": [SystemMessage(content="Tests failed (Unit):\n" + output)],
+            "messages": [SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)],
         }
 
     telemetry.log_status("tester", "success")

@@ -147,16 +147,91 @@ class TestTesterNode:
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
                 {"output": "Tests: 9 passed, 1 failed", "exit_code": 0},
-            ]
-            state = {"retry_count": 0}
-            result = await tester(state)
-            assert "FAIL (Unit)" in result["test_output"]
-
-            # 3. Lint passes, 4. Test output contains 'FAILED' at start of line
-            mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
                 {"output": "FAILED test_file.py", "exit_code": 0},
             ]
             state = {"retry_count": 0}
             result = await tester(state)
             assert "FAIL (Unit)" in result["test_output"]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+            assert "FAIL (Unit)" in result["test_output"]
+
+    @pytest.mark.asyncio
+    async def test_tester_returns_fail_on_coverage_pytest(self):
+        """Test that test runner returns FAIL (Coverage) if pytest coverage is low."""
+        with (
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
+            patch(
+                "copium_loop.nodes.tester.get_build_command",
+                return_value=("", []),
+            ),
+        ):
+            # 1. Lint passes, 2. Unit tests fail due to coverage
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {
+                    "output": "Required test coverage of 80% not reached. Total coverage: 75.0%",
+                    "exit_code": 1,
+                },
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Coverage)" in result["test_output"]
+            assert "Total coverage: 75.0%" in result["test_output"]
+            assert result["retry_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_tester_returns_fail_on_coverage_jest(self):
+        """Test that test runner returns FAIL (Coverage) if Jest coverage is low."""
+        with (
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
+            patch(
+                "copium_loop.nodes.tester.get_build_command",
+                return_value=("", []),
+            ),
+        ):
+            # 1. Lint passes, 2. Unit tests fail due to coverage
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {
+                    "output": "Jest: Coverage for lines (75%) does not meet global threshold (80%)",
+                    "exit_code": 1,
+                },
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Coverage)" in result["test_output"]
+            assert "Jest: Coverage for lines (75%)" in result["test_output"]
+
+    @pytest.mark.asyncio
+    async def test_tester_returns_fail_on_coverage_nyc(self):
+        """Test that test runner returns FAIL (Coverage) if nyc/c8 coverage is low."""
+        with (
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
+            patch(
+                "copium_loop.nodes.tester.get_build_command",
+                return_value=("", []),
+            ),
+        ):
+            # 1. Lint passes, 2. Unit tests fail due to coverage
+            mock_run.side_effect = [
+                {"output": "Linting passed", "exit_code": 0},
+                {"output": "Coverage check failed", "exit_code": 1},
+            ]
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Coverage)" in result["test_output"]
