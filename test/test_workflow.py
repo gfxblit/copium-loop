@@ -31,11 +31,12 @@ class TestGraphCreation:
         # Check that it has the expected nodes
         assert "coder" in graph.nodes
         assert "tester" in graph.nodes
+        assert "architect" in graph.nodes
         assert "reviewer" in graph.nodes
         assert "pr_creator" in graph.nodes
 
     @pytest.mark.parametrize(
-        "start_node", ["coder", "tester", "reviewer", "pr_creator"]
+        "start_node", ["coder", "tester", "architect", "reviewer", "pr_creator"]
     )
     def test_create_graph_with_valid_start_nodes(self, workflow_manager_factory, start_node):
         """Test graph creation with each valid start node."""

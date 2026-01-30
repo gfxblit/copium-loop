@@ -111,7 +111,7 @@ async def tester(state: AgentState) -> dict:
         if is_coverage_failure:
             message = (
                 "Max retries exceeded. Aborting."
-                if retry_count >= MAX_RETRIES
+                if retry_count >= constants.MAX_RETRIES
                 else "Test coverage threshold not met. Returning to coder."
             )
 
