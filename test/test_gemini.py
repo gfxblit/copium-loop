@@ -1,4 +1,7 @@
-from unittest.mock import AsyncMock, patch
+import asyncio
+import contextlib
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -42,6 +45,34 @@ class TestExecuteGemini:
             cmd_args = mock_stream.call_args[0][1]
             assert "-m" not in cmd_args
             assert "--sandbox" in cmd_args
+
+    @pytest.mark.asyncio
+    async def test_execute_gemini_inactivity_timeout(self):
+        """Test that _execute_gemini kills the process after inactivity timeout."""
+        with (
+            patch("copium_loop.shell.INACTIVITY_TIMEOUT", 0.01),
+            patch("asyncio.create_subprocess_exec") as mock_exec,
+        ):
+            mock_proc = AsyncMock()
+            killed_event = asyncio.Event()
+
+            async def slow_read(*_args, **_kwargs):
+                with contextlib.suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(killed_event.wait(), timeout=1.0)
+                return b""
+
+            mock_proc.stdout.read = AsyncMock(side_effect=slow_read)
+            mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.returncode = None
+            mock_proc.kill = MagicMock(side_effect=killed_event.set)
+            mock_proc.terminate = MagicMock(side_effect=killed_event.set)
+            mock_exec.return_value = mock_proc
+
+            with pytest.raises(Exception) as excinfo:
+                await gemini._execute_gemini("prompt", "model")
+
+            assert "TIMEOUT" in str(excinfo.value)
+            assert mock_proc.kill.called or mock_proc.terminate.called
 
 
 class TestInvokeGemini:
@@ -149,3 +180,57 @@ class TestInvokeGemini:
             captured = capsys.readouterr()
             assert "[VERBOSE]" not in captured.out
             assert "Using model" not in captured.out
+
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_invoke_gemini_total_timeout(self, mock_create_subprocess_exec):
+        """
+        Test that invoke_gemini kills the underlying Gemini CLI process if total_timeout is exceeded.
+        """
+        # Use an event to signal process completion or kill
+        killed_event = asyncio.Event()
+
+        # Mock the subprocess
+        mock_process = MagicMock()
+
+        async def mock_read(_n=1024):
+            await asyncio.sleep(0.01)
+            return b""
+
+        mock_process.stdout.read.side_effect = mock_read
+
+        async def mock_wait():
+            try:
+                # Wait for either natural completion (not happening here) or kill
+                await asyncio.wait_for(killed_event.wait(), timeout=10)
+                return -1  # Return -1 if killed
+            except asyncio.TimeoutError:
+                return 0
+
+        def mock_kill():
+            killed_event.set()
+
+        mock_process.wait.side_effect = mock_wait
+        mock_process.kill.side_effect = mock_kill
+        mock_process.returncode = None
+        mock_create_subprocess_exec.return_value = mock_process
+
+        # Set total_timeout shorter than the wait
+        total_timeout = 0.5
+        prompt = "test prompt"
+
+        start_time = time.monotonic()
+        with pytest.raises(Exception) as excinfo:
+            await gemini.invoke_gemini(
+                prompt,
+                models=["test-model"],
+                command_timeout=total_timeout,
+                node="test",
+            )
+        end_time = time.monotonic()
+
+        # Assertions
+        assert "TIMEOUT" in str(excinfo.value)
+        assert mock_process.kill.called
+        assert (end_time - start_time) < 2
+        assert (end_time - start_time) >= total_timeout - 0.2

@@ -83,3 +83,47 @@ class TestCoderNode:
             prompt = call_args[0]
             assert "Your previous attempt to create a PR failed." in prompt
             assert "Failed to create PR: Git push failed" in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_handles_needs_commit(self):
+        """Test that coder node handles needs_commit status."""
+        with patch(
+            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "Committing..."
+
+            state = {
+                "messages": [HumanMessage(content="Original request")],
+                "review_status": "needs_commit",
+            }
+            await coder(state)
+
+            # Check that the prompt contains the needs_commit message
+            call_args = mock_gemini.call_args[0]
+            prompt = call_args[0]
+            assert "You have uncommitted changes that prevent PR creation." in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_handles_rejected_status(self):
+        """Test that coder node handles rejected status from reviewer."""
+        with patch(
+            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "Fixing rejected code..."
+
+            state = {
+                "messages": [
+                    HumanMessage(content="Original request"),
+                    SystemMessage(content="Code is too complex."),
+                ],
+                "review_status": "rejected",
+            }
+            await coder(state)
+
+            # Check that the prompt contains the rejection message
+            call_args = mock_gemini.call_args[0]
+            prompt = call_args[0]
+            assert (
+                "Your previous implementation was rejected by the reviewer." in prompt
+            )
+            assert "Code is too complex." in prompt

@@ -26,12 +26,12 @@ class TailRenderable:
             if distance_from_end == 0:
                 style = Style(color="#FFFFFF", bold=True)
                 prefix = "> "
-            elif distance_from_end < 10:
-                # Recent lines: Neon Green
+            elif distance_from_end < 5:
+                # Very recent lines: Neon Green
                 style = Style(color="#00FF41")
                 prefix = "  "
-            elif distance_from_end == 2:
-                # History: Dark Green
+            elif distance_from_end < 10:
+                # Recent lines: Dark Green
                 style = Style(color="#008F11")
                 prefix = "  "
             else:

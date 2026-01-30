@@ -1,38 +1,14 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-
-from copium_loop import telemetry
-from copium_loop.ui import extract_tmux_session
+from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 
 
-@pytest.fixture(autouse=True)
-def reset_telemetry_singleton():
-    """Reset the telemetry singleton before each test."""
-    telemetry._telemetry_instance = None
-    yield
-    telemetry._telemetry_instance = None
-
-
-def test_get_telemetry_uses_tmux_session_name():
-    """Test that get_telemetry uses only the tmux session name when available."""
-    mock_res = MagicMock()
-    mock_res.returncode = 0
-    mock_res.stdout = "my-awesome-session\n"
-
-    with patch("subprocess.run", return_value=mock_res):
-        t = telemetry.get_telemetry()
-        assert t.session_id == "my-awesome-session"
-
-
-def test_get_telemetry_fallback_to_timestamp():
-    """Test that get_telemetry falls back to session_timestamp when tmux is not available."""
-    with (
-        patch("subprocess.run", side_effect=Exception("no tmux")),
-        patch("time.time", return_value=1234567890),
-    ):
-        t = telemetry.get_telemetry()
-        assert t.session_id == "session_1234567890"
+def test_extract_tmux_session_basic():
+    """Test that extract_tmux_session correctly parses session IDs."""
+    assert extract_tmux_session("my_session") == "my_session"
+    assert extract_tmux_session("my_session_0") == "my_session"
+    assert extract_tmux_session("my_session_%1") == "my_session"
+    assert extract_tmux_session("session_12345678") is None
 
 
 def test_extract_tmux_session_new_format():
@@ -71,3 +47,33 @@ def test_extract_tmux_session_old_format_with_underscore_in_name():
     """Test old format where the session name itself contains an underscore."""
     session_id = "my_project_v2_%5"
     assert extract_tmux_session(session_id) == "my_project_v2"
+
+
+def test_switch_to_tmux_session_success():
+    """Test switching tmux sessions (mocked)."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
+        switch_to_tmux_session("target_session")
+        mock_run.assert_called_once_with(
+            ["tmux", "switch-client", "-t", "--", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
+def test_switch_to_tmux_session_error_handling(capsys):
+    """Test that switch_to_tmux_session reports unexpected errors to stderr."""
+    with (
+        patch("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+        patch("subprocess.run", side_effect=Exception("Simulated tmux error")),
+    ):
+        switch_to_tmux_session("target_session")
+
+    captured = capsys.readouterr()
+    assert (
+        "Unexpected error switching to tmux session 'target_session': Simulated tmux error"
+        in captured.err
+    )

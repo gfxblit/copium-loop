@@ -1,7 +1,6 @@
 from rich.console import Console
-from rich.panel import Panel
 
-from copium_loop.ui import MatrixPillar, TailRenderable
+from copium_loop.ui.renderable import TailRenderable
 
 
 def test_tail_renderable_basic():
@@ -64,33 +63,6 @@ def test_tail_renderable_empty():
     assert output == ""
 
 
-def test_matrix_pillar_render_order():
-    """Test that MatrixPillar renders logs in chronological order (oldest to newest)."""
-    pillar = MatrixPillar("Coder")
-    pillar.add_line("first")
-    pillar.add_line("second")
-    pillar.add_line("third")
-
-    panel = pillar.render()
-    assert isinstance(panel, Panel)
-
-    # We need to verify the content of the panel
-    console = Console(width=20)
-    with console.capture() as capture:
-        console.print(panel)
-
-    output = capture.get()
-    # Chronological order: first, second, third (top to bottom)
-    first_idx = output.find("first")
-    second_idx = output.find("second")
-    third_idx = output.find("third")
-
-    assert first_idx != -1
-    assert second_idx != -1
-    assert third_idx != -1
-    assert first_idx < second_idx < third_idx
-
-
 def test_tail_renderable_styling():
     """Test that TailRenderable applies correct styles based on recency and status."""
     buffer = [f"line {i}" for i in range(15)]
@@ -116,69 +88,3 @@ def test_tail_renderable_styling():
     assert "  line 13" in output_active
     assert "  line 10" in output_active
     assert "  line 0" in output_active
-
-
-def test_matrix_pillar_status_and_duration():
-    """Test that MatrixPillar correctly tracks status and duration."""
-    pillar = MatrixPillar("Coder")
-
-    # Initial state
-    assert pillar.status == "idle"
-    assert pillar.duration is None
-
-    # Set to active
-    timestamp = "2026-01-25T12:00:00"
-    pillar.set_status("active", timestamp)
-    assert pillar.status == "active"
-
-    # Set to success after 10 seconds
-    timestamp_end = "2026-01-25T12:00:10"
-    pillar.set_status("success", timestamp_end)
-    assert pillar.status == "success"
-    assert pillar.duration == 10.0
-    assert pillar.completion_time is not None
-
-
-def test_matrix_pillar_buffer_limit():
-    """Test that MatrixPillar respects its max_buffer size."""
-    pillar = MatrixPillar("Coder")
-    pillar.max_buffer = 5
-
-    for i in range(10):
-        pillar.add_line(f"line {i}")
-
-    assert len(pillar.buffer) == 5
-    assert pillar.buffer[0] == "line 5"
-    assert pillar.buffer[-1] == "line 9"
-
-
-def test_session_column_rendering():
-    """Test that SessionColumn renders its pillars."""
-    from copium_loop.ui import SessionColumn
-
-    session = SessionColumn("test_session")
-
-    # Set some content and status
-    session.pillars["coder"].add_line("coding...")
-    session.pillars["coder"].set_status("active")
-
-    layout = session.render(column_width=40)
-
-    # Verify it renders to console without crashing
-    console = Console(width=40)
-    with console.capture() as capture:
-        console.print(layout)
-    output = capture.get()
-    assert "test_session" in output
-    assert "CODER" in output
-    assert "coding..." in output
-
-
-def test_dashboard_extract_tmux_session():
-    """Test that extract_tmux_session correctly parses session IDs."""
-    from copium_loop.ui import extract_tmux_session
-
-    assert extract_tmux_session("my_session") == "my_session"
-    assert extract_tmux_session("my_session_0") == "my_session"
-    assert extract_tmux_session("my_session_%1") == "my_session"
-    assert extract_tmux_session("session_12345678") is None

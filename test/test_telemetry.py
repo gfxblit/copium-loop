@@ -1,10 +1,20 @@
 """Tests for telemetry log parsing and continuation features."""
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from copium_loop import telemetry
 from copium_loop.telemetry import Telemetry, find_latest_session
+
+
+@pytest.fixture(autouse=True)
+def reset_telemetry_singleton():
+    """Reset the telemetry singleton before each test."""
+    telemetry._telemetry_instance = None
+    yield
+    telemetry._telemetry_instance = None
 
 
 @pytest.fixture
@@ -21,6 +31,27 @@ def telemetry_with_temp_dir(temp_log_dir, monkeypatch):
     # Patch Path.home() to return tmp_path
     monkeypatch.setattr(Path, "home", lambda: temp_log_dir.parent.parent)
     return Telemetry("test_session")
+
+
+def test_get_telemetry_uses_tmux_session_name():
+    """Test that get_telemetry uses only the tmux session name when available."""
+    mock_res = MagicMock()
+    mock_res.returncode = 0
+    mock_res.stdout = "my-awesome-session\n"
+
+    with patch("subprocess.run", return_value=mock_res):
+        t = telemetry.get_telemetry()
+        assert t.session_id == "my-awesome-session"
+
+
+def test_get_telemetry_fallback_to_timestamp():
+    """Test that get_telemetry falls back to session_timestamp when tmux is not available."""
+    with (
+        patch("subprocess.run", side_effect=Exception("no tmux")),
+        patch("time.time", return_value=1234567890),
+    ):
+        t = telemetry.get_telemetry()
+        assert t.session_id == "session_1234567890"
 
 
 class TestTelemetryLogReading:
@@ -153,7 +184,8 @@ class TestGetLastIncompleteNode:
         assert metadata["reason"] == "incomplete"
 
     def test_reviewer_approved_should_resume_at_pr_creator(
-        self, telemetry_with_temp_dir
+        self,
+        telemetry_with_temp_dir,
     ):
         """Test when reviewer approved, should resume at pr_creator."""
         telemetry_with_temp_dir.log_status("coder", "active")
