@@ -18,7 +18,7 @@ async def async_main():
         "--start",
         "-s",
         type=str,
-        help="Start node (coder, test_runner, reviewer, pr_creator)",
+        help="Start node (coder, tester, architect, reviewer, pr_creator)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"

@@ -22,6 +22,7 @@ def test_session_column_rendering():
     output = capture.get()
     assert "test_session" in output
     assert "CODER" in output
+    assert "ARCHITECT" in output
     assert "coding..." in output
 
 
@@ -33,6 +34,7 @@ def test_session_column_last_updated():
     now = time.time()
     session.pillars["coder"].last_update = now - 100
     session.pillars["tester"].last_update = now - 50
+    session.pillars["architect"].last_update = now - 75
     session.pillars["reviewer"].last_update = now - 150
     session.pillars["pr_creator"].last_update = now - 200
 

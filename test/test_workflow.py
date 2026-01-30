@@ -236,6 +236,7 @@ class TestNodeTimeouts:
         [
             ("tester", "test_output", "FAIL: Node 'tester' timed out", None, None),
             ("coder", "last_error", "Node 'coder' timed out", "code_status", "failed"),
+            ("architect", "messages", "Node 'architect' timed out", "architect_status", "error"),
             ("reviewer", "messages", "Node 'reviewer' timed out", "review_status", "error"),
             ("pr_creator", "messages", "Node 'pr_creator' timed out", "review_status", "pr_failed"),
             ("unknown_node", "last_error", "Node 'unknown_node' timed out", None, None),
