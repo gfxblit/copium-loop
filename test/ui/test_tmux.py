@@ -8,7 +8,7 @@ def test_extract_tmux_session_basic():
     assert extract_tmux_session("my_session") == "my_session"
     assert extract_tmux_session("my_session_0") == "my_session"
     assert extract_tmux_session("my_session_%1") == "my_session"
-    assert extract_tmux_session("session_12345678") is None
+    assert extract_tmux_session("session_12345678") == "session_12345678"
 
 
 def test_extract_tmux_session_new_format():
@@ -30,9 +30,9 @@ def test_extract_tmux_session_old_format_without_percent():
 
 
 def test_extract_tmux_session_not_tmux():
-    """Test that extract_tmux_session returns None for non-tmux session IDs."""
+    """Test that session_timestamp is treated as a valid session name (per issue #30)."""
     session_id = "session_1234567890"
-    assert extract_tmux_session(session_id) is None
+    assert extract_tmux_session(session_id) == "session_1234567890"
 
 
 def test_extract_tmux_session_name_with_underscore():
