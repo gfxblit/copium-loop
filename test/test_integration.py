@@ -203,9 +203,6 @@ async def test_max_retries_exceeded(mock_instructions, monkeypatch):
     import copium_loop.constants
 
     monkeypatch.setattr(copium_loop.constants, "MAX_RETRIES", 2)
-    import copium_loop.nodes.conditionals
-
-    monkeypatch.setattr(copium_loop.nodes.conditionals, "MAX_RETRIES", 2)
 
     instructions = {
         "gemini": [
