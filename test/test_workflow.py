@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langgraph.graph.state import CompiledStateGraph
 
-from copium_loop.copium_loop import WorkflowManager
 from copium_loop.graph import create_graph
 
 
@@ -103,7 +102,7 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_run_verify_failure(
-        self, mock_create_graph, mock_get_telemetry, mock_verify_environment, workflow
+        self, mock_verify_environment, workflow
     ):
         mock_verify_environment.return_value = False
         result = await workflow.run("test prompt")
