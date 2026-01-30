@@ -49,6 +49,9 @@ def switch_to_tmux_session(session_name: str):
     except subprocess.CalledProcessError:
         # Session doesn't exist or other error, silently ignore
         pass
+    except FileNotFoundError:
+        # tmux command not found, silently ignore
+        pass
     except Exception as e:
         import sys
 

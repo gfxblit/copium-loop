@@ -28,10 +28,19 @@ class TestQuickKeys(unittest.TestCase):
         """Test that session_ prefix is handled correctly."""
         # The requirement says 'session_123456789' should be identified.
         # Assuming if it looks like a generated session ID but corresponds to a tmux session?
-        # Or maybe the requirement means we SHOULD treat 'session_123456789' as a valid tmux session name if it exists?
+        # Or maybe the requirement implies we should treat 'session_123456789' as a valid tmux session name if it exists?
         # The current code returns None for session_*.
         # Let's assume the requirement implies we should return it.
         self.assertEqual(extract_tmux_session("session_123456789"), "session_123456789")
+
+    def test_extract_tmux_session_boundary_conditions(self):
+        """Test boundary conditions for suffix length."""
+        # Length 7: treated as pane index -> strip
+        self.assertEqual(extract_tmux_session("s_1234567"), "s")
+        # Length 8: treated as timestamp/name -> keep
+        self.assertEqual(extract_tmux_session("s_12345678"), "s_12345678")
+        # Length 9: treated as timestamp/name -> keep
+        self.assertEqual(extract_tmux_session("s_123456789"), "s_123456789")
 
     @patch("src.copium_loop.ui.tmux.subprocess.run")
     @patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default"})
@@ -52,6 +61,15 @@ class TestQuickKeys(unittest.TestCase):
         mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
         # Should not raise exception
         switch_to_tmux_session("non-existent")
+
+    @patch("src.copium_loop.ui.tmux.subprocess.run")
+    @patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default"})
+    def test_switch_to_tmux_session_tmux_not_found(self, mock_run):
+        """Test switch when tmux binary is missing."""
+        mock_run.side_effect = FileNotFoundError("tmux not found")
+        # Should not raise exception and should ideally not print to stderr
+        # For now we just verify it doesn't crash
+        switch_to_tmux_session("target")
 
     @patch.dict(os.environ, {}, clear=True)
     @patch("src.copium_loop.ui.tmux.subprocess.run")
