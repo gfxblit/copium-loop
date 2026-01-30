@@ -6,7 +6,7 @@ from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 def test_extract_tmux_session_basic():
     """Test that extract_tmux_session correctly parses session IDs."""
     assert extract_tmux_session("my_session") == "my_session"
-    assert extract_tmux_session("my_session_0") == "my_session"
+    assert extract_tmux_session("my_session_0") == "my_session_0"
     assert extract_tmux_session("my_session_%1") == "my_session"
     assert extract_tmux_session("session_12345678") == "session_12345678"
 
@@ -24,9 +24,9 @@ def test_extract_tmux_session_old_format_with_percent():
 
 
 def test_extract_tmux_session_old_format_without_percent():
-    """Test that extract_tmux_session handles the old format with numeric pane ID."""
+    """Test that extract_tmux_session no longer handles the old format with numeric-only pane ID to avoid collisions."""
     session_id = "my-awesome-session_123"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
+    assert extract_tmux_session(session_id) == "my-awesome-session_123"
 
 
 def test_extract_tmux_session_not_tmux():

@@ -74,9 +74,12 @@ class Dashboard:
             # Account for borders between columns (1 char per border)
             column_width = (self.console.width - num_columns + 1) // num_columns
 
-            # Pass column width to each session for display
+            # Pass column width and index to each session for display
             layout["main"].split_row(
-                *[Layout(s.render(column_width=column_width)) for s in active_sessions]
+                *[
+                    Layout(s.render(column_width=column_width, index=i + 1))
+                    for i, s in enumerate(active_sessions)
+                ]
             )
         else:
             layout["main"].update(

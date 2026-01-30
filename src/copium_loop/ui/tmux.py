@@ -19,15 +19,10 @@ def extract_tmux_session(session_id: str) -> str | None:
         if suffix.startswith("%") and suffix[1:].isdigit():
              return parts[0]
 
-        # If suffix is digits, we need to distinguish between a pane index and a timestamp
-        # Timestamps (like in session_1234567890) are usually long (10+ digits).
-        # Pane indices are usually short.
-        # We'll use a threshold of 8 digits.
-        if suffix.isdigit():
-             if len(suffix) < 8:
-                 return parts[0]
-             # If longer, assume it's part of the name (e.g. session_TIMESTAMP)
-             return session_id
+        # We used to strip short numeric suffixes (len < 8) to handle legacy session_pane IDs.
+        # However, this caused collisions with valid session names like 'project_1'.
+        # Since we now default to using the full session name as the ID, we preserve it.
+        return session_id
 
     # Otherwise, the session_id is the tmux session name
     return session_id

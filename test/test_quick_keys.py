@@ -16,7 +16,8 @@ class TestQuickKeys(unittest.TestCase):
 
     def test_extract_tmux_session_with_pane(self):
         """Test session names with pane suffix (old format)."""
-        self.assertEqual(extract_tmux_session("my-session_1"), "my-session")
+        # Numeric suffixes are no longer stripped to avoid collision with session names like 'project_1'
+        self.assertEqual(extract_tmux_session("my-session_1"), "my-session_1")
         self.assertEqual(extract_tmux_session("project_%1"), "project")
 
     def test_extract_tmux_session_numeric_suffix(self):
@@ -35,8 +36,8 @@ class TestQuickKeys(unittest.TestCase):
 
     def test_extract_tmux_session_boundary_conditions(self):
         """Test boundary conditions for suffix length."""
-        # Length 7: treated as pane index -> strip
-        self.assertEqual(extract_tmux_session("s_1234567"), "s")
+        # Length 7: Treated as part of name now (no stripping)
+        self.assertEqual(extract_tmux_session("s_1234567"), "s_1234567")
         # Length 8: treated as timestamp/name -> keep
         self.assertEqual(extract_tmux_session("s_12345678"), "s_12345678")
         # Length 9: treated as timestamp/name -> keep
