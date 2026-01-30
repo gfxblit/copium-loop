@@ -7,7 +7,7 @@ def test_extract_tmux_session_basic():
     """Test that extract_tmux_session correctly parses session IDs."""
     assert extract_tmux_session("my_session") == "my_session"
     assert extract_tmux_session("my_session_0") == "my_session_0"
-    assert extract_tmux_session("my_session_%1") == "my_session"
+    assert extract_tmux_session("my_session_%1") == "%1"
     assert extract_tmux_session("session_12345678") == "session_12345678"
 
 
@@ -20,7 +20,7 @@ def test_extract_tmux_session_new_format():
 def test_extract_tmux_session_old_format_with_percent():
     """Test that extract_tmux_session still handles the old format with % pane ID."""
     session_id = "my-awesome-session_%179"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
+    assert extract_tmux_session(session_id) == "%179"
 
 
 def test_extract_tmux_session_old_format_without_percent():
@@ -46,7 +46,7 @@ def test_extract_tmux_session_name_with_underscore():
 def test_extract_tmux_session_old_format_with_underscore_in_name():
     """Test old format where the session name itself contains an underscore."""
     session_id = "my_project_v2_%5"
-    assert extract_tmux_session(session_id) == "my_project_v2"
+    assert extract_tmux_session(session_id) == "%5"
 
 
 def test_switch_to_tmux_session_success():
@@ -57,7 +57,7 @@ def test_switch_to_tmux_session_success():
     ):
         switch_to_tmux_session("target_session")
         mock_run.assert_called_once_with(
-            ["tmux", "switch-client", "-t", "--", "target_session"],
+            ["tmux", "switch-client", "-t", "target_session"],
             check=True,
             capture_output=True,
             text=True,

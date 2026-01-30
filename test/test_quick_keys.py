@@ -18,7 +18,7 @@ class TestQuickKeys(unittest.TestCase):
         """Test session names with pane suffix (old format)."""
         # Numeric suffixes are no longer stripped to avoid collision with session names like 'project_1'
         self.assertEqual(extract_tmux_session("my-session_1"), "my-session_1")
-        self.assertEqual(extract_tmux_session("project_%1"), "project")
+        self.assertEqual(extract_tmux_session("project_%1"), "%1")
 
     def test_extract_tmux_session_numeric_suffix(self):
         """Test session names that naturally have underscores but are not panes."""
@@ -30,7 +30,7 @@ class TestQuickKeys(unittest.TestCase):
         # The requirement says 'session_123456789' should be identified.
         # Assuming if it looks like a generated session ID but corresponds to a tmux session?
         # Or maybe the requirement implies we should treat 'session_123456789' as a valid tmux session name if it exists?
-        # The current code returns None for session_*.
+        # The current code returns None for session_*. 
         # Let's assume the requirement implies we should return it.
         self.assertEqual(extract_tmux_session("session_123456789"), "session_123456789")
 
@@ -49,7 +49,7 @@ class TestQuickKeys(unittest.TestCase):
         """Test successful switch."""
         switch_to_tmux_session("target")
         mock_run.assert_called_with(
-            ["tmux", "switch-client", "-t", "--", "target"],
+            ["tmux", "switch-client", "-t", "target"],
             check=True,
             capture_output=True,
             text=True

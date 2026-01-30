@@ -3,11 +3,11 @@ import subprocess
 
 
 def extract_tmux_session(session_id: str) -> str | None:
-    """Extracts the tmux session name from a session_id.
+    """Extracts the tmux session name or pane ID from a session_id.
 
     Session IDs are formatted as {tmux_session}, {tmux_session}_{pane}
     or session_{timestamp}.
-    Returns the tmux session name if it exists, None otherwise.
+    Returns the pane ID if it exists (most precise), otherwise the session name.
     """
     # Handle old format: {tmux_session}_{pane}
     # We check if it ends with _%digit or _digit
@@ -16,8 +16,9 @@ def extract_tmux_session(session_id: str) -> str | None:
         suffix = parts[1]
 
         # If suffix is a pane ID (starts with %)
+        # Pane IDs are unique across the entire tmux server, so they are the best target.
         if suffix.startswith("%") and suffix[1:].isdigit():
-             return parts[0]
+             return suffix
 
         # We used to strip short numeric suffixes (len < 8) to handle legacy session_pane IDs.
         # However, this caused collisions with valid session names like 'project_1'.
@@ -29,14 +30,14 @@ def extract_tmux_session(session_id: str) -> str | None:
 
 
 def switch_to_tmux_session(session_name: str):
-    """Switches the current tmux client to the specified session."""
+    """Switches the current tmux client to the specified session or pane."""
     # Check if we're running inside tmux
     if not os.environ.get("TMUX"):
         return  # Not in tmux, silently ignore
 
     try:
         subprocess.run(
-            ["tmux", "switch-client", "-t", "--", session_name],
+            ["tmux", "switch-client", "-t", session_name],
             check=True,
             capture_output=True,
             text=True,
