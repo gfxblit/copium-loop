@@ -41,7 +41,7 @@ class SessionColumn:
         """Returns the maximum last_update timestamp across all pillars."""
         return max(pillar.last_update for pillar in self.pillars.values())
 
-    def render(self, column_width: int | None = None, index: int | None = None) -> Layout:
+    def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
 
         # Calculate dynamic ratios based on buffer size and activity
@@ -100,8 +100,6 @@ class SessionColumn:
 
         # Dynamically truncate session_id based on available column width
         display_name = self.session_id
-        if index is not None:
-            display_name = f"[{index}] {display_name}"
 
         if column_width:
             # Account for: panel borders (2), padding (2)
