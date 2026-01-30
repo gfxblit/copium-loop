@@ -30,8 +30,7 @@ class TestQuickKeys(unittest.TestCase):
         # The requirement says 'session_123456789' should be identified.
         # Assuming if it looks like a generated session ID but corresponds to a tmux session?
         # Or maybe the requirement implies we should treat 'session_123456789' as a valid tmux session name if it exists?
-        # The current code returns None for session_*. 
-        # Let's assume the requirement implies we should return it.
+        # The current code returns the full ID.
         self.assertEqual(extract_tmux_session("session_123456789"), "session_123456789")
 
     def test_extract_tmux_session_boundary_conditions(self):

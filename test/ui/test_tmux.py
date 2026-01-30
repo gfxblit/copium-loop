@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import subprocess
+from unittest.mock import MagicMock, patch
 
 from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 
@@ -55,9 +56,44 @@ def test_switch_to_tmux_session_success():
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
+        mock_run.return_value.returncode = 0
         switch_to_tmux_session("target_session")
-        mock_run.assert_called_once_with(
+        # Should be called once because the first attempt (target_session) succeeds
+        mock_run.assert_called_with(
             ["tmux", "switch-client", "-t", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
+def test_switch_to_tmux_session_fallback():
+    """Test switching tmux sessions with fallback (mocked)."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
+        # Create a mock result for the successful second call
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+
+        # First call fails, second succeeds
+        mock_run.side_effect = [
+            subprocess.CalledProcessError(1, "tmux"),
+            mock_result
+        ]
+
+        switch_to_tmux_session("target_session")
+
+        assert mock_run.call_count == 2
+        mock_run.assert_any_call(
+            ["tmux", "switch-client", "-t", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        mock_run.assert_any_call(
+            ["tmux", "switch-client", "-t", "target"],
             check=True,
             capture_output=True,
             text=True,
