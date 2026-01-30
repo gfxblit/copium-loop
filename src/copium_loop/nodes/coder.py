@@ -14,6 +14,7 @@ async def coder(state: AgentState) -> dict:
     messages = state["messages"]
     test_output = state.get("test_output", "")
     review_status = state.get("review_status", "")
+    architect_status = state.get("architect_status", "")
 
     initial_request = messages[0].content
 
@@ -54,6 +55,15 @@ async def coder(state: AgentState) -> dict:
 
     Please fix the code to satisfy the reviewer and the original request: {initial_request}."""
         system_prompt += "\n\nMake sure to commit your fixes."
+    elif architect_status == "refactor":
+        last_message = messages[-1]
+        system_prompt = f"""Your previous implementation was flagged for architectural improvement by the architect.
+
+    ARCHITECT FEEDBACK:
+    {last_message.content}
+
+    Please refactor the code to satisfy the architect and the original request: {initial_request}."""
+        system_prompt += "\n\nMake sure to commit your changes."
     elif review_status == "pr_failed":
         last_message = messages[-1]
         system_prompt = f"""Your previous attempt to create a PR failed.
