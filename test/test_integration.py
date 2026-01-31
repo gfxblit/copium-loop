@@ -114,6 +114,10 @@ async def test_happy_path(mock_instructions):
             {
                 "stdout": "LGTM. VERDICT: APPROVED",
             },
+            # Journaler: distills lesson
+            {
+                "stdout": "Always use TDD.",
+            },
         ],
         "pytest": [
             # WorkflowManager baseline check
@@ -141,6 +145,8 @@ async def test_happy_path(mock_instructions):
     assert result["review_status"] == "pr_created"
     assert os.path.exists("src/feature.py")
     assert os.path.exists("test/test_feature.py")
+    assert os.path.exists("GEMINI.md")
+    assert "Always use TDD." in Path("GEMINI.md").read_text()
 
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
@@ -174,6 +180,10 @@ async def test_retry_loop(mock_instructions):
             {
                 "stdout": "LGTM. VERDICT: APPROVED",
             },
+            # Journaler: distills lesson
+            {
+                "stdout": "Fix bugs promptly.",
+            },
         ],
         "pytest": [
             # WorkflowManager baseline check
@@ -200,6 +210,8 @@ async def test_retry_loop(mock_instructions):
 
     assert result["retry_count"] == 1
     assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/124"
+    assert os.path.exists("GEMINI.md")
+    assert "Fix bugs promptly." in Path("GEMINI.md").read_text()
 
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
@@ -217,6 +229,7 @@ async def test_max_retries_exceeded(mock_instructions, monkeypatch):
             {"stdout": "Attempt 1", "write_files": {"f.py": ""}},
             {"stdout": "Attempt 2", "write_files": {"f.py": ""}},
             {"stdout": "Attempt 3", "write_files": {"f.py": ""}},
+            {"stdout": "Max retries lesson."},
         ],
         "pytest": [
             {"stdout": "Baseline"},
