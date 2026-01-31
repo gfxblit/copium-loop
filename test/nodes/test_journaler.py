@@ -39,3 +39,50 @@ async def test_journaler_success():
             prompt = args[0]
             assert "diff content" in prompt
             assert "All tests passed" in prompt
+
+
+@pytest.mark.asyncio
+async def test_journaler_includes_telemetry_log():
+    from unittest.mock import MagicMock
+    state: AgentState = {
+        "messages": [],
+        "code_status": "coded",
+        "test_output": "All tests passed",
+        "review_status": "approved",
+        "architect_status": "",
+        "retry_count": 0,
+        "pr_url": "http://github.com/pr/1",
+        "issue_url": "http://github.com/issue/37",
+        "initial_commit_hash": "abc",
+        "git_diff": "diff content",
+        "verbose": False,
+        "last_error": ""
+    }
+
+    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+        mock_invoke.return_value = "Always ensure memory is persisted."
+
+        with patch("copium_loop.nodes.journaler.MemoryManager"), \
+             patch("copium_loop.nodes.journaler.get_telemetry") as mock_get_telemetry:
+            mock_telemetry = MagicMock()
+            mock_get_telemetry.return_value = mock_telemetry
+
+            # Mock get_formatted_log to return a string
+            mock_telemetry.get_formatted_log.return_value = (
+                "coder: status: active\n"
+                "coder: output: Writing some code...\n"
+                "tester: status: active\n"
+                "tester: output: Running tests..."
+            )
+
+            await journaler(state)
+
+            # Verify that the prompt contains telemetry information
+            args, _ = mock_invoke.call_args
+            prompt = args[0]
+
+            assert "TELEMETRY LOG:" in prompt
+            assert "coder: status: active" in prompt
+            assert "coder: output: Writing some code..." in prompt
+            assert "tester: status: active" in prompt
+            assert "tester: output: Running tests..." in prompt

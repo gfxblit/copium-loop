@@ -100,6 +100,25 @@ class TestTelemetryLogReading:
         assert events[0]["node"] == "coder"
         assert events[1]["node"] == "tester"
 
+    def test_get_formatted_log(self, telemetry_with_temp_dir):
+        """Test formatting the session log."""
+        telemetry_with_temp_dir.log_status("coder", "active")
+        telemetry_with_temp_dir.log_output("coder", "Writing code...")
+        telemetry_with_temp_dir.log_status("tester", "active")
+
+        formatted_log = telemetry_with_temp_dir.get_formatted_log()
+        assert "coder: status: active" in formatted_log
+        assert "coder: output: Writing code..." in formatted_log
+        assert "tester: status: active" in formatted_log
+
+    def test_get_formatted_log_truncation(self, telemetry_with_temp_dir):
+        """Test truncation of long output in formatted log."""
+        long_output = "x" * 1000
+        telemetry_with_temp_dir.log_output("coder", long_output)
+
+        formatted_log = telemetry_with_temp_dir.get_formatted_log()
+        assert "coder: output: " + "x" * 500 + "... (truncated)" in formatted_log
+
 
 class TestGetLastIncompleteNode:
     """Tests for determining the last incomplete node."""

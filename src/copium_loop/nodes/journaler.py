@@ -14,6 +14,7 @@ async def journaler(state: AgentState) -> dict:
     test_output = state.get("test_output", "")
     review_status = state.get("review_status", "")
     git_diff = state.get("git_diff", "")
+    telemetry_log = telemetry.get_formatted_log()
 
     # Construct a prompt to distill the session
     prompt = f"""Analyze the following development session and distill it into a single, concise "Lesson Learned" for future sessions.
@@ -25,6 +26,9 @@ async def journaler(state: AgentState) -> dict:
 
     CHANGES MADE (Diff):
     {git_diff}
+
+    TELEMETRY LOG:
+    {telemetry_log}
 
     Provide ONLY the distilled lesson as a single sentence."""
 

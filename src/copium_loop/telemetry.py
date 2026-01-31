@@ -59,6 +59,26 @@ class Telemetry:
                         continue
         return events
 
+    def get_formatted_log(self) -> str:
+        """Returns a human-readable summary of the telemetry log."""
+        events = self.read_log()
+        if not events:
+            return "No telemetry log found."
+
+        lines = []
+        for event in events:
+            node = event.get("node", "unknown")
+            event_type = event.get("event_type", "unknown")
+            data = event.get("data", "")
+
+            # For output, we might want to truncate if it's too long
+            if event_type == "output" and isinstance(data, str) and len(data) > 500:
+                data = data[:500] + "... (truncated)"
+
+            lines.append(f"{node}: {event_type}: {data}")
+
+        return "\n".join(lines)
+
     def get_last_incomplete_node(self) -> tuple[str | None, dict]:
         """
         Determines which node to resume from based on log events.
