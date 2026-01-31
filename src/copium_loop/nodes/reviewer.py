@@ -6,7 +6,6 @@ from langchain_core.messages import SystemMessage
 from copium_loop.constants import REVIEWER_MODELS
 from copium_loop.gemini import invoke_gemini
 from copium_loop.git import get_diff
-from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -29,9 +28,6 @@ async def reviewer(state: AgentState) -> dict:
     retry_count = state.get("retry_count", 0)
     initial_commit_hash = state.get("initial_commit_hash", "")
 
-    memory_manager = MemoryManager()
-    memories = memory_manager.get_all_memories()
-
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
         return {
@@ -50,8 +46,6 @@ async def reviewer(state: AgentState) -> dict:
             print(msg, end="")
 
     system_prompt = f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
-
-    {memories if memories else ""}
 
     GIT DIFF SINCE START:
     {git_diff}

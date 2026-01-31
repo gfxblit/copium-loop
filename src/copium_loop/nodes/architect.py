@@ -6,7 +6,6 @@ from langchain_core.messages import SystemMessage
 from copium_loop.constants import ARCHITECT_MODELS
 from copium_loop.gemini import invoke_gemini
 from copium_loop.git import get_diff
-from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -28,9 +27,6 @@ async def architect(state: AgentState) -> dict:
     retry_count = state.get("retry_count", 0)
     initial_commit_hash = state.get("initial_commit_hash", "")
 
-    memory_manager = MemoryManager()
-    memories = memory_manager.get_all_memories()
-
     git_diff = ""
     if os.path.exists(".git") and initial_commit_hash:
         try:
@@ -41,8 +37,6 @@ async def architect(state: AgentState) -> dict:
             print(msg, end="")
 
     system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
-
-    {memories if memories else ""}
 
     GIT DIFF SINCE START:
     {git_diff}
