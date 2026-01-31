@@ -233,7 +233,7 @@ def get_telemetry() -> Telemetry:
             import subprocess
 
             res = subprocess.run(
-                ["tmux", "display-message", "-p", "#S_#D"],
+                ["tmux", "display-message", "-p", "#S"],
                 capture_output=True,
                 text=True,
                 check=False,
