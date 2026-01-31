@@ -165,5 +165,5 @@ class TestReviewerNode:
             args, kwargs = mock_gemini.call_args
             system_prompt = args[0]
             assert "EXAMPLE:" in system_prompt
-            assert "VERDICT: APPROVED" in system_prompt
-            assert "VERDICT: REJECTED" in system_prompt
+            assert system_prompt.count("VERDICT: APPROVED") == 2
+            assert system_prompt.count("VERDICT: REJECTED") == 2
