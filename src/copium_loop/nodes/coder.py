@@ -2,6 +2,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import DEFAULT_MODELS
 from copium_loop.gemini import invoke_gemini
+from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -18,8 +19,13 @@ async def coder(state: AgentState) -> dict:
 
     initial_request = messages[0].content
 
+    memory_manager = MemoryManager()
+    memories = memory_manager.get_all_memories()
+
     system_prompt = f"""You are a software engineer. Implement the following request: {initial_request}.
     You have access to the file system and git.
+
+    {memories if memories else ""}
 
     CRITICAL: You MUST follow Test-Driven Development (TDD) methodology.
     To do this, you MUST activate the 'tdd-guide' skill and follow its Red-Green-Refactor cycle:
