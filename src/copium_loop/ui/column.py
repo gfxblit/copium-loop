@@ -99,12 +99,14 @@ class SessionColumn:
             )
 
         # Dynamically truncate session_id based on available column width
+        display_name = self.session_id
+
         if column_width:
             # Account for: panel borders (2), padding (2)
             available_width = column_width - 4
-            header_text = self.session_id[:available_width]
+            header_text = display_name[:available_width]
         else:
-            header_text = self.session_id
+            header_text = display_name
 
         col_layout["header"].update(
             Panel(

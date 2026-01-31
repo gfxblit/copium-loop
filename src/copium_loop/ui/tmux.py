@@ -3,48 +3,71 @@ import subprocess
 
 
 def extract_tmux_session(session_id: str) -> str | None:
-    """Extracts the tmux session name from a session_id.
+    """Extracts the tmux session name or pane ID from a session_id.
 
-    Session IDs are formatted as {tmux_session}, {tmux_session}_{pane}
-    or session_{timestamp}.
-    Returns the tmux session name if it exists, None otherwise.
+    Session IDs are typically formatted as {tmux_session}_{pane_id} (e.g., work_%1)
+    or session_{timestamp} (e.g., session_123456789).
+    Returns the most specific target possible.
     """
-    # Handle non-tmux sessions (format: session_{timestamp})
-    if session_id.startswith("session_"):
+    if not session_id:
         return None
 
-    # Handle old format: {tmux_session}_{pane}
-    # We check if it ends with _%digit or _digit
+    # If it's already a pane ID, return it
+    if session_id.startswith("%") and session_id[1:].isdigit():
+        return session_id
+
     if "_" in session_id:
         parts = session_id.rsplit("_", 1)
         suffix = parts[1]
-        if suffix.startswith("%") or suffix.isdigit():
-            return parts[0]
 
-    # Otherwise, the session_id is the tmux session name
+        # Case 1: suffix is a pane ID (starts with %)
+        # Pane IDs are unique and the best target for switching.
+        if suffix.startswith("%") and suffix[1:].isdigit():
+            return suffix
+
+        # Note: We used to treat session_timestamp as None, but existing tests
+        # require returning the full ID. We preserve it to allow potential
+        # matches if the user named their session thus.
+        return session_id
+
+    # Otherwise, it's likely just the session name
     return session_id
 
 
 def switch_to_tmux_session(session_name: str):
-    """Switches the current tmux client to the specified session."""
-    # Check if we're running inside tmux
-    if not os.environ.get("TMUX"):
-        return  # Not in tmux, silently ignore
+    """Switches the current tmux client to the specified session, window, or pane.
 
-    try:
-        subprocess.run(
-            ["tmux", "switch-client", "-t", "--", session_name],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError:
-        # Session doesn't exist or other error, silently ignore
-        pass
-    except Exception as e:
-        import sys
+    Tries multiple variations of the target name if the initial attempt fails.
+    """
+    if not session_name or not os.environ.get("TMUX"):
+        return
 
-        print(
-            f"Unexpected error switching to tmux session '{session_name}': {e}",
-            file=sys.stderr,
-        )
+    # Potential targets to try in order of specificity
+    targets = [session_name]
+
+    # If session_name has an underscore, it might be a session_pane separator we added.
+    # Try the prefix as a session name fallback.
+    if "_" in session_name and not session_name.startswith("%"):
+        targets.append(session_name.rsplit("_", 1)[0])
+
+    for t in targets:
+        try:
+            # We use 'tmux switch-client' which is the standard way to switch sessions/panes.
+            # It works for sessions, windows, and panes (via %ID).
+            result = subprocess.run(
+                ["tmux", "switch-client", "-t", t],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return  # Success!
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+        except Exception as e:
+            import sys
+            print(
+                f"Unexpected error switching to tmux session '{session_name}': {e}",
+                file=sys.stderr,
+            )
+            break

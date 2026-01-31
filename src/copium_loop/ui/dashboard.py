@@ -76,7 +76,10 @@ class Dashboard:
 
             # Pass column width to each session for display
             layout["main"].split_row(
-                *[Layout(s.render(column_width=column_width)) for s in active_sessions]
+                *[
+                    Layout(s.render(column_width=column_width))
+                    for s in active_sessions
+                ]
             )
         else:
             layout["main"].update(

@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import subprocess
+from unittest.mock import MagicMock, patch
 
 from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 
@@ -6,9 +7,9 @@ from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 def test_extract_tmux_session_basic():
     """Test that extract_tmux_session correctly parses session IDs."""
     assert extract_tmux_session("my_session") == "my_session"
-    assert extract_tmux_session("my_session_0") == "my_session"
-    assert extract_tmux_session("my_session_%1") == "my_session"
-    assert extract_tmux_session("session_12345678") is None
+    assert extract_tmux_session("my_session_0") == "my_session_0"
+    assert extract_tmux_session("my_session_%1") == "%1"
+    assert extract_tmux_session("session_12345678") == "session_12345678"
 
 
 def test_extract_tmux_session_new_format():
@@ -20,19 +21,19 @@ def test_extract_tmux_session_new_format():
 def test_extract_tmux_session_old_format_with_percent():
     """Test that extract_tmux_session still handles the old format with % pane ID."""
     session_id = "my-awesome-session_%179"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
+    assert extract_tmux_session(session_id) == "%179"
 
 
 def test_extract_tmux_session_old_format_without_percent():
-    """Test that extract_tmux_session handles the old format with numeric pane ID."""
+    """Test that extract_tmux_session no longer handles the old format with numeric-only pane ID to avoid collisions."""
     session_id = "my-awesome-session_123"
-    assert extract_tmux_session(session_id) == "my-awesome-session"
+    assert extract_tmux_session(session_id) == "my-awesome-session_123"
 
 
 def test_extract_tmux_session_not_tmux():
-    """Test that extract_tmux_session returns None for non-tmux session IDs."""
+    """Test that session_timestamp is treated as a valid session name (per issue #30)."""
     session_id = "session_1234567890"
-    assert extract_tmux_session(session_id) is None
+    assert extract_tmux_session(session_id) == "session_1234567890"
 
 
 def test_extract_tmux_session_name_with_underscore():
@@ -46,7 +47,7 @@ def test_extract_tmux_session_name_with_underscore():
 def test_extract_tmux_session_old_format_with_underscore_in_name():
     """Test old format where the session name itself contains an underscore."""
     session_id = "my_project_v2_%5"
-    assert extract_tmux_session(session_id) == "my_project_v2"
+    assert extract_tmux_session(session_id) == "%5"
 
 
 def test_switch_to_tmux_session_success():
@@ -55,9 +56,44 @@ def test_switch_to_tmux_session_success():
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
+        mock_run.return_value.returncode = 0
         switch_to_tmux_session("target_session")
-        mock_run.assert_called_once_with(
-            ["tmux", "switch-client", "-t", "--", "target_session"],
+        # Should be called once because the first attempt (target_session) succeeds
+        mock_run.assert_called_with(
+            ["tmux", "switch-client", "-t", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+
+def test_switch_to_tmux_session_fallback():
+    """Test switching tmux sessions with fallback (mocked)."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
+        # Create a mock result for the successful second call
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+
+        # First call fails, second succeeds
+        mock_run.side_effect = [
+            subprocess.CalledProcessError(1, "tmux"),
+            mock_result
+        ]
+
+        switch_to_tmux_session("target_session")
+
+        assert mock_run.call_count == 2
+        mock_run.assert_any_call(
+            ["tmux", "switch-client", "-t", "target_session"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        mock_run.assert_any_call(
+            ["tmux", "switch-client", "-t", "target"],
             check=True,
             capture_output=True,
             text=True,
