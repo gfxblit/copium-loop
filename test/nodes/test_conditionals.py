@@ -2,6 +2,7 @@ from langgraph.graph import END
 
 from copium_loop.constants import MAX_RETRIES
 from copium_loop.nodes import (
+    should_continue_from_architect,
     should_continue_from_pr_creator,
     should_continue_from_review,
     should_continue_from_test,
@@ -12,8 +13,8 @@ class TestConditionalLogic:
     """Tests for conditional state transitions."""
 
     def test_should_continue_from_test_on_pass(self):
-        """Test transition from test to reviewer on pass."""
-        assert should_continue_from_test({"test_output": "PASS"}) == "reviewer"
+        """Test transition from test to architect on pass."""
+        assert should_continue_from_test({"test_output": "PASS"}) == "architect"
 
     def test_should_continue_from_test_on_fail(self):
         """Test transition from test to coder on fail."""
@@ -27,6 +28,43 @@ class TestConditionalLogic:
         assert (
             should_continue_from_test(
                 {"test_output": "FAIL", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
+        )
+
+    def test_should_continue_from_architect_on_ok(self):
+        """Test transition from architect to reviewer on ok."""
+        assert should_continue_from_architect({"architect_status": "ok"}) == "reviewer"
+
+    def test_should_continue_from_architect_on_refactor(self):
+        """Test transition from architect to coder on refactor."""
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "refactor", "retry_count": 0}
+            )
+            == "coder"
+        )
+
+    def test_should_continue_from_architect_on_error(self):
+        """Test transition from architect to architect on error."""
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "error", "retry_count": 0}
+            )
+            == "architect"
+        )
+
+    def test_should_continue_from_architect_max_retries(self):
+        """Test END transition on max retries from architect."""
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "refactor", "retry_count": MAX_RETRIES + 1}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "error", "retry_count": MAX_RETRIES + 1}
             )
             == END
         )

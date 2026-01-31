@@ -11,6 +11,7 @@ class AgentState(TypedDict):
     code_status: str
     test_output: str
     review_status: str
+    architect_status: str
     retry_count: int
     pr_url: str
     issue_url: str

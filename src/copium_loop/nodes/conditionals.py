@@ -9,13 +9,32 @@ def should_continue_from_test(state: AgentState) -> str:
     telemetry = get_telemetry()
     if state.get("test_output") == "PASS":
         telemetry.log_status("tester", "success")
-        return "reviewer"
+        return "architect"
 
     if state.get("retry_count", 0) > constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("tester", "error")
         telemetry.log_workflow_status("failed")
         return END
+
+    return "coder"
+
+
+def should_continue_from_architect(state: AgentState) -> str:
+    telemetry = get_telemetry()
+    status = state.get("architect_status")
+    if status == "ok":
+        telemetry.log_status("architect", "success")
+        return "reviewer"
+
+    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+        print("Max retries exceeded. Aborting.")
+        telemetry.log_status("architect", "error")
+        telemetry.log_workflow_status("failed")
+        return END
+
+    if status == "error":
+        return "architect"
 
     return "coder"
 

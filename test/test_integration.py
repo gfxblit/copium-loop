@@ -106,6 +106,10 @@ async def test_happy_path(mock_instructions):
                 },
                 "shell": "git add . && git commit -m 'feat: implement hello'",
             },
+            # Architect: approves
+            {
+                "stdout": "Structure looks good. VERDICT: OK",
+            },
             # Reviewer: approves
             {
                 "stdout": "LGTM. VERDICT: APPROVED",
@@ -161,6 +165,10 @@ async def test_retry_loop(mock_instructions):
                 "stdout": "I fixed the bug.",
                 "write_files": {"src/feature.py": "def hello(): return 'world'"},
                 "shell": "git add . && git commit -m 'fix: bug'",
+            },
+            # Architect: approves
+            {
+                "stdout": "Structure looks good. VERDICT: OK",
             },
             # Reviewer: approves
             {
@@ -247,6 +255,9 @@ async def test_pr_creation_failure(mock_instructions):
                 "stdout": "Implemented",
                 "write_files": {"f.py": ""},
                 "shell": "git add . && git commit -m 'feat'",
+            },
+            {
+                "stdout": "Architect: OK. VERDICT: OK",
             },
             {
                 "stdout": "VERDICT: APPROVED",

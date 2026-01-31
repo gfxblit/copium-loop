@@ -20,6 +20,7 @@ class SessionColumn:
         self.pillars = {
             "coder": MatrixPillar("Coder"),
             "tester": MatrixPillar("Tester"),
+            "architect": MatrixPillar("Architect"),
             "reviewer": MatrixPillar("Reviewer"),
             "pr_creator": MatrixPillar("PR Creator"),
         }
@@ -66,6 +67,7 @@ class SessionColumn:
                 Layout(name="workflow_status", size=3),
                 Layout(name="coder", ratio=ratios["coder"]),
                 Layout(name="tester", ratio=ratios["tester"]),
+                Layout(name="architect", ratio=ratios["architect"]),
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
@@ -94,6 +96,7 @@ class SessionColumn:
                 Layout(name="header", size=3),
                 Layout(name="coder", ratio=ratios["coder"]),
                 Layout(name="tester", ratio=ratios["tester"]),
+                Layout(name="architect", ratio=ratios["architect"]),
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )

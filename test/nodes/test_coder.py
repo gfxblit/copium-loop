@@ -127,3 +127,29 @@ class TestCoderNode:
                 "Your previous implementation was rejected by the reviewer." in prompt
             )
             assert "Code is too complex." in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_handles_architect_refactor(self):
+        """Test that coder node handles refactor status from architect."""
+        with patch(
+            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "Refactoring code..."
+
+            state = {
+                "messages": [
+                    HumanMessage(content="Original request"),
+                    SystemMessage(content="Architecture needs improvement: file too large."),
+                ],
+                "architect_status": "refactor",
+            }
+            await coder(state)
+
+            # Check that the prompt contains the architect feedback
+            call_args = mock_gemini.call_args[0]
+            prompt = call_args[0]
+            assert (
+                "Your previous implementation was flagged for architectural improvement by the architect."
+                in prompt
+            )
+            assert "Architecture needs improvement: file too large." in prompt
