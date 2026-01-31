@@ -22,6 +22,8 @@ class SessionColumn:
             "tester": MatrixPillar("Tester"),
             "architect": MatrixPillar("Architect"),
             "reviewer": MatrixPillar("Reviewer"),
+            "pr_pre_checker": MatrixPillar("Pre-Check"),
+            "journaler": MatrixPillar("Journal"),
             "pr_creator": MatrixPillar("PR Creator"),
         }
 
@@ -69,6 +71,8 @@ class SessionColumn:
                 Layout(name="tester", ratio=ratios["tester"]),
                 Layout(name="architect", ratio=ratios["architect"]),
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
+                Layout(name="pr_pre_checker", ratio=ratios["pr_pre_checker"]),
+                Layout(name="journaler", ratio=ratios["journaler"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
 
@@ -98,6 +102,8 @@ class SessionColumn:
                 Layout(name="tester", ratio=ratios["tester"]),
                 Layout(name="architect", ratio=ratios["architect"]),
                 Layout(name="reviewer", ratio=ratios["reviewer"]),
+                Layout(name="pr_pre_checker", ratio=ratios["pr_pre_checker"]),
+                Layout(name="journaler", ratio=ratios["journaler"]),
                 Layout(name="pr_creator", ratio=ratios["pr_creator"]),
             )
 

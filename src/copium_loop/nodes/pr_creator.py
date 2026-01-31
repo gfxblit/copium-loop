@@ -5,12 +5,11 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop import constants
 from copium_loop.git import (
-    fetch,
+    add,
+    commit,
     get_current_branch,
     is_dirty,
     push,
-    rebase,
-    rebase_abort,
 )
 from copium_loop.notifications import notify
 from copium_loop.shell import run_command
@@ -48,48 +47,15 @@ async def pr_creator(state: AgentState) -> dict:
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
 
-        # 2. Check uncommitted changes
+        # 2. Check uncommitted changes (expected from journaler)
         if await is_dirty():
-            msg = "Uncommitted changes found. Returning to coder to finalize commits.\n"
+            msg = "Committing changes (journal/memory updates)...\n"
             telemetry.log_output("pr_creator", msg)
             print(msg, end="")
-            telemetry.log_status("pr_creator", "failed")
-            return {
-                "review_status": "needs_commit",
-                "messages": [
-                    SystemMessage(
-                        content="Uncommitted changes found. Please ensure all changes are committed before creating a PR."
-                    )
-                ],
-                "retry_count": retry_count + 1,
-            }
+            await add(".")
+            await commit("docs: update GEMINI.md and session memory [skip ci]")
 
-        # 3. Attempt rebase on origin/main
-        msg = "Fetching origin and attempting rebase on origin/main...\n"
-        telemetry.log_output("pr_creator", msg)
-        print(msg, end="")
-        await fetch()
-        res_rebase = await rebase("origin/main")
-
-        if res_rebase["exit_code"] != 0:
-            msg = "Rebase failed. Aborting rebase and returning to coder.\n"
-            telemetry.log_output("pr_creator", msg)
-            print(msg, end="")
-            await rebase_abort()
-            error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
-            await notify(
-                "Workflow: Rebase Conflict",
-                "Automatic rebase failed. Manual resolution required by coder.",
-                4,
-            )
-            telemetry.log_status("pr_creator", "failed")
-            return {
-                "review_status": "pr_failed",
-                "messages": [SystemMessage(content=error_msg)],
-                "retry_count": retry_count + 1,
-            }
-
-        # 4. Push to origin
+        # 3. Push to origin
         msg = "Pushing to origin...\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
@@ -99,7 +65,7 @@ async def pr_creator(state: AgentState) -> dict:
                 f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"
             )
 
-        # 5. Create PR
+        # 4. Create PR
         msg = "Creating Pull Request...\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
@@ -127,7 +93,7 @@ async def pr_creator(state: AgentState) -> dict:
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
 
-        # 6. Link issue if present
+        # 5. Link issue if present
         if issue_url:
             msg = f"Linking issue: {issue_url}\n"
             telemetry.log_output("pr_creator", msg)

@@ -15,10 +15,10 @@ async def async_main():
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
     parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     parser.add_argument(
-        "--start",
         "-s",
-        type=str,
-        help="Start node (coder, tester, architect, reviewer, pr_creator)",
+        "--start",
+        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator)",
+        default="coder",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"

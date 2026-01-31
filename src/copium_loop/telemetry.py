@@ -118,8 +118,8 @@ class Telemetry:
                     node_statuses[node].append(status)
 
         # Determine which node was last active but didn't complete
-        # Node progression: coder -> tester -> reviewer -> pr_creator
-        node_order = ["coder", "tester", "reviewer", "pr_creator"]
+        # Node progression: coder -> tester -> reviewer -> pr_pre_checker -> journaler -> pr_creator
+        node_order = ["coder", "tester", "reviewer", "pr_pre_checker", "journaler", "pr_creator"]
 
         # Find the last node that was active
         last_active_node = None

@@ -48,8 +48,11 @@ def test_session_column_last_updated():
     """Verify SessionColumn.last_updated calculates the maximum last_update across pillars."""
     session = SessionColumn("test_session")
 
-    # Manually set last_update for pillars
+    # Manually set last_update for pillars to old values
     now = time.time()
+    for pillar in session.pillars.values():
+        pillar.last_update = now - 500
+
     session.pillars["coder"].last_update = now - 100
     session.pillars["tester"].last_update = now - 50
     session.pillars["architect"].last_update = now - 75
