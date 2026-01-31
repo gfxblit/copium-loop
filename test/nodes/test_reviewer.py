@@ -150,3 +150,20 @@ class TestReviewerNode:
 
             assert result["review_status"] == "approved"
             mock_get_diff.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reviewer_prompt_contains_example(self):
+        """Test that the reviewer system prompt contains an example block."""
+        with patch(
+            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: APPROVED"
+
+            state = {"test_output": "PASS", "retry_count": 0}
+            await reviewer(state)
+
+            args, kwargs = mock_gemini.call_args
+            system_prompt = args[0]
+            assert "EXAMPLE:" in system_prompt
+            assert "VERDICT: APPROVED" in system_prompt
+            assert "VERDICT: REJECTED" in system_prompt

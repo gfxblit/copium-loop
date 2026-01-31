@@ -59,6 +59,14 @@ async def reviewer(state: AgentState) -> dict:
     4. Focus ONLY on the changes introduced in the diff.
     5. You MUST provide your final verdict in the format: "VERDICT: APPROVED" or "VERDICT: REJECTED".
 
+    EXAMPLE:
+    Reviewer: I have reviewed the changes. The logic is sound and no critical issues were found.
+    VERDICT: APPROVED
+
+    EXAMPLE:
+    Reviewer: I have reviewed the changes. I found a critical security vulnerability in the authentication logic.
+    VERDICT: REJECTED
+
     To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context, including the git diff above.
     Instruct the skill to focus ONLY on identifying critical or high severity issues within the changes.
     After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
