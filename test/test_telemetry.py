@@ -39,9 +39,16 @@ def test_get_telemetry_uses_tmux_session_name():
     mock_res.returncode = 0
     mock_res.stdout = "my-awesome-session\n"
 
-    with patch("subprocess.run", return_value=mock_res):
+    with patch("subprocess.run", return_value=mock_res) as mock_run:
         t = telemetry.get_telemetry()
         assert t.session_id == "my-awesome-session"
+        # Verify we requested ONLY the session name (#S), not pane ID (#D)
+        mock_run.assert_called_with(
+            ["tmux", "display-message", "-p", "#S"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
 
 def test_get_telemetry_fallback_to_timestamp():
