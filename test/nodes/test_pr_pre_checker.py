@@ -1,7 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from copium_loop.nodes.pr_pre_checker import pr_pre_checker
 from copium_loop.state import AgentState
+
 
 @pytest.mark.asyncio
 class TestPRPreChecker:
@@ -70,4 +73,5 @@ class TestPRPreChecker:
         result = await pr_pre_checker(state)
 
         assert result["review_status"] == "pr_failed"
+        mock_fetch.assert_called_once()
         mock_abort.assert_called_once()
