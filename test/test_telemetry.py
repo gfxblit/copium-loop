@@ -157,7 +157,7 @@ class TestTelemetryLogReading:
         telemetry_with_temp_dir.log("coder", "prompt", long_prompt)
 
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
-        
+
         # Verify prompt is present and truncated (default 200 chars)
         expected_part = "coder: prompt: " + "p" * 200
         assert expected_part + "... (truncated)" in formatted_log

@@ -187,12 +187,12 @@ class TestInvokeGemini:
         with patch("copium_loop.gemini.get_telemetry") as mock_get_telemetry:
             mock_telemetry_instance = MagicMock()
             mock_get_telemetry.return_value = mock_telemetry_instance
-            
+
             with patch("copium_loop.gemini._execute_gemini", new_callable=AsyncMock) as mock_exec:
                 mock_exec.return_value = "Response"
-                
+
                 await gemini.invoke_gemini("Test Prompt", node="test-node")
-                
+
                 mock_telemetry_instance.log.assert_called_with("test-node", "prompt", "Test Prompt")
 
     @pytest.mark.asyncio

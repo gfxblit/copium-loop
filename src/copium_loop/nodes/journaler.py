@@ -11,13 +11,14 @@ async def journaler(state: AgentState) -> dict:
     telemetry.log_output("journaler", "--- Journaling Node ---\n")
     print("--- Journaling Node ---")
 
-    test_output = state.get("test_output", "")
-    review_status = state.get("review_status", "")
-    git_diff = state.get("git_diff", "")
-    telemetry_log = telemetry.get_formatted_log()
+    try:
+        test_output = state.get("test_output", "")
+        review_status = state.get("review_status", "")
+        git_diff = state.get("git_diff", "")
+        telemetry_log = telemetry.get_formatted_log()
 
-    # Construct a prompt to distill the session
-    prompt = f"""Analyze the following development session and distill key learnings.
+        # Construct a prompt to distill the session
+        prompt = f"""Analyze the following development session and distill key learnings.
 
     DECISION LOGIC:
     1. **Global/Experiential Memory**: If the lesson is about the user's preferences (e.g., "User hates async"), general coding patterns, or your own behavior that applies to ALL projects:
@@ -43,34 +44,45 @@ async def journaler(state: AgentState) -> dict:
 
     Output ONLY the project lesson or "NO_LESSON"."""
 
-    models = [None] + DEFAULT_MODELS
-    lesson = await invoke_gemini(
-        prompt,
-        ["--yolo"],
-        models=models,
-        verbose=state.get("verbose"),
-        label="Journaler System",
-        node="journaler",
-    )
+        models = [None] + DEFAULT_MODELS
+        lesson = await invoke_gemini(
+            prompt,
+            ["--yolo"],
+            models=models,
+            verbose=state.get("verbose"),
+            label="Journaler System",
+            node="journaler",
+        )
 
-    lesson = lesson.strip().strip('"').strip("'")
-    
-    review_status = state.get("review_status", "pending")
-    # If we are at the journaler and not planning to go to pr_creator,
-    # ensure the review_status reflects that we've finished journaling.
-    new_review_status = "journaled" if review_status == "pending" else review_status
+        lesson = lesson.strip().strip('"').strip("'")
 
-    if lesson.upper() == "NO_LESSON" or not lesson:
-        telemetry.log_output("journaler", "\nNo lesson learned.\n")
-        print("\nNo lesson learned.")
-        telemetry.log_status("journaler", "no_lesson")
-        return {"journal_status": "no_lesson", "review_status": new_review_status}
+        review_status = state.get("review_status", "pending")
+        # If we are at the journaler and not planning to go to pr_creator,
+        # ensure the review_status reflects that we've finished journaling.
+        new_review_status = "journaled" if review_status == "pending" else review_status
 
-    memory_manager = MemoryManager()
-    memory_manager.log_learning(lesson)
+        if lesson.upper() == "NO_LESSON" or not lesson:
+            telemetry.log_output("journaler", "\nNo lesson learned.\n")
+            print("\nNo lesson learned.")
+            telemetry.log_status("journaler", "no_lesson")
+            return {"journal_status": "no_lesson", "review_status": new_review_status}
 
-    telemetry.log_output("journaler", f"\nLesson Learned: {lesson}\n")
-    print(f"\nLesson Learned: {lesson}")
-    telemetry.log_status("journaler", "journaled")
+        memory_manager = MemoryManager()
+        memory_manager.log_learning(lesson)
 
-    return {"journal_status": "journaled", "review_status": new_review_status}
+        telemetry.log_output("journaler", f"\nLesson Learned: {lesson}\n")
+        print(f"\nLesson Learned: {lesson}")
+        telemetry.log_status("journaler", "journaled")
+
+        return {"journal_status": "journaled", "review_status": new_review_status}
+
+    except Exception as e:
+        error_msg = f"Journaling failed gracefully: {e}"
+        telemetry.log_output("journaler", f"\n{error_msg}\n")
+        print(f"\n{error_msg}")
+        telemetry.log_status("journaler", "failed")
+
+        # Ensure we don't block the loop, proceed as if journaled
+        current_status = state.get("review_status", "pending")
+        fallback_status = "journaled" if current_status == "pending" else current_status
+        return {"journal_status": "failed", "review_status": fallback_status}
