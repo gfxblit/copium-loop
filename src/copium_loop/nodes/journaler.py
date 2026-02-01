@@ -17,17 +17,19 @@ async def journaler(state: AgentState) -> dict:
     telemetry_log = telemetry.get_formatted_log()
 
     # Construct a prompt to distill the session
-    prompt = f"""Analyze the following development session and distill it into a single, concise "Lesson Learned" for future sessions.
+    prompt = f"""Analyze the following development session and distill key learnings.
 
-    CONTEXT:
-    You are generating input for a `save_memory` tool. This tool tracks your overall experience as an agent to improve over time.
-    Your output will be prefixed with a timestamp and saved to `GEMINI.md`.
+    DECISION LOGIC:
+    1. **Global/Experiential Memory**: If the lesson is about the user's preferences (e.g., "User hates async"), general coding patterns, or your own behavior that applies to ALL projects:
+       -> Use the `save_memory` tool to save this fact.
+    2. **Project-Specific Memory**: If the lesson is specific to THIS codebase (e.g., "The `foobar` module is deprecated", "Always import X from Y"):
+       -> Output the lesson text directly.
 
     RULES:
-    1.  The lesson must be a one-sentence fact or rule that will help you avoid mistakes or follow best practices in this codebase.
-    2.  Strictly NO status reports (e.g., "I fixed the bug", "I ran tests").
-    3.  Strictly NO summaries of what happened.
-    4.  If there is no significant lesson learned (e.g., routine work), return exactly "NO_LESSON".
+    - You can do BOTH if applicable.
+    - If you strictly used `save_memory` and have no project-specific lesson, output "NO_LESSON".
+    - If you have a project lesson, output ONLY that single sentence.
+    - Strictly NO status reports or summaries.
 
     SESSION OUTCOME:
     Review Status: {review_status}
@@ -39,7 +41,7 @@ async def journaler(state: AgentState) -> dict:
     TELEMETRY LOG:
     {telemetry_log}
 
-    Provide ONLY the distilled lesson as a single sentence, or "NO_LESSON"."""
+    Output ONLY the project lesson or "NO_LESSON"."""
 
     models = [None] + DEFAULT_MODELS
     lesson = await invoke_gemini(
