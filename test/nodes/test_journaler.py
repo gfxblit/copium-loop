@@ -225,7 +225,7 @@ async def test_journaler_prompt_includes_existing_memories():
         with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
             instance = mock_memory_manager.return_value
             instance.get_project_memories.return_value = ["Existing Memory 1", "Existing Memory 2"]
-            
+
             await journaler(state)
 
             call_args = mock_gemini.call_args
