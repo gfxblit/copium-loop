@@ -15,10 +15,10 @@ async def async_main():
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
     parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     parser.add_argument(
-        "--start",
         "-s",
-        type=str,
-        help="Start node (coder, tester, architect, reviewer, pr_creator)",
+        "--start",
+        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
+        default="coder",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"
@@ -137,6 +137,17 @@ async def async_main():
             sys.exit(1)
         elif status == "approved" and ("PASS" in test_out or not test_out):
             msg = "Workflow completed successfully (no PR)."
+            print(msg)
+            get_telemetry().log_workflow_status("success")
+            await workflow.notify("Workflow: Success", msg, 3)
+            sys.exit(0)
+        elif status == "journaled":
+            if "FAIL" in test_out:
+                msg = "Workflow finished with test failures."
+                print(msg, file=sys.stderr)
+                await workflow.notify("Workflow: Failed", msg, 5)
+                sys.exit(1)
+            msg = "Workflow completed successfully."
             print(msg)
             get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)

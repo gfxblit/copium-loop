@@ -34,7 +34,7 @@ copium-loop --continue
 ### CLI Arguments
 
 - `prompt`: The development task to perform.
-- `--start`, `-s`: Starting node (`coder`, `test_runner`, `reviewer`, `pr_creator`).
+- `--start`, `-s`: Starting node (`coder`, `test_runner`, `reviewer`, `pr_pre_checker`, `pr_creator`).
 - `--monitor`, `-m`: Start the Matrix visualization monitor (Dashboard).
 - `--continue`, `-c`: Continue from the last incomplete workflow session.
 - `--session`: Specific session ID to monitor or continue.

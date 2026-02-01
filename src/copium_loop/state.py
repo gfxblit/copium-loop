@@ -19,3 +19,4 @@ class AgentState(TypedDict):
     git_diff: str
     verbose: bool
     last_error: str
+    journal_status: str

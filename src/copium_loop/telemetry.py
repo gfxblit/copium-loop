@@ -59,6 +59,69 @@ class Telemetry:
                         continue
         return events
 
+    def get_formatted_log(self, max_lines: int = 100, max_output_chars: int = 200) -> str:
+        """
+        Returns a human-readable summary of the telemetry log.
+
+        Optimizations for context window:
+        - Filters out 'metric' events.
+        - Truncates 'output' content to `max_output_chars`.
+        - Enforces `max_lines` via Head/Tail windowing (keeps first 20 + last N).
+        """
+        events = self.read_log()
+        if not events:
+            return "No telemetry log found."
+
+        # Filter out noisy events
+        relevant_events = [e for e in events if e.get("event_type") != "metric"]
+
+        # Apply Head/Tail windowing if too large
+        if len(relevant_events) > max_lines:
+            head_size = 20
+            tail_size = max_lines - head_size
+            removed_events = relevant_events[head_size:-tail_size]
+            removed_count = len(removed_events)
+            removed_nodes = sorted({e.get("node", "unknown") for e in removed_events})
+            nodes_str = ", ".join(removed_nodes)
+            relevant_events = (
+                relevant_events[:head_size]
+                + [
+                    {
+                        "node": "system",
+                        "event_type": "info",
+                        "data": f"removed middle text of {removed_count} lines from {nodes_str} for brevity",
+                    }
+                ]
+                + relevant_events[-tail_size:]
+            )
+
+        lines = []
+        for event in relevant_events:
+            node = event.get("node", "unknown")
+            event_type = event.get("event_type", "unknown")
+            data = event.get("data", "")
+            timestamp = event.get("timestamp", "")
+
+            # Truncate output and prompts
+            if event_type in ["output", "prompt"] and isinstance(data, str):
+                if len(data) > max_output_chars:
+                    data = data[:max_output_chars] + "... (truncated)"
+                # Clean up newlines for compact log
+                data = data.replace("\n", "\\n")
+
+            # Format timestamp
+            ts_prefix = ""
+            if timestamp:
+                try:
+                    dt = datetime.fromisoformat(timestamp)
+                    ts_prefix = f"[{dt.strftime('%H:%M:%S')}] "
+                except (ValueError, TypeError):
+                    pass
+
+            lines.append(f"{ts_prefix}{node}: {event_type}: {data}")
+
+        return "\n".join(lines)
+
     def get_last_incomplete_node(self) -> tuple[str | None, dict]:
         """
         Determines which node to resume from based on log events.
@@ -98,8 +161,8 @@ class Telemetry:
                     node_statuses[node].append(status)
 
         # Determine which node was last active but didn't complete
-        # Node progression: coder -> tester -> reviewer -> pr_creator
-        node_order = ["coder", "tester", "reviewer", "pr_creator"]
+        # Node progression: coder -> tester -> reviewer -> pr_pre_checker -> journaler -> pr_creator
+        node_order = ["coder", "tester", "reviewer", "pr_pre_checker", "journaler", "pr_creator"]
 
         # Find the last node that was active
         last_active_node = None

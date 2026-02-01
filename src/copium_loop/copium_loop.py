@@ -34,7 +34,15 @@ class WorkflowManager:
 
     def create_graph(self):
         """Creates and compiles the workflow graph."""
-        valid_nodes = ["coder", "tester", "architect", "reviewer", "pr_creator"]
+        valid_nodes = [
+            "coder",
+            "tester",
+            "architect",
+            "reviewer",
+            "pr_pre_checker",
+            "pr_creator",
+            "journaler",
+        ]
         if self.start_node and self.start_node not in valid_nodes:
             print(f'Warning: Invalid start node "{self.start_node}".')
             print(f"Valid nodes are: {', '.join(valid_nodes)}")
@@ -91,7 +99,7 @@ class WorkflowManager:
             response["review_status"] = "error"
         elif node_name == "architect":
             response["architect_status"] = "error"
-        elif node_name == "pr_creator":
+        elif node_name in ["pr_creator", "pr_pre_checker"]:
             response["review_status"] = "pr_failed"
         elif node_name == "coder":
             response["code_status"] = "failed"
@@ -176,11 +184,11 @@ class WorkflowManager:
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
-            if self.start_node not in ["reviewer", "pr_creator"]
+            if self.start_node not in ["reviewer", "pr_pre_checker", "pr_creator"]
             else "",
             "code_status": "pending",
             "review_status": "approved"
-            if self.start_node == "pr_creator"
+            if self.start_node in ["pr_pre_checker", "pr_creator"]
             else "pending",
             "architect_status": "pending",
             "pr_url": "",

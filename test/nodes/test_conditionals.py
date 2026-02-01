@@ -1,9 +1,11 @@
 from langgraph.graph import END
 
-from copium_loop.constants import MAX_RETRIES
+from copium_loop import constants
 from copium_loop.nodes import (
     should_continue_from_architect,
+    should_continue_from_journaler,
     should_continue_from_pr_creator,
+    should_continue_from_pr_pre_checker,
     should_continue_from_review,
     should_continue_from_test,
 )
@@ -27,7 +29,7 @@ class TestConditionalLogic:
         """Test END transition on max retries."""
         assert (
             should_continue_from_test(
-                {"test_output": "FAIL", "retry_count": MAX_RETRIES + 1}
+                {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
@@ -58,21 +60,21 @@ class TestConditionalLogic:
         """Test END transition on max retries from architect."""
         assert (
             should_continue_from_architect(
-                {"architect_status": "refactor", "retry_count": MAX_RETRIES + 1}
+                {"architect_status": "refactor", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
         assert (
             should_continue_from_architect(
-                {"architect_status": "error", "retry_count": MAX_RETRIES + 1}
+                {"architect_status": "error", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
 
     def test_should_continue_from_review_on_approved(self):
-        """Test transition from review to pr_creator on approval."""
+        """Test transition from review to pr_pre_checker on approval."""
         assert (
-            should_continue_from_review({"review_status": "approved"}) == "pr_creator"
+            should_continue_from_review({"review_status": "approved"}) == "pr_pre_checker"
         )
 
     def test_should_continue_from_review_on_rejected(self):
@@ -93,13 +95,13 @@ class TestConditionalLogic:
         """Test END transition on max retries from reviewer."""
         assert (
             should_continue_from_review(
-                {"review_status": "rejected", "retry_count": MAX_RETRIES + 1}
+                {"review_status": "rejected", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
         assert (
             should_continue_from_review(
-                {"review_status": "error", "retry_count": MAX_RETRIES + 1}
+                {"review_status": "error", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
@@ -130,7 +132,40 @@ class TestConditionalLogic:
         """Test END transition on max retries from pr_creator."""
         assert (
             should_continue_from_pr_creator(
-                {"review_status": "pr_failed", "retry_count": MAX_RETRIES + 1}
+                {"review_status": "pr_failed", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
         )
+
+    def test_should_continue_from_pr_pre_checker_on_success(self):
+        """Test journaler transition on success from pr_pre_checker."""
+        assert (
+            should_continue_from_pr_pre_checker({"review_status": "pre_check_passed"})
+            == "journaler"
+        )
+
+    def test_should_continue_from_pr_pre_checker_on_skipped(self):
+        """Test journaler transition on skipped from pr_pre_checker."""
+        assert (
+            should_continue_from_pr_pre_checker({"review_status": "pr_skipped"})
+            == "journaler"
+        )
+
+    def test_should_continue_from_pr_pre_checker_on_failure(self):
+        """Test coder transition on failure from pr_pre_checker."""
+        assert (
+            should_continue_from_pr_pre_checker({"review_status": "pr_failed"})
+            == "coder"
+        )
+
+    def test_should_continue_from_journaler_on_pr_flow(self):
+        """Test pr_creator transition from journaler if in PR flow."""
+        assert (
+            should_continue_from_journaler({"review_status": "pre_check_passed"})
+            == "pr_creator"
+        )
+
+    def test_should_continue_from_journaler_on_normal_flow(self):
+        """Test END transition from journaler if not in PR flow."""
+        assert should_continue_from_journaler({"review_status": "pending"}) == END
+

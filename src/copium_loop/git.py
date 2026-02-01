@@ -52,3 +52,13 @@ async def push(
     else:
         args.append(remote)
     return await run_command("git", args)
+
+
+async def add(path: str = ".") -> dict:
+    """Adds files to the staging area."""
+    return await run_command("git", ["add", path])
+
+
+async def commit(message: str) -> dict:
+    """Commits staged changes."""
+    return await run_command("git", ["commit", "-m", message])
