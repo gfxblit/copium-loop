@@ -31,7 +31,15 @@ def create_graph(wrap_node_func, start_node: str | None = None):
     workflow.add_node("journaler", wrap_node_func("journaler", journaler))
 
     # Determine entry point
-    valid_nodes = ["coder", "tester", "architect", "reviewer", "pr_pre_checker", "pr_creator"]
+    valid_nodes = [
+        "coder",
+        "tester",
+        "architect",
+        "reviewer",
+        "pr_pre_checker",
+        "pr_creator",
+        "journaler",
+    ]
     entry_node = start_node if start_node in valid_nodes else "coder"
 
     # Edges

@@ -34,7 +34,15 @@ class WorkflowManager:
 
     def create_graph(self):
         """Creates and compiles the workflow graph."""
-        valid_nodes = ["coder", "tester", "architect", "reviewer", "pr_pre_checker", "pr_creator"]
+        valid_nodes = [
+            "coder",
+            "tester",
+            "architect",
+            "reviewer",
+            "pr_pre_checker",
+            "pr_creator",
+            "journaler",
+        ]
         if self.start_node and self.start_node not in valid_nodes:
             print(f'Warning: Invalid start node "{self.start_node}".')
             print(f"Valid nodes are: {', '.join(valid_nodes)}")

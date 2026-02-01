@@ -17,7 +17,7 @@ async def async_main():
     parser.add_argument(
         "-s",
         "--start",
-        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator)",
+        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
         default="coder",
     )
     parser.add_argument(
