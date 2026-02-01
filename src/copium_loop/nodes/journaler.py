@@ -22,7 +22,7 @@ async def journaler(state: AgentState) -> dict:
 
     DECISION LOGIC:
     1. **Global/Experiential Memory**: If the lesson is about the user's preferences (e.g., "User hates async"), general coding patterns, or your own behavior that applies to ALL projects:
-       -> Use the `save_memory` tool to save this fact.
+       -> Use the `save_memory` tool to save this fact. Ensure you include a timestamp so you can tell if it's a recent memory or not.
     2. **Project-Specific Memory**: If the lesson is specific to THIS codebase (e.g., "The `foobar` module is deprecated", "Always import X from Y"):
        -> Output the lesson text directly.
 

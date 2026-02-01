@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -67,7 +67,6 @@ async def test_journaler_updates_pending_status():
 
 @pytest.mark.asyncio
 async def test_journaler_includes_telemetry_log():
-    from unittest.mock import MagicMock
     state: AgentState = {
         "messages": [],
         "code_status": "coded",
@@ -183,3 +182,30 @@ async def test_journaler_prompt_content():
             assert "save_memory" in prompt
             assert "Global/Experiential Memory" in prompt
             assert '"NO_LESSON"' in prompt
+
+
+@pytest.mark.asyncio
+async def test_journaler_prompt_includes_timestamp_instruction():
+    # We want to verify that the prompt sent to Gemini includes instructions about
+    # including a timestamp when using save_memory.
+
+    state = AgentState()
+    state["test_output"] = "out"
+    state["review_status"] = "rev"
+    state["git_diff"] = "diff"
+
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_gemini:
+        mock_gemini.return_value = "A lesson"
+        with patch("copium_loop.nodes.journaler.MemoryManager"):
+            await journaler(state)
+
+            call_args = mock_gemini.call_args
+            prompt = call_args[0][0]
+
+            # Assertions for the new requirement
+            assert "timestamp" in prompt.lower()
+            assert "save_memory" in prompt
+            # Check for the specific instruction context
+            assert "include a timestamp" in prompt.lower() or "ensure there's a timestamp" in prompt.lower()
