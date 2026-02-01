@@ -59,23 +59,66 @@ class Telemetry:
                         continue
         return events
 
-    def get_formatted_log(self) -> str:
-        """Returns a human-readable summary of the telemetry log."""
+    def get_formatted_log(self, max_lines: int = 100, max_output_chars: int = 200) -> str:
+        """
+        Returns a human-readable summary of the telemetry log.
+
+        Optimizations for context window:
+        - Filters out 'metric' events.
+        - Truncates 'output' content to `max_output_chars`.
+        - Enforces `max_lines` via Head/Tail windowing (keeps first 20 + last N).
+        """
         events = self.read_log()
         if not events:
             return "No telemetry log found."
 
+        # Filter out noisy events
+        relevant_events = [e for e in events if e.get("event_type") != "metric"]
+
+        # Apply Head/Tail windowing if too large
+        if len(relevant_events) > max_lines:
+            head_size = 20
+            tail_size = max_lines - head_size
+            removed_events = relevant_events[head_size:-tail_size]
+            removed_count = len(removed_events)
+            removed_nodes = sorted({e.get("node", "unknown") for e in removed_events})
+            nodes_str = ", ".join(removed_nodes)
+            relevant_events = (
+                relevant_events[:head_size]
+                + [
+                    {
+                        "node": "system",
+                        "event_type": "info",
+                        "data": f"removed middle text of {removed_count} lines from {nodes_str} for brevity",
+                    }
+                ]
+                + relevant_events[-tail_size:]
+            )
+
         lines = []
-        for event in events:
+        for event in relevant_events:
             node = event.get("node", "unknown")
             event_type = event.get("event_type", "unknown")
             data = event.get("data", "")
+            timestamp = event.get("timestamp", "")
 
-            # For output, we might want to truncate if it's too long
-            if event_type == "output" and isinstance(data, str) and len(data) > 500:
-                data = data[:500] + "... (truncated)"
+            # Truncate output and prompts
+            if event_type in ["output", "prompt"] and isinstance(data, str):
+                if len(data) > max_output_chars:
+                    data = data[:max_output_chars] + "... (truncated)"
+                # Clean up newlines for compact log
+                data = data.replace("\n", "\\n")
 
-            lines.append(f"{node}: {event_type}: {data}")
+            # Format timestamp
+            ts_prefix = ""
+            if timestamp:
+                try:
+                    dt = datetime.fromisoformat(timestamp)
+                    ts_prefix = f"[{dt.strftime('%H:%M:%S')}] "
+                except (ValueError, TypeError):
+                    pass
+
+            lines.append(f"{ts_prefix}{node}: {event_type}: {data}")
 
         return "\n".join(lines)
 

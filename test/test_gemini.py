@@ -182,6 +182,20 @@ class TestInvokeGemini:
             assert "Using model" not in captured.out
 
     @pytest.mark.asyncio
+    async def test_invoke_gemini_logs_prompt(self):
+        """Test that invoke_gemini logs the prompt to telemetry when node is provided."""
+        with patch("copium_loop.gemini.get_telemetry") as mock_get_telemetry:
+            mock_telemetry_instance = MagicMock()
+            mock_get_telemetry.return_value = mock_telemetry_instance
+            
+            with patch("copium_loop.gemini._execute_gemini", new_callable=AsyncMock) as mock_exec:
+                mock_exec.return_value = "Response"
+                
+                await gemini.invoke_gemini("Test Prompt", node="test-node")
+                
+                mock_telemetry_instance.log.assert_called_with("test-node", "prompt", "Test Prompt")
+
+    @pytest.mark.asyncio
     @patch("asyncio.create_subprocess_exec")
     async def test_invoke_gemini_total_timeout(self, mock_create_subprocess_exec):
         """

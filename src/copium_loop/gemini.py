@@ -2,6 +2,7 @@ import os
 
 from copium_loop.constants import COMMAND_TIMEOUT, DEFAULT_MODELS
 from copium_loop.shell import stream_subprocess
+from copium_loop.telemetry import get_telemetry
 
 
 async def _execute_gemini(
@@ -68,6 +69,9 @@ async def invoke_gemini(
     Invokes the Gemini CLI with a prompt, supporting model fallback.
     Streams output to stdout and returns the full response.
     """
+    if node:
+        get_telemetry().log(node, "prompt", prompt)
+
     if verbose:
         banner = (
             f"--- [VERBOSE] {label} Prompt ---" if label else "--- [VERBOSE] Prompt ---"

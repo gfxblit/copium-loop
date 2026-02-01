@@ -107,9 +107,12 @@ class TestTelemetryLogReading:
         telemetry_with_temp_dir.log_status("tester", "active")
 
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
-        assert "coder: status: active" in formatted_log
-        assert "coder: output: Writing code..." in formatted_log
-        assert "tester: status: active" in formatted_log
+        # Verify timestamps are present in [HH:MM:SS] format
+        import re
+        timestamp_pattern = r"\[\d{2}:\d{2}:\d{2}\]"
+        assert re.search(timestamp_pattern + " coder: status: active", formatted_log)
+        assert re.search(timestamp_pattern + " coder: output: Writing code...", formatted_log)
+        assert re.search(timestamp_pattern + " tester: status: active", formatted_log)
 
     def test_get_formatted_log_truncation(self, telemetry_with_temp_dir):
         """Test truncation of long output in formatted log."""
@@ -117,7 +120,48 @@ class TestTelemetryLogReading:
         telemetry_with_temp_dir.log_output("coder", long_output)
 
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
-        assert "coder: output: " + "x" * 500 + "... (truncated)" in formatted_log
+        # Default max_output_chars is 200
+        assert "coder: output: " + "x" * 200 + "... (truncated)" in formatted_log
+        assert "[" in formatted_log # Check for timestamp start
+
+    def test_get_formatted_log_filtering_and_windowing(self, telemetry_with_temp_dir):
+        """Test metric filtering and head/tail windowing."""
+        # Log metric (should be filtered)
+        telemetry_with_temp_dir.log_metric("coder", "tokens", 100)
+
+        # Log some status events for different nodes
+        telemetry_with_temp_dir.log_status("coder", "start") # Head
+        for i in range(150):
+            node = "tester" if i < 75 else "reviewer"
+            telemetry_with_temp_dir.log_status(node, f"status_{i}")
+
+        formatted_log = telemetry_with_temp_dir.get_formatted_log(max_lines=50)
+
+        # Metrics should be gone
+        assert "metric" not in formatted_log
+
+        # Should have head
+        assert "coder: status: start" in formatted_log
+
+        # Should have tail
+        assert "reviewer: status: status_149" in formatted_log
+
+        # Middle should be missing and specify nodes
+        assert "tester: status: status_20" not in formatted_log
+        assert "removed middle text" in formatted_log
+        assert "from reviewer, tester" in formatted_log
+
+    def test_get_formatted_log_includes_truncated_prompt(self, telemetry_with_temp_dir):
+        """Test that prompt events are included and truncated."""
+        long_prompt = "p" * 300
+        telemetry_with_temp_dir.log("coder", "prompt", long_prompt)
+
+        formatted_log = telemetry_with_temp_dir.get_formatted_log()
+        
+        # Verify prompt is present and truncated (default 200 chars)
+        expected_part = "coder: prompt: " + "p" * 200
+        assert expected_part + "... (truncated)" in formatted_log
+        assert "[" in formatted_log
 
 
 class TestGetLastIncompleteNode:
