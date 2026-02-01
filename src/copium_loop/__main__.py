@@ -141,6 +141,17 @@ async def async_main():
             get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
+        elif status == "journaled":
+            if "FAIL" in test_out:
+                msg = "Workflow finished with test failures."
+                print(msg, file=sys.stderr)
+                await workflow.notify("Workflow: Failed", msg, 5)
+                sys.exit(1)
+            msg = "Workflow completed successfully."
+            print(msg)
+            get_telemetry().log_workflow_status("success")
+            await workflow.notify("Workflow: Success", msg, 3)
+            sys.exit(0)
         else:
             msg = "Workflow failed to converge."
             print(msg, file=sys.stderr)

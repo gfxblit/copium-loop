@@ -54,12 +54,17 @@ async def journaler(state: AgentState) -> dict:
     )
 
     lesson = lesson.strip().strip('"').strip("'")
+    
+    review_status = state.get("review_status", "pending")
+    # If we are at the journaler and not planning to go to pr_creator,
+    # ensure the review_status reflects that we've finished journaling.
+    new_review_status = "journaled" if review_status == "pending" else review_status
 
     if lesson.upper() == "NO_LESSON" or not lesson:
         telemetry.log_output("journaler", "\nNo lesson learned.\n")
         print("\nNo lesson learned.")
         telemetry.log_status("journaler", "no_lesson")
-        return {"journal_status": "no_lesson"}
+        return {"journal_status": "no_lesson", "review_status": new_review_status}
 
     memory_manager = MemoryManager()
     memory_manager.log_learning(lesson)
@@ -68,4 +73,4 @@ async def journaler(state: AgentState) -> dict:
     print(f"\nLesson Learned: {lesson}")
     telemetry.log_status("journaler", "journaled")
 
-    return {"journal_status": "journaled"}
+    return {"journal_status": "journaled", "review_status": new_review_status}
