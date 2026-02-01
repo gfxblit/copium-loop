@@ -86,3 +86,75 @@ async def test_journaler_includes_telemetry_log():
             assert "coder: output: Writing some code..." in prompt
             assert "tester: status: active" in prompt
             assert "tester: output: Running tests..." in prompt
+
+
+@pytest.mark.asyncio
+async def test_journaler_verbosity_and_filtering():
+    # Setup
+    state = AgentState()
+    state["test_output"] = "Tests passed"
+    state["review_status"] = "Approved"
+    state["git_diff"] = "diff"
+    state["verbose"] = False
+
+    # Mock dependencies
+    with (
+        patch(
+            "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini,
+        patch("copium_loop.nodes.journaler.MemoryManager") as MockMemoryManager,
+    ):
+        # Setup MemoryManager mock
+        mock_mem_instance = MockMemoryManager.return_value
+
+        # Case 1: Generic/useless lesson (Simulated)
+        # If the LLM returns something that is NOT "NO_LESSON", it SHOULD be logged.
+        mock_gemini.return_value = "No significant lesson learned."
+
+        await journaler(state)
+
+        mock_mem_instance.log_learning.assert_called_once_with(
+            "No significant lesson learned."
+        )
+
+        # Reset mock for next case
+        mock_mem_instance.reset_mock()
+
+        # Case 2: LLM explicitly returns NO_LESSON
+        mock_gemini.return_value = "NO_LESSON"
+
+        await journaler(state)
+
+        # Expectation: log_learning should NOT be called for NO_LESSON
+        mock_mem_instance.log_learning.assert_not_called()
+
+        # Case 3: Empty string
+        mock_gemini.return_value = ""
+        await journaler(state)
+        mock_mem_instance.log_learning.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_journaler_prompt_content():
+    # We want to verify that the prompt sent to Gemini includes instructions about
+    # being concise, not being a status report, and the context about tracking overall experience.
+
+    state = AgentState()
+    state["test_output"] = "out"
+    state["review_status"] = "rev"
+    state["git_diff"] = "diff"
+
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_gemini:
+        mock_gemini.return_value = "A lesson"  # Needed so lesson.strip() works
+        with patch("copium_loop.nodes.journaler.MemoryManager"):
+            await journaler(state)
+
+            call_args = mock_gemini.call_args
+            prompt = call_args[0][0]
+
+            # Assertions based on requirements
+            assert "NOT meant to be a status report" in prompt
+            assert "track your overall experience" in prompt
+            assert '"NO_LESSON"' in prompt

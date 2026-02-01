@@ -19,6 +19,9 @@ async def journaler(state: AgentState) -> dict:
     # Construct a prompt to distill the session
     prompt = f"""Analyze the following development session and distill it into a single, concise "Lesson Learned" for future sessions.
     The lesson should be a one-sentence fact or rule that will help you avoid mistakes or follow best practices in this codebase.
+    This is NOT meant to be a status report. It is used to track your overall experience as an agent.
+
+    If there is no significant lesson learned, return exactly "NO_LESSON".
 
     SESSION OUTCOME:
     Review Status: {review_status}
@@ -30,7 +33,7 @@ async def journaler(state: AgentState) -> dict:
     TELEMETRY LOG:
     {telemetry_log}
 
-    Provide ONLY the distilled lesson as a single sentence."""
+    Provide ONLY the distilled lesson as a single sentence, or "NO_LESSON"."""
 
     models = [None] + DEFAULT_MODELS
     lesson = await invoke_gemini(
@@ -43,6 +46,12 @@ async def journaler(state: AgentState) -> dict:
     )
 
     lesson = lesson.strip().strip('"').strip("'")
+
+    if lesson.upper() == "NO_LESSON" or not lesson:
+        telemetry.log_output("journaler", "\nNo lesson learned.\n")
+        print("\nNo lesson learned.")
+        telemetry.log_status("journaler", "no_lesson")
+        return {"journal_status": "no_lesson"}
 
     memory_manager = MemoryManager()
     memory_manager.log_learning(lesson)
