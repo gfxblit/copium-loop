@@ -209,3 +209,30 @@ async def test_journaler_prompt_includes_timestamp_instruction():
             assert "save_memory" in prompt
             # Check for the specific instruction context
             assert "include a timestamp" in prompt.lower() or "ensure there's a timestamp" in prompt.lower()
+
+
+@pytest.mark.asyncio
+async def test_journaler_prompt_includes_existing_memories():
+    state = AgentState()
+    state["test_output"] = "out"
+    state["review_status"] = "rev"
+    state["git_diff"] = "diff"
+
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_gemini:
+        mock_gemini.return_value = "A lesson"
+        with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
+            instance = mock_memory_manager.return_value
+            instance.get_project_memories.return_value = ["Existing Memory 1", "Existing Memory 2"]
+
+            await journaler(state)
+
+            call_args = mock_gemini.call_args
+            prompt = call_args[0][0]
+
+            assert "EXISTING PROJECT MEMORIES:" in prompt
+            assert "Existing Memory 1" in prompt
+            assert "Existing Memory 2" in prompt
+            assert "NO_LESSON" in prompt
+            assert "redundant" in prompt.lower() or "duplicate" in prompt.lower()

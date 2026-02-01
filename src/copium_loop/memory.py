@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 from pathlib import Path
 
 
@@ -19,3 +20,13 @@ class MemoryManager:
 
         with open(self.project_memory_file, "a") as f:
             f.write(entry)
+
+    def get_project_memories(self) -> list[str]:
+        """Returns a list of facts from the local GEMINI.md file."""
+        if not self.project_memory_file.exists():
+            return []
+
+        content = self.project_memory_file.read_text()
+        # Regex to match "- [timestamp] Fact" and capture "Fact"
+        pattern = r"- \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] (.*)"
+        return re.findall(pattern, content)

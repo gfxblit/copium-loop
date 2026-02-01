@@ -12,6 +12,10 @@ async def journaler(state: AgentState) -> dict:
     print("--- Journaling Node ---")
 
     try:
+        memory_manager = MemoryManager()
+        existing_memories = memory_manager.get_project_memories()
+        existing_memories_str = "\n    ".join(f"- {m}" for m in existing_memories)
+
         test_output = state.get("test_output", "")
         review_status = state.get("review_status", "")
         git_diff = state.get("git_diff", "")
@@ -29,8 +33,12 @@ async def journaler(state: AgentState) -> dict:
     RULES:
     - You can do BOTH if applicable.
     - If you strictly used `save_memory` and have no project-specific lesson, output "NO_LESSON".
+    - If the project-specific lesson is redundant with existing memories, output "NO_LESSON".
     - If you have a project lesson, output ONLY that single sentence.
     - Strictly NO status reports or summaries.
+
+    EXISTING PROJECT MEMORIES:
+    {existing_memories_str if existing_memories_str else "None yet."}
 
     SESSION OUTCOME:
     Review Status: {review_status}
@@ -67,7 +75,6 @@ async def journaler(state: AgentState) -> dict:
             telemetry.log_status("journaler", "no_lesson")
             return {"journal_status": "no_lesson", "review_status": new_review_status}
 
-        memory_manager = MemoryManager()
         memory_manager.log_learning(lesson)
 
         telemetry.log_output("journaler", f"\nLesson Learned: {lesson}\n")
