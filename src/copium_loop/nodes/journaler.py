@@ -14,7 +14,7 @@ async def journaler(state: AgentState) -> dict:
     try:
         memory_manager = MemoryManager()
         existing_memories = memory_manager.get_project_memories()
-        existing_memories_str = "\n".join([f"- {m}" for m in existing_memories])
+        existing_memories_str = "\n    ".join(f"- {m}" for m in existing_memories)
 
         test_output = state.get("test_output", "")
         review_status = state.get("review_status", "")
