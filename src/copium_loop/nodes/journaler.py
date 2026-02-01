@@ -18,10 +18,16 @@ async def journaler(state: AgentState) -> dict:
 
     # Construct a prompt to distill the session
     prompt = f"""Analyze the following development session and distill it into a single, concise "Lesson Learned" for future sessions.
-    The lesson should be a one-sentence fact or rule that will help you avoid mistakes or follow best practices in this codebase.
-    This is NOT meant to be a status report. It is used to track your overall experience as an agent.
 
-    If there is no significant lesson learned, return exactly "NO_LESSON".
+    CONTEXT:
+    You are generating input for a `save_memory` tool. This tool tracks your overall experience as an agent to improve over time.
+    Your output will be prefixed with a timestamp and saved to `GEMINI.md`.
+
+    RULES:
+    1.  The lesson must be a one-sentence fact or rule that will help you avoid mistakes or follow best practices in this codebase.
+    2.  Strictly NO status reports (e.g., "I fixed the bug", "I ran tests").
+    3.  Strictly NO summaries of what happened.
+    4.  If there is no significant lesson learned (e.g., routine work), return exactly "NO_LESSON".
 
     SESSION OUTCOME:
     Review Status: {review_status}

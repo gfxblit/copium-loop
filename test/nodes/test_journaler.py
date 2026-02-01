@@ -155,6 +155,7 @@ async def test_journaler_prompt_content():
             prompt = call_args[0][0]
 
             # Assertions based on requirements
-            assert "NOT meant to be a status report" in prompt
-            assert "track your overall experience" in prompt
+            assert "Strictly NO status reports" in prompt
+            assert "save_memory" in prompt
+            assert "tracks your overall experience" in prompt
             assert '"NO_LESSON"' in prompt
