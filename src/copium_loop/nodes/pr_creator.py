@@ -53,7 +53,7 @@ async def pr_creator(state: AgentState) -> dict:
             telemetry.log_output("pr_creator", msg)
             print(msg, end="")
             await add(".")
-            await commit("docs: update GEMINI.md and session memory [skip ci]")
+            await commit("docs: update GEMINI.md and session memory")
 
         # 3. Push to origin
         msg = "Pushing to origin...\n"
