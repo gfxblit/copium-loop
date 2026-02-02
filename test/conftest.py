@@ -1,5 +1,3 @@
-import os
-import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -10,23 +8,6 @@ import pytest
 src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
-
-
-@pytest.fixture
-def temp_git_repo(tmp_path):
-    """Create a temporary git repository for testing."""
-    original_cwd = os.getcwd()
-    os.chdir(tmp_path)
-
-    # Initialize git repo
-    subprocess.run(["git", "init", "-q"], check=True)
-    subprocess.run(["git", "config", "user.email", "you@example.com"], check=True)
-    subprocess.run(["git", "config", "user.name", "Your Name"], check=True)
-
-    yield tmp_path
-
-    # Cleanup
-    os.chdir(original_cwd)
 
 
 @pytest.fixture(autouse=True)
