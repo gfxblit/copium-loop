@@ -20,10 +20,12 @@ async def test_journaler_success():
         "initial_commit_hash": "abc",
         "git_diff": "diff content",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
 
-    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_invoke:
         mock_invoke.return_value = "Always ensure memory is persisted."
 
         with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
@@ -32,8 +34,11 @@ async def test_journaler_success():
             result = await journaler(state)
 
             assert result["journal_status"] == "journaled"
-            assert result["review_status"] == "approved" # Preserved
-            instance.log_learning.assert_called_once_with("Always ensure memory is persisted.")
+            assert result["review_status"] == "approved"  # Preserved
+            instance.log_learning.assert_called_once_with(
+                "Always ensure memory is persisted."
+            )
+
 
 @pytest.mark.asyncio
 async def test_journaler_updates_pending_status():
@@ -41,7 +46,7 @@ async def test_journaler_updates_pending_status():
         "messages": [],
         "code_status": "coded",
         "test_output": "All tests passed",
-        "review_status": "pending", # Initial status
+        "review_status": "pending",  # Initial status
         "architect_status": "",
         "retry_count": 0,
         "pr_url": "",
@@ -49,10 +54,12 @@ async def test_journaler_updates_pending_status():
         "initial_commit_hash": "abc",
         "git_diff": "diff content",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
 
-    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_invoke:
         mock_invoke.return_value = "A lesson"
         with patch("copium_loop.nodes.journaler.MemoryManager"):
             result = await journaler(state)
@@ -79,14 +86,18 @@ async def test_journaler_includes_telemetry_log():
         "initial_commit_hash": "abc",
         "git_diff": "diff content",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
 
-    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_invoke:
         mock_invoke.return_value = "Always ensure memory is persisted."
 
-        with patch("copium_loop.nodes.journaler.MemoryManager"), \
-             patch("copium_loop.nodes.journaler.get_telemetry") as mock_get_telemetry:
+        with (
+            patch("copium_loop.nodes.journaler.MemoryManager"),
+            patch("copium_loop.nodes.journaler.get_telemetry") as mock_get_telemetry,
+        ):
             mock_telemetry = MagicMock()
             mock_get_telemetry.return_value = mock_telemetry
 
@@ -208,7 +219,10 @@ async def test_journaler_prompt_includes_timestamp_instruction():
             assert "timestamp" in prompt.lower()
             assert "save_memory" in prompt
             # Check for the specific instruction context
-            assert "include a timestamp" in prompt.lower() or "ensure there's a timestamp" in prompt.lower()
+            assert (
+                "include a timestamp" in prompt.lower()
+                or "ensure there's a timestamp" in prompt.lower()
+            )
 
 
 @pytest.mark.asyncio
@@ -224,7 +238,10 @@ async def test_journaler_prompt_includes_existing_memories():
         mock_gemini.return_value = "A lesson"
         with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
             instance = mock_memory_manager.return_value
-            instance.get_project_memories.return_value = ["Existing Memory 1", "Existing Memory 2"]
+            instance.get_project_memories.return_value = [
+                "Existing Memory 1",
+                "Existing Memory 2",
+            ]
 
             await journaler(state)
 
@@ -236,3 +253,32 @@ async def test_journaler_prompt_includes_existing_memories():
             assert "Existing Memory 2" in prompt
             assert "NO_LESSON" in prompt
             assert "redundant" in prompt.lower() or "duplicate" in prompt.lower()
+
+
+@pytest.mark.asyncio
+async def test_journaler_prompt_bans_changelogs():
+    state = AgentState()
+    state["test_output"] = "out"
+    state["review_status"] = "rev"
+    state["git_diff"] = "diff"
+
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_gemini:
+        mock_gemini.return_value = "NO_LESSON"
+        with patch("copium_loop.nodes.journaler.MemoryManager"):
+            await journaler(state)
+
+            call_args = mock_gemini.call_args
+            prompt = call_args[0][0]
+
+            # Assertions for the new sections
+            assert "ANTI-PATTERNS" in prompt
+            assert "PRINCIPLES" in prompt
+
+            # Assertions for the examples
+            assert "Bad: The journaler node now deduplicates learnings." in prompt
+            assert (
+                "Good: Deduplicate learnings by checking against existing memories before logging."
+                in prompt
+            )
