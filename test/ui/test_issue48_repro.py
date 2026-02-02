@@ -17,7 +17,6 @@ def test_issue48_journaler_completion_status():
     timestamp_end = "2026-01-25T12:00:10"
     pillar.set_status("journaled", timestamp_end)
 
-    # These assertions are expected to FAIL currently
     assert pillar.status == "journaled"
     assert pillar.duration == 10.0
     assert pillar.completion_time is not None
@@ -44,7 +43,6 @@ def test_issue48_journaler_no_lesson_completion_status():
     timestamp_end = "2026-01-25T12:00:05"
     pillar.set_status("no_lesson", timestamp_end)
 
-    # These assertions are expected to FAIL currently
     assert pillar.status == "no_lesson"
     assert pillar.duration == 5.0
     assert pillar.completion_time is not None

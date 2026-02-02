@@ -11,23 +11,27 @@ class MatrixPillar:
     """Manages the buffer and rendering for a single agent phase."""
 
     # Statuses that indicate a node has completed execution (successfully or not)
-    COMPLETION_STATUSES = [
-        "success",
-        "approved",
-        "failed",
-        "rejected",
-        "error",
-        "pr_failed",
-        "coded",
-        "journaled",
-        "no_lesson",
-    ]
+    COMPLETION_STATUSES = frozenset(
+        {
+            "success",
+            "approved",
+            "failed",
+            "rejected",
+            "error",
+            "pr_failed",
+            "coded",
+            "journaled",
+            "no_lesson",
+        }
+    )
 
     # Statuses that indicate a successful completion for visual styling
-    SUCCESS_STATUSES = ["success", "approved", "coded", "journaled", "no_lesson"]
+    SUCCESS_STATUSES = frozenset(
+        {"success", "approved", "coded", "journaled", "no_lesson"}
+    )
 
     # Statuses that indicate a failure for visual styling
-    FAILURE_STATUSES = ["error", "rejected", "failed", "pr_failed"]
+    FAILURE_STATUSES = frozenset({"error", "rejected", "failed", "pr_failed"})
 
     def __init__(self, name: str):
         self.name = name
@@ -55,9 +59,7 @@ class MatrixPillar:
                     self.start_time = ts
                     self.duration = None
                     self.completion_time = None
-                elif (
-                    self.start_time and status in self.COMPLETION_STATUSES
-                ):
+                elif self.start_time and status in self.COMPLETION_STATUSES:
                     self.duration = ts - self.start_time
                     self.completion_time = ts
             except (ValueError, TypeError):
@@ -97,10 +99,7 @@ class MatrixPillar:
                 time_suffix = f" [{secs}s]"
 
         # Add completion time for completed steps
-        if (
-            self.completion_time is not None
-            and self.status in self.COMPLETION_STATUSES
-        ):
+        if self.completion_time is not None and self.status in self.COMPLETION_STATUSES:
             completion_dt = datetime.fromtimestamp(self.completion_time)
             completion_str = completion_dt.strftime("%H:%M:%S")
             time_suffix += f" @ {completion_str}"

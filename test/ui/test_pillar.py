@@ -91,3 +91,10 @@ def test_matrix_pillar_time_suffix():
     output = capture.get()
     assert "1m 5s" in output
     assert "@" in output  # Time of completion
+
+
+def test_pillar_status_constants_are_frozensets():
+    """Verify that status constants are frozensets as requested in PR review."""
+    assert isinstance(MatrixPillar.COMPLETION_STATUSES, frozenset)
+    assert isinstance(MatrixPillar.SUCCESS_STATUSES, frozenset)
+    assert isinstance(MatrixPillar.FAILURE_STATUSES, frozenset)
