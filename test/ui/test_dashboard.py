@@ -476,3 +476,82 @@ def test_dashboard_update_from_logs_error_handling(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert f"Error processing log file {log_file}: Simulated file error" in captured.err
+
+
+@patch("copium_loop.ui.dashboard.switch_to_tmux_session")
+@patch("copium_loop.ui.dashboard.InputReader")
+@patch("copium_loop.ui.dashboard.Live")
+@patch("copium_loop.ui.dashboard.termios")
+@patch("copium_loop.ui.dashboard.tty")
+@patch("copium_loop.ui.dashboard.sys.stdin")
+def test_key_one_switches_session(
+    mock_stdin, _mock_tty, _mock_termios, _mock_live, mock_input_reader_cls, mock_switch
+):
+    """Test that pressing '1' switches to the first session."""
+    dashboard = Dashboard()
+    # Create some dummy sessions
+    s1 = SessionColumn("session-1")
+    s1.workflow_status = "running"
+    s1.activated_at = 100
+
+    s2 = SessionColumn("session-2")
+    s2.workflow_status = "running"
+    s2.activated_at = 200
+
+    dashboard.sessions = {"session-1": s1, "session-2": s2}
+
+    # Setup mocks
+    mock_reader = mock_input_reader_cls.return_value
+    # Simulate pressing '1' then 'q'
+    mock_reader.get_key.side_effect = ["1", "q"]
+
+    mock_stdin.fileno.return_value = 1
+
+    # Run monitor
+    with patch.object(dashboard, "update_from_logs"):
+        dashboard.run_monitor()
+
+    # Verify switch was called for the first session (session-1)
+    mock_switch.assert_called_with("session-1")
+
+
+@patch("copium_loop.ui.dashboard.switch_to_tmux_session")
+@patch("copium_loop.ui.dashboard.Live")
+@patch("copium_loop.ui.dashboard.termios")
+@patch("copium_loop.ui.dashboard.tty")
+def test_key_one_switches_session_real_reader(
+    _mock_tty, _mock_termios, _mock_live, mock_switch
+):
+    """Test that pressing '1' switches to the first session using the real InputReader (mocked stdin)."""
+    import os
+
+    dashboard = Dashboard()
+    # Create some dummy sessions
+    s1 = SessionColumn("session-1")
+    s1.workflow_status = "running"
+    s1.activated_at = 100
+
+    s2 = SessionColumn("session-2")
+    s2.workflow_status = "running"
+    s2.activated_at = 200
+
+    dashboard.sessions = {"session-1": s1, "session-2": s2}
+
+    # Create a pipe to simulate stdin
+    r, w = os.pipe()
+
+    # Write '1' (switch) and 'q' (quit)
+    os.write(w, b"1q")
+    os.close(w)
+
+    # Wrap the read end of the pipe in a file object to replace sys.stdin
+    with (
+        os.fdopen(r, "r") as mock_stdin_f,
+        patch("copium_loop.input_reader.sys.stdin", mock_stdin_f),
+        patch("copium_loop.ui.dashboard.sys.stdin", mock_stdin_f),
+        patch.object(dashboard, "update_from_logs"),
+    ):
+        dashboard.run_monitor()
+
+    # Verify switch was called for the first session
+    mock_switch.assert_called_with("session-1")

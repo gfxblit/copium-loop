@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langgraph.graph.state import CompiledStateGraph
 
-from copium_loop.graph import create_graph
+from copium_loop.graph import START, create_graph
 
 
 @pytest.fixture
@@ -36,13 +36,45 @@ class TestGraphCreation:
         assert "pr_creator" in graph.nodes
 
     @pytest.mark.parametrize(
-        "start_node", ["coder", "tester", "architect", "reviewer", "pr_creator"]
+        "start_node",
+        ["coder", "tester", "architect", "reviewer", "pr_creator", "journaler"],
     )
-    def test_create_graph_with_valid_start_nodes(self, workflow_manager_factory, start_node):
+    def test_create_graph_with_valid_start_nodes(
+        self, workflow_manager_factory, start_node
+    ):
         """Test graph creation with each valid start node."""
         workflow = workflow_manager_factory(start_node=start_node)
         graph = workflow.create_graph()
         assert graph is not None
+
+    def test_graph_entry_point_logic(self):
+        """Test the logic in graph.py regarding entry node."""
+        from unittest.mock import MagicMock
+
+        with patch("copium_loop.graph.StateGraph") as mock_state_graph_cls:
+            mock_graph = MagicMock()
+            mock_state_graph_cls.return_value = mock_graph
+
+            # Mock compile return value
+            mock_graph.compile.return_value = "compiled_graph"
+
+            # Mock wrap_node_func
+            wrap = MagicMock()
+
+            # Test with journaler
+            create_graph(wrap, start_node="journaler")
+
+            # Verify add_edge was called with START -> journaler
+            mock_graph.add_edge.assert_any_call(START, "journaler")
+
+            # Reset mocks
+            mock_graph.reset_mock()
+
+            # Test with invalid node
+            create_graph(wrap, start_node="invalid_node")
+
+            # Verify add_edge was called with START -> coder (fallback)
+            mock_graph.add_edge.assert_any_call(START, "coder")
 
     def test_create_graph_with_invalid_start_node(self, workflow_manager_factory, capsys):
         """Test graph creation falls back to coder for invalid start node."""

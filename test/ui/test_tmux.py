@@ -36,6 +36,14 @@ def test_extract_tmux_session_not_tmux():
     assert extract_tmux_session(session_id) == "session_1234567890"
 
 
+def test_extract_tmux_session_collision():
+    """Test that a session named 'project_1' is preserved and not stripped to 'project'."""
+    session_name = "project_1"
+    extracted = extract_tmux_session(session_name)
+    # We expect it to be preserved because it's a valid session name
+    assert extracted == "project_1"
+
+
 def test_extract_tmux_session_name_with_underscore():
     """Test that extract_tmux_session handles session names that contain underscores."""
     # If the session name itself has an underscore and we use the new format

@@ -1,3 +1,4 @@
+import subprocess
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -82,3 +83,62 @@ async def test_push():
         # Test push specific branch
         await git.push(branch="my-branch")
         mock_run.assert_called_with("git", ["push", "-u", "origin", "my-branch"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("temp_git_repo")
+async def test_diff_uncommitted():
+    """Test that get_diff captures uncommitted changes when head is None."""
+    # Create a file and commit it
+    with open("test.txt", "w") as f:
+        f.write("initial content")
+    subprocess.run(["git", "add", "test.txt"], check=True)
+    subprocess.run(["git", "commit", "-m", "initial commit", "-q"], check=True)
+
+    # Get base commit hash
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    )
+    base_commit = result.stdout.strip()
+
+    # Modify the file (uncommitted change)
+    with open("test.txt", "w") as f:
+        f.write("modified content")
+
+    # Test get_diff with head=None (should capture uncommitted changes)
+    diff = await git.get_diff(base_commit, head=None)
+    assert "modified content" in diff
+    assert "initial content" in diff
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("temp_git_repo")
+async def test_diff_committed():
+    """Test that get_diff captures changes between two commits."""
+    # Create a file and commit it
+    with open("test.txt", "w") as f:
+        f.write("initial content")
+    subprocess.run(["git", "add", "test.txt"], check=True)
+    subprocess.run(["git", "commit", "-m", "initial commit", "-q"], check=True)
+
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    )
+    base_commit = result.stdout.strip()
+
+    # Modify and commit
+    with open("test.txt", "w") as f:
+        f.write("modified content")
+    subprocess.run(["git", "add", "test.txt"], check=True)
+    subprocess.run(["git", "commit", "-m", "second commit", "-q"], check=True)
+
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    )
+    head_commit = result.stdout.strip()
+
+    # Test get_diff with explicit head
+    diff = await git.get_diff(base_commit, head=head_commit)
+
+    assert "modified content" in diff
+    assert "initial content" in diff
