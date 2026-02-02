@@ -30,6 +30,22 @@ async def journaler(state: AgentState) -> dict:
     2. **Project-Specific Memory**: If the lesson is specific to THIS codebase (e.g., "The `foobar` module is deprecated", "Always import X from Y"):
        -> Output the lesson text directly.
 
+    ANTI-PATTERNS (WHAT NOT TO LOG):
+    - Do NOT log "changelogs" or "status reports" of what you just did.
+    - Do NOT log vague statements like "Updated the code."
+    - Do NOT log things that are already obvious from the git history.
+
+    PRINCIPLES:
+    - Focus on the *principle* or *rule* that was established or discovered.
+    - Make it actionable for future agents.
+    - Use the "Bad" vs "Good" examples below as a guide.
+
+    EXAMPLES:
+    - Bad: The journaler node now deduplicates learnings.
+    - Good: Deduplicate learnings by checking against existing memories before logging.
+    - Bad: Added a check for null values in the user object.
+    - Good: Always check for null values in the user object before accessing properties to prevent runtime errors.
+
     RULES:
     - You can do BOTH if applicable.
     - If you strictly used `save_memory` and have no project-specific lesson, output "NO_LESSON".
