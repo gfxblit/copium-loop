@@ -257,10 +257,21 @@ async def test_journaler_prompt_includes_existing_memories():
 
 @pytest.mark.asyncio
 async def test_journaler_prompt_bans_changelogs():
-    state = AgentState()
-    state["test_output"] = "out"
-    state["review_status"] = "rev"
-    state["git_diff"] = "diff"
+    state: AgentState = {
+        "messages": [],
+        "code_status": "coded",
+        "test_output": "out",
+        "review_status": "rev",
+        "architect_status": "",
+        "retry_count": 0,
+        "pr_url": "",
+        "issue_url": "",
+        "initial_commit_hash": "",
+        "git_diff": "diff",
+        "verbose": False,
+        "last_error": "",
+        "journal_status": "",
+    }
 
     with patch(
         "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
