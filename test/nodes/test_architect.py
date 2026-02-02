@@ -104,3 +104,24 @@ class TestArchitectNode:
             mock_gemini.assert_called_once()
             args = mock_gemini.call_args[0]
             assert "some diff" in args[0]
+
+    @pytest.mark.asyncio
+    async def test_architect_forbids_file_modifications(self):
+        """Test that architect node explicitly forbids filesystem modifications."""
+        with patch(
+            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: OK"
+
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+            }
+            await architect(state)
+
+            mock_gemini.assert_called_once()
+            args = mock_gemini.call_args[0]
+            system_prompt = args[0]
+            assert "MUST NOT use any tools to modify the filesystem" in system_prompt
+            assert "write_file" in system_prompt
+            assert "replace" in system_prompt
