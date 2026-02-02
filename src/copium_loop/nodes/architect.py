@@ -49,6 +49,8 @@ async def architect(state: AgentState) -> dict:
 
     You MUST provide your final verdict in the format: "VERDICT: OK" or "VERDICT: REFACTOR".
 
+    CRITICAL: You MUST NOT use any tools to modify the filesystem (e.g., 'write_file', 'replace'). You are an evaluator only.
+
     To do this, you MUST activate the 'architect' skill and provide it with the necessary context, including the git diff above.
     Instruct the skill to evaluate the diff for modularity, SRP, OCP, and overall architecture.
     After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
