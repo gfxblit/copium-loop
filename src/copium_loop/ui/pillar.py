@@ -10,6 +10,29 @@ from .renderable import TailRenderable
 class MatrixPillar:
     """Manages the buffer and rendering for a single agent phase."""
 
+    # Statuses that indicate a node has completed execution (successfully or not)
+    COMPLETION_STATUSES = frozenset(
+        {
+            "success",
+            "approved",
+            "failed",
+            "rejected",
+            "error",
+            "pr_failed",
+            "coded",
+            "journaled",
+            "no_lesson",
+        }
+    )
+
+    # Statuses that indicate a successful completion for visual styling
+    SUCCESS_STATUSES = frozenset(
+        {"success", "approved", "coded", "journaled", "no_lesson"}
+    )
+
+    # Statuses that indicate a failure for visual styling
+    FAILURE_STATUSES = frozenset({"error", "rejected", "failed", "pr_failed"})
+
     def __init__(self, name: str):
         self.name = name
         self.buffer = []
@@ -36,15 +59,7 @@ class MatrixPillar:
                     self.start_time = ts
                     self.duration = None
                     self.completion_time = None
-                elif self.start_time and status in [
-                    "success",
-                    "approved",
-                    "failed",
-                    "rejected",
-                    "error",
-                    "pr_failed",
-                    "coded",
-                ]:
+                elif self.start_time and status in self.COMPLETION_STATUSES:
                     self.duration = ts - self.start_time
                     self.completion_time = ts
             except (ValueError, TypeError):
@@ -84,15 +99,7 @@ class MatrixPillar:
                 time_suffix = f" [{secs}s]"
 
         # Add completion time for completed steps
-        if self.completion_time is not None and self.status in [
-            "success",
-            "approved",
-            "failed",
-            "rejected",
-            "error",
-            "pr_failed",
-            "coded",
-        ]:
+        if self.completion_time is not None and self.status in self.COMPLETION_STATUSES:
             completion_dt = datetime.fromtimestamp(self.completion_time)
             completion_str = completion_dt.strftime("%H:%M:%S")
             time_suffix += f" @ {completion_str}"
@@ -102,12 +109,12 @@ class MatrixPillar:
                 f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41"
             )
             border_style = "#00FF41"
-        elif self.status in ["success", "approved", "coded"]:
+        elif self.status in self.SUCCESS_STATUSES:
             header_text = Text(
                 f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan"
             )
             border_style = "cyan"
-        elif self.status in ["error", "rejected", "failed", "pr_failed"]:
+        elif self.status in self.FAILURE_STATUSES:
             header_text = Text(
                 f"✘ {self.name.upper()}{time_suffix}", style="bold white on red"
             )
