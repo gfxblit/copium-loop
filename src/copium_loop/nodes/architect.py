@@ -30,7 +30,7 @@ async def architect(state: AgentState) -> dict:
     git_diff = ""
     if os.path.exists(".git") and initial_commit_hash:
         try:
-            git_diff = await get_diff(initial_commit_hash, node="architect")
+            git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
         except Exception as e:
             msg = f"Warning: Failed to get git diff: {e}\n"
             telemetry.log_output("architect", msg)

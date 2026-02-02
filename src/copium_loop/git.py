@@ -7,9 +7,12 @@ async def get_current_branch() -> str:
     return res["output"].strip()
 
 
-async def get_diff(base: str, head: str = "HEAD", node: str | None = None) -> str:
+async def get_diff(base: str, head: str | None = "HEAD", node: str | None = None) -> str:
     """Returns the git diff between two commits."""
-    res = await run_command("git", ["diff", base, head], node=node)
+    args = ["diff", base]
+    if head:
+        args.append(head)
+    res = await run_command("git", args, node=node)
     return res["output"]
 
 
