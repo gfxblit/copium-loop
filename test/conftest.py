@@ -94,3 +94,18 @@ def mock_notify():
         yield mock
 
 
+@pytest.fixture
+def temp_git_repo(tmp_path, monkeypatch):
+    """Create a temporary git repository for testing."""
+    import subprocess
+
+    monkeypatch.chdir(tmp_path)
+
+    # Initialize git repo
+    subprocess.run(["git", "init", "-q"], check=True)
+    subprocess.run(["git", "config", "user.email", "you@example.com"], check=True)
+    subprocess.run(["git", "config", "user.name", "Your Name"], check=True)
+
+    yield tmp_path
+
+

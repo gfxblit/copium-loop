@@ -1,9 +1,9 @@
+import subprocess
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 # We'll need to import from copium_loop.nodes.architect once it exists
-# For now, we expect it to fail collection which is fine for TDD Red step
 from copium_loop.nodes.architect import architect
 
 
@@ -125,3 +125,45 @@ class TestArchitectNode:
             assert "MUST NOT use any tools to modify the filesystem" in system_prompt
             assert "write_file" in system_prompt
             assert "replace" in system_prompt
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("temp_git_repo")
+    async def test_architect_integration(self):
+        """Test architect node integration with a real git repo and uncommitted changes."""
+        # Setup repo with uncommitted changes
+        with open("test.txt", "w") as f:
+            f.write("initial content")
+        subprocess.run(["git", "add", "test.txt"], check=True)
+        subprocess.run(["git", "commit", "-m", "initial commit", "-q"], check=True)
+
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+        )
+        initial_commit = result.stdout.strip()
+
+        with open("test.txt", "w") as f:
+            f.write("modified content")
+
+        # Mock state
+        state = {
+            "initial_commit_hash": initial_commit,
+            "retry_count": 0,
+            "verbose": False,
+        }
+
+        # Mock invoke_gemini
+        with patch(
+            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: OK"
+
+            # Run architect node
+            result = await architect(state)
+
+            # Verify call args
+            args = mock_gemini.call_args[0]
+            system_prompt = args[0]
+
+            # Verify that the uncommitted changes are in the prompt
+            assert "modified content" in system_prompt
+            assert result["architect_status"] == "ok"
