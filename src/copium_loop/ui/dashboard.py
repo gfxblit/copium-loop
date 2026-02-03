@@ -176,17 +176,14 @@ class Dashboard:
                                         self.sessions[sid].completed_at = ts
                                     except (ValueError, TypeError):
                                         pass
-                            elif node in self.sessions[sid].pillars:
+                            elif node and node != "workflow":
+                                pillar = self.sessions[sid].get_pillar(node)
                                 if etype == "output":
                                     for line in data.splitlines():
                                         if line.strip():
-                                            self.sessions[sid].pillars[node].add_line(
-                                                line
-                                            )
+                                            pillar.add_line(line)
                                 elif etype == "status":
-                                    self.sessions[sid].pillars[node].set_status(
-                                        data, event.get("timestamp")
-                                    )
+                                    pillar.set_status(data, event.get("timestamp"))
                         except json.JSONDecodeError:
                             continue
                     self.log_offsets[sid] = f.tell()

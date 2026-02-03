@@ -18,13 +18,13 @@ class SessionColumn:
         self.completed_at = 0
         self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
-            "coder": MatrixPillar("Coder"),
-            "tester": MatrixPillar("Tester"),
-            "architect": MatrixPillar("Architect"),
-            "reviewer": MatrixPillar("Reviewer"),
-            "pr_pre_checker": MatrixPillar("Pre-Check"),
-            "journaler": MatrixPillar("Journal"),
-            "pr_creator": MatrixPillar("PR Creator"),
+            "coder": MatrixPillar("coder"),
+            "tester": MatrixPillar("tester"),
+            "architect": MatrixPillar("architect"),
+            "reviewer": MatrixPillar("reviewer"),
+            "pr_pre_checker": MatrixPillar("pr_pre_checker"),
+            "journaler": MatrixPillar("journaler"),
+            "pr_creator": MatrixPillar("pr_creator"),
         }
 
     @property
@@ -44,6 +44,12 @@ class SessionColumn:
         """Returns the maximum last_update timestamp across all pillars."""
         return max(pillar.last_update for pillar in self.pillars.values())
 
+    def get_pillar(self, node_id: str) -> MatrixPillar:
+        """Returns the pillar for the given node_id, creating it if it doesn't exist."""
+        if node_id not in self.pillars:
+            self.pillars[node_id] = MatrixPillar(node_id)
+        return self.pillars[node_id]
+
     def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
 
@@ -62,21 +68,19 @@ class SessionColumn:
 
             ratios[node] = weight
 
-        # Add workflow status banner if workflow has completed
-        if self.workflow_status in ["success", "failed"]:
-            col_layout.split_column(
-                Layout(name="header", size=3),
-                Layout(name="workflow_status", size=3),
-                Layout(name="coder", ratio=ratios["coder"]),
-                Layout(name="tester", ratio=ratios["tester"]),
-                Layout(name="architect", ratio=ratios["architect"]),
-                Layout(name="reviewer", ratio=ratios["reviewer"]),
-                Layout(name="pr_pre_checker", ratio=ratios["pr_pre_checker"]),
-                Layout(name="journaler", ratio=ratios["journaler"]),
-                Layout(name="pr_creator", ratio=ratios["pr_creator"]),
-            )
+        # Build the column layout dynamically
+        layout_elements = [Layout(name="header", size=3)]
 
-            # Render workflow status banner
+        if self.workflow_status in ["success", "failed"]:
+            layout_elements.append(Layout(name="workflow_status", size=3))
+
+        for node in self.pillars:
+            layout_elements.append(Layout(name=node, ratio=ratios[node]))
+
+        col_layout.split_column(*layout_elements)
+
+        # Render workflow status banner if needed
+        if self.workflow_status in ["success", "failed"]:
             if self.workflow_status == "failed":
                 status_text = Text(
                     "⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED",
@@ -95,17 +99,7 @@ class SessionColumn:
                 col_layout["workflow_status"].update(
                     Panel(status_text, border_style="green")
                 )
-        else:
-            col_layout.split_column(
-                Layout(name="header", size=3),
-                Layout(name="coder", ratio=ratios["coder"]),
-                Layout(name="tester", ratio=ratios["tester"]),
-                Layout(name="architect", ratio=ratios["architect"]),
-                Layout(name="reviewer", ratio=ratios["reviewer"]),
-                Layout(name="pr_pre_checker", ratio=ratios["pr_pre_checker"]),
-                Layout(name="journaler", ratio=ratios["journaler"]),
-                Layout(name="pr_creator", ratio=ratios["pr_creator"]),
-            )
+
 
         # Dynamically truncate session_id based on available column width
         display_name = self.session_id
