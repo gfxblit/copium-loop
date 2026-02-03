@@ -100,7 +100,10 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
 
 
 def should_continue_from_journaler(state: AgentState) -> str:
+    telemetry = get_telemetry()
     status = state.get("review_status")
     if status == "pre_check_passed":
+        telemetry.log_status("journaler", "success")
         return "pr_creator"
+    telemetry.log_status("journaler", "success")
     return END

@@ -255,6 +255,22 @@ async def test_journaler_prompt_includes_existing_memories():
             assert "redundant" in prompt.lower() or "duplicate" in prompt.lower()
 
 
+    @patch("copium_loop.nodes.journaler.get_telemetry")
+    @patch("copium_loop.nodes.journaler.MemoryManager")
+    @patch("copium_loop.nodes.journaler.invoke_gemini")
+    async def test_journaler_telemetry(_self, mock_invoke, mock_mm, mock_get_telemetry):
+        mock_telemetry = mock_get_telemetry.return_value
+        mock_mm_instance = mock_mm.return_value
+        mock_mm_instance.get_project_memories.return_value = []
+        mock_invoke.return_value = "Remember this."
+
+        state: AgentState = {"review_status": "pending", "git_diff": "diff", "test_output": "PASS"}
+        await journaler(state)
+
+        mock_telemetry.log_status.assert_any_call("journaler", "active")
+        mock_telemetry.log_output.assert_any_call("journaler", "--- Journaling Node ---\n")
+        mock_telemetry.log_status.assert_any_call("journaler", "journaled")
+
 @pytest.mark.asyncio
 async def test_journaler_prompt_bans_changelogs():
     state: AgentState = {

@@ -34,7 +34,7 @@ async def pr_creator(state: AgentState) -> dict:
             return {"review_status": "pr_skipped"}
 
         # 1. Check feature branch
-        branch_name = await get_current_branch()
+        branch_name = await get_current_branch(node="pr_creator")
 
         if branch_name in ["main", "master", ""]:
             msg = "Not on a feature branch. Skipping PR creation.\n"
@@ -48,18 +48,18 @@ async def pr_creator(state: AgentState) -> dict:
         print(msg, end="")
 
         # 2. Check uncommitted changes (expected from journaler)
-        if await is_dirty():
+        if await is_dirty(node="pr_creator"):
             msg = "Committing changes (journal/memory updates)...\n"
             telemetry.log_output("pr_creator", msg)
             print(msg, end="")
-            await add(".")
-            await commit("docs: update GEMINI.md and session memory")
+            await add(".", node="pr_creator")
+            await commit("docs: update GEMINI.md and session memory", node="pr_creator")
 
         # 3. Push to origin
         msg = "Pushing to origin...\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
-        res_push = await push(force=True, branch=branch_name)
+        res_push = await push(force=True, branch=branch_name, node="pr_creator")
         if res_push["exit_code"] != 0:
             raise Exception(
                 f"Git push failed (exit {res_push['exit_code']}): {res_push['output'].strip()}"

@@ -30,7 +30,7 @@ async def pr_pre_checker(state: AgentState) -> dict:
             return {"review_status": "pr_skipped"}
 
         # 1. Check feature branch
-        branch_name = await get_current_branch()
+        branch_name = await get_current_branch(node="pr_pre_checker")
 
         if branch_name in ["main", "master", ""]:
             msg = "Not on a feature branch. Skipping PR creation.\n"
@@ -44,7 +44,7 @@ async def pr_pre_checker(state: AgentState) -> dict:
         print(msg, end="")
 
         # 2. Check uncommitted changes
-        if await is_dirty():
+        if await is_dirty(node="pr_pre_checker"):
             msg = "Uncommitted changes found. Returning to coder to finalize commits.\n"
             telemetry.log_output("pr_pre_checker", msg)
             print(msg, end="")
@@ -63,14 +63,14 @@ async def pr_pre_checker(state: AgentState) -> dict:
         msg = "Fetching origin and attempting rebase on origin/main...\n"
         telemetry.log_output("pr_pre_checker", msg)
         print(msg, end="")
-        await fetch()
-        res_rebase = await rebase("origin/main")
+        await fetch(node="pr_pre_checker")
+        res_rebase = await rebase("origin/main", node="pr_pre_checker")
 
         if res_rebase["exit_code"] != 0:
             msg = "Rebase failed. Aborting rebase and returning to coder.\n"
             telemetry.log_output("pr_pre_checker", msg)
             print(msg, end="")
-            await rebase_abort()
+            await rebase_abort(node="pr_pre_checker")
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
             await notify(
                 "Workflow: Rebase Conflict",
