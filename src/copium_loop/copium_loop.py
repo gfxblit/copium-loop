@@ -145,7 +145,7 @@ class WorkflowManager:
         initial_commit_hash = ""
         if os.path.exists(".git"):
             try:
-                initial_commit_hash = await get_head()
+                initial_commit_hash = await get_head(node=self.start_node)
                 msg = f"Initial commit hash: {initial_commit_hash}\n"
                 telemetry.log_output(self.start_node, msg)
                 print(msg, end="")

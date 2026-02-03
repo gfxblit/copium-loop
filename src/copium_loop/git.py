@@ -1,9 +1,9 @@
 from copium_loop.shell import run_command
 
 
-async def get_current_branch() -> str:
+async def get_current_branch(node: str | None = None) -> str:
     """Returns the current git branch name."""
-    res = await run_command("git", ["branch", "--show-current"])
+    res = await run_command("git", ["branch", "--show-current"], node=node)
     return res["output"].strip()
 
 
@@ -16,35 +16,38 @@ async def get_diff(base: str, head: str | None = "HEAD", node: str | None = None
     return res["output"]
 
 
-async def is_dirty() -> bool:
+async def is_dirty(node: str | None = None) -> bool:
     """Returns True if the git repository has uncommitted changes."""
-    res = await run_command("git", ["status", "--porcelain"])
+    res = await run_command("git", ["status", "--porcelain"], node=node)
     return bool(res["output"].strip())
 
 
-async def get_head() -> str:
+async def get_head(node: str | None = None) -> str:
     """Returns the current HEAD commit hash."""
-    res = await run_command("git", ["rev-parse", "HEAD"])
+    res = await run_command("git", ["rev-parse", "HEAD"], node=node)
     return res["output"].strip()
 
 
-async def fetch(remote: str = "origin") -> dict:
+async def fetch(remote: str = "origin", node: str | None = None) -> dict:
     """Fetches updates from the remote repository."""
-    return await run_command("git", ["fetch", remote])
+    return await run_command("git", ["fetch", remote], node=node)
 
 
-async def rebase(target: str) -> dict:
+async def rebase(target: str, node: str | None = None) -> dict:
     """Rebases the current branch onto the target."""
-    return await run_command("git", ["rebase", target])
+    return await run_command("git", ["rebase", target], node=node)
 
 
-async def rebase_abort() -> dict:
+async def rebase_abort(node: str | None = None) -> dict:
     """Aborts an ongoing rebase."""
-    return await run_command("git", ["rebase", "--abort"])
+    return await run_command("git", ["rebase", "--abort"], node=node)
 
 
 async def push(
-    force: bool = False, remote: str = "origin", branch: str | None = None
+    force: bool = False,
+    remote: str = "origin",
+    branch: str | None = None,
+    node: str | None = None,
 ) -> dict:
     """Pushes the current branch to the remote repository."""
     args = ["push"]
@@ -54,14 +57,14 @@ async def push(
         args.extend(["-u", remote, branch])
     else:
         args.append(remote)
-    return await run_command("git", args)
+    return await run_command("git", args, node=node)
 
 
-async def add(path: str = ".") -> dict:
+async def add(path: str = ".", node: str | None = None) -> dict:
     """Adds files to the staging area."""
-    return await run_command("git", ["add", path])
+    return await run_command("git", ["add", path], node=node)
 
 
-async def commit(message: str) -> dict:
+async def commit(message: str, node: str | None = None) -> dict:
     """Commits staged changes."""
-    return await run_command("git", ["commit", "-m", message])
+    return await run_command("git", ["commit", "-m", message], node=node)

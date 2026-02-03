@@ -41,7 +41,7 @@ class TestPrCreatorNode:
 
         assert result["review_status"] == "pr_created"
         assert "PR Created" in result["messages"][0].content
-        mock_push.assert_called_with(force=True, branch="feature-branch")
+        mock_push.assert_called_with(force=True, branch="feature-branch", node="pr_creator")
         mock_add.assert_not_called()
         mock_commit.assert_not_called()
 
@@ -79,8 +79,8 @@ class TestPrCreatorNode:
         result = await pr_creator(state)
 
         assert result["review_status"] == "pr_created"
-        mock_add.assert_called_once_with(".")
-        mock_commit.assert_called_once()
+        mock_add.assert_called_once_with(".", node="pr_creator")
+        mock_commit.assert_called_once_with("docs: update GEMINI.md and session memory", node="pr_creator")
         mock_push.assert_called_once()
 
     @pytest.mark.asyncio
