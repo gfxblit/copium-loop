@@ -22,16 +22,20 @@ class MatrixPillar:
             "coded",
             "journaled",
             "no_lesson",
+            "ok",
+            "refactor",
         }
     )
 
     # Statuses that indicate a successful completion for visual styling
     SUCCESS_STATUSES = frozenset(
-        {"success", "approved", "coded", "journaled", "no_lesson"}
+        {"success", "approved", "coded", "journaled", "no_lesson", "ok"}
     )
 
     # Statuses that indicate a failure for visual styling
-    FAILURE_STATUSES = frozenset({"error", "rejected", "failed", "pr_failed"})
+    FAILURE_STATUSES = frozenset(
+        {"error", "rejected", "failed", "pr_failed", "refactor"}
+    )
 
     def __init__(self, name: str):
         self.name = name
