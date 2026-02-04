@@ -107,8 +107,8 @@ class TestConditionalLogic:
         )
 
     def test_should_continue_from_pr_creator_on_success(self):
-        """Test journaler transition on PR creation success."""
-        assert should_continue_from_pr_creator({"review_status": "pr_created"}) == "journaler"
+        """Test END transition on PR creation success."""
+        assert should_continue_from_pr_creator({"review_status": "pr_created"}) == END
 
     def test_should_continue_from_pr_creator_on_needs_commit(self):
         """Test transition to coder on needs_commit."""

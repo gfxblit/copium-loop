@@ -66,7 +66,7 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
     status = state.get("review_status")
     if status == "pr_created":
         telemetry.log_status("pr_creator", "success")
-        return "journaler"
+        return END
 
     if status == "pr_skipped":
         telemetry.log_status("pr_creator", "success")

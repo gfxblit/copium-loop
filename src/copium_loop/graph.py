@@ -85,7 +85,7 @@ def create_graph(wrap_node_func, start_node: str | None = None):
     workflow.add_conditional_edges(
         "pr_creator",
         should_continue_from_pr_creator,
-        {"coder": "coder", "journaler": "journaler", END: END},
+        {"coder": "coder", END: END},
     )
 
     return workflow.compile()
