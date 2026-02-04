@@ -285,3 +285,72 @@ async def test_pr_creation_failure(mock_instructions):
     # It returns to coder, which fails because no more instructions
     assert result["review_status"] == "rejected"
     assert "GraphQL error" in str(result["messages"])
+
+
+@pytest.mark.usefixtures("temp_repo", "mock_bin")
+@pytest.mark.asyncio
+async def test_architect_refactor_loop(mock_instructions):
+    """
+    Test workflow looping from architect back to coder on REFACTOR verdict.
+    """
+    instructions = {
+        "gemini": [
+            # 1. Coder: implements feature
+            {
+                "stdout": "I implemented the feature.",
+                "write_files": {
+                    "src/feature.py": "def hello():\n    print('hello')\n    return 'world'",
+                },
+                "shell": "git add . && git commit -m 'feat: initial implementation'",
+            },
+            # 2. Architect: requests refactor
+            {
+                "stdout": "Please remove the print statement. VERDICT: REFACTOR",
+            },
+            # 3. Coder: refactors
+            {
+                "stdout": "I removed the print statement.",
+                "write_files": {
+                    "src/feature.py": "def hello():\n    return 'world'",
+                },
+                "shell": "git add . && git commit -m 'refactor: remove print'",
+            },
+            # 4. Architect: approves
+            {
+                "stdout": "Looks better. VERDICT: OK",
+            },
+            # 5. Reviewer: approves
+            {
+                "stdout": "LGTM. VERDICT: APPROVED",
+            },
+            # 6. Journaler: distills lesson
+            {
+                "stdout": "Avoid unnecessary prints.",
+            },
+        ],
+        "pytest": [
+            # Baseline check
+            {"stdout": "0 passed"},
+            # First Tester run
+            {"stdout": "0 passed"},
+            # Second Tester run
+            {"stdout": "0 passed"},
+        ],
+        "ruff": [
+            # First Tester run
+            {"stdout": ""},
+            # Second Tester run
+            {"stdout": ""},
+        ],
+        "gh": [
+            {"stdout": "https://github.com/gfxblit/copium-loop/pull/125"},
+        ],
+    }
+    mock_instructions.write_text(json.dumps(instructions))
+
+    wm = WorkflowManager()
+    result = await wm.run("Implement hello without prints")
+
+    assert result["architect_status"] == "ok"
+    assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/125"
+    assert result["retry_count"] == 1  # One retry due to architect refactor
