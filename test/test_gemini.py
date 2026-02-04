@@ -31,6 +31,9 @@ class TestExecuteGemini:
             assert "-m" in cmd_args
             m_index = cmd_args.index("-m")
             assert cmd_args[m_index + 1] == "test-model"
+            assert "-p" in cmd_args
+            p_index = cmd_args.index("-p")
+            assert cmd_args[p_index + 1] == "test prompt"
 
     @pytest.mark.asyncio
     async def test_execute_gemini_omits_model_flag_when_none(self):

@@ -23,7 +23,7 @@ async def _execute_gemini(
     if model:
         cmd_args.extend(["-m", model])
 
-    cmd_args.append(prompt)
+    cmd_args.extend(["-p", prompt])
 
     # Prevent interactive prompts in sub-agents
     env = os.environ.copy()
