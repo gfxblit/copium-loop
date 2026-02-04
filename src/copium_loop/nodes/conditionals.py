@@ -64,7 +64,11 @@ def should_continue_from_review(state: AgentState) -> str:
 def should_continue_from_pr_creator(state: AgentState) -> str:
     telemetry = get_telemetry()
     status = state.get("review_status")
-    if status in ["pr_created", "pr_skipped"]:
+    if status == "pr_created":
+        telemetry.log_status("pr_creator", "success")
+        return "journaler"
+
+    if status == "pr_skipped":
         telemetry.log_status("pr_creator", "success")
         return END
 
@@ -83,11 +87,11 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     status = state.get("review_status")
     if status == "pre_check_passed":
         telemetry.log_status("pr_pre_checker", "success")
-        return "journaler"
+        return "pr_creator"
 
     if status == "pr_skipped":
         telemetry.log_status("pr_pre_checker", "success")
-        return "journaler"
+        return END
 
     if state.get("retry_count", 0) > constants.MAX_RETRIES:
         print("Max retries exceeded in PR Pre-Checker. Aborting.")
