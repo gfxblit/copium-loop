@@ -164,10 +164,11 @@ async def stream_subprocess(
 
     full_output = ""
     logger = StreamLogger(node)
+    start_time = time.monotonic()
 
     monitor = ProcessMonitor(
         process,
-        ,
+        start_time,
         command_timeout=command_timeout,
         inactivity_timeout=inactivity_timeout,
         node=node,
@@ -179,7 +180,7 @@ async def stream_subprocess(
         while True:
             try:
                 chunk = await stream.read(1024)
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, Exception):
                 break
             if not chunk:
                 break
@@ -205,26 +206,45 @@ async def stream_subprocess(
 
     monitor_task = asyncio.create_task(monitor.run())
 
-    # Wait for the process to exit
-    await process.wait()
+    try:
+        # Wait for the process to exit OR the monitor to detect a timeout
+        # We wrap process.wait() in a task so we can wait on it alongside monitor_task
+        wait_task = asyncio.create_task(process.wait())
+        await asyncio.wait(
+            [wait_task, monitor_task], return_when=asyncio.FIRST_COMPLETED
+        )
+    except asyncio.CancelledError:
+        # If the stream_subprocess task itself is cancelled, ensure we kill the process
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+        raise
+    finally:
+        # Final cleanup: ensure process is reaped and monitor/readers are stopped
+        if process.returncode is None:
+            try:
+                process.kill()
+                # Use a small timeout for reaping to avoid hanging if things are really stuck
+                with contextlib.suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(process.wait(), timeout=0.5)
+            except (ProcessLookupError, Exception):
+                pass
 
-    # After process exits, ensure stream tasks are done
-    if read_stdout_task:
-        await read_stdout_task
-    if read_stderr_task:
-        await read_stderr_task
+        # Stop reader tasks and monitor task
+        for task in [read_stdout_task, read_stderr_task, monitor_task]:
+            if task and not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
-    # Monitor task will exit once process.returncode is not None
-    await monitor_task
+        logger.flush()
 
-    logger.flush()
-
-    if monitor.timed_out:  # noqa: F821
+    if monitor.timed_out:
         exit_code = -1
     else:
         exit_code = process.returncode if process.returncode is not None else 0
 
-    return full_output, exit_code, monitor.timed_out, monitor.timeout_message  # noqa: F821
+    return full_output, exit_code, monitor.timed_out, monitor.timeout_message
 
 
 async def run_command(
@@ -264,7 +284,7 @@ async def run_command(
     async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
-    output, exit_code, _, _ = await stream_subprocess(
+    output, exit_code, timed_out, timeout_message = await stream_subprocess(
         command,
         args,
         env,
@@ -279,5 +299,7 @@ async def run_command(
     full_output = output
     if timeout_msg_list:
         full_output += "".join(timeout_msg_list)
+    elif timed_out:
+        full_output += f"\n[TIMEOUT] {timeout_message} Killing process.\n"
 
     return {"output": full_output, "exit_code": exit_code}
