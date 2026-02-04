@@ -138,10 +138,12 @@ class TestPrCreatorNode:
     @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
     @patch("copium_loop.nodes.pr_creator.is_dirty", new_callable=AsyncMock)
     @patch("copium_loop.nodes.pr_creator.push", new_callable=AsyncMock)
+    @patch("copium_loop.nodes.pr_creator.notify", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_push_failure(
         self,
         mock_exists,
+        mock_notify,
         mock_push,
         mock_is_dirty,
         mock_branch,
@@ -155,3 +157,4 @@ class TestPrCreatorNode:
         result = await pr_creator({"retry_count": 0})
         assert result["review_status"] == "pr_failed"
         assert "Git push failed" in result["messages"][0].content
+        mock_notify.assert_called_once()
