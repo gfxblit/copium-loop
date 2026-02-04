@@ -31,6 +31,9 @@ async def get_tmux_session() -> str:
 
 async def notify(title: str, message: str, priority: int = 3):
     """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+
     channel = os.environ.get("NTFY_CHANNEL")
     if not channel:
         return
