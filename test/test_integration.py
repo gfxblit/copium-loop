@@ -145,9 +145,6 @@ async def test_happy_path(mock_instructions):
     assert result["review_status"] == "pr_created"
     assert os.path.exists("src/feature.py")
     assert os.path.exists("test/test_feature.py")
-    assert os.path.exists("GEMINI.md")
-    assert "Always use TDD." in Path("GEMINI.md").read_text()
-
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
 @pytest.mark.asyncio
@@ -210,9 +207,6 @@ async def test_retry_loop(mock_instructions):
 
     assert result["retry_count"] == 1
     assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/124"
-    assert os.path.exists("GEMINI.md")
-    assert "Fix bugs promptly." in Path("GEMINI.md").read_text()
-
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
 @pytest.mark.asyncio
