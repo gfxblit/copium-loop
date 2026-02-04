@@ -49,13 +49,13 @@ def create_graph(wrap_node_func, start_node: str | None = None):
     workflow.add_conditional_edges(
         "tester",
         should_continue_from_test,
-        {"architect": "architect", "coder": "coder", END: "journaler"},
+        {"architect": "architect", "coder": "coder", END: END},
     )
 
     workflow.add_conditional_edges(
         "architect",
         should_continue_from_architect,
-        {"reviewer": "reviewer", "coder": "coder", "architect": "architect", END: "journaler"},
+        {"reviewer": "reviewer", "coder": "coder", "architect": "architect", END: END},
     )
 
     workflow.add_conditional_edges(
@@ -65,15 +65,15 @@ def create_graph(wrap_node_func, start_node: str | None = None):
             "pr_pre_checker": "pr_pre_checker",
             "coder": "coder",
             "reviewer": "reviewer",
-            "pr_failed": "journaler",
-            END: "journaler",
+            "pr_failed": END,
+            END: END,
         },
     )
 
     workflow.add_conditional_edges(
         "pr_pre_checker",
         should_continue_from_pr_pre_checker,
-        {"journaler": "journaler", "coder": "coder", END: "journaler"},
+        {"pr_creator": "pr_creator", "coder": "coder", END: END},
     )
 
     workflow.add_conditional_edges(

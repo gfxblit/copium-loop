@@ -141,14 +141,14 @@ class TestConditionalLogic:
         """Test journaler transition on success from pr_pre_checker."""
         assert (
             should_continue_from_pr_pre_checker({"review_status": "pre_check_passed"})
-            == "journaler"
+            == "pr_creator"
         )
 
     def test_should_continue_from_pr_pre_checker_on_skipped(self):
         """Test journaler transition on skipped from pr_pre_checker."""
         assert (
             should_continue_from_pr_pre_checker({"review_status": "pr_skipped"})
-            == "journaler"
+            == END
         )
 
     def test_should_continue_from_pr_pre_checker_on_failure(self):

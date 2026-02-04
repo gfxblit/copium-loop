@@ -16,10 +16,14 @@ async def get_tmux_session() -> str:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, _ = await process.communicate()
-        output = stdout.decode().strip()
-        if output:
-            return output
+        try:
+            stdout, _ = await asyncio.wait_for(process.communicate(), timeout=2.0)
+            output = stdout.decode().strip()
+            if output:
+                return output
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
     except Exception:
         pass
     return "no-tmux"

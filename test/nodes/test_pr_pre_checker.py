@@ -88,9 +88,17 @@ class TestPRPreChecker:
     @patch("copium_loop.nodes.pr_pre_checker.fetch", new_callable=AsyncMock)
     @patch("copium_loop.nodes.pr_pre_checker.rebase", new_callable=AsyncMock)
     @patch("copium_loop.nodes.pr_pre_checker.rebase_abort", new_callable=AsyncMock)
+    @patch("copium_loop.nodes.pr_pre_checker.notify", new_callable=AsyncMock)
     @patch("copium_loop.nodes.pr_pre_checker.os.path.exists")
     async def test_pr_pre_checker_rebase_fail(
-        self, mock_exists, mock_abort, mock_rebase, mock_fetch, mock_is_dirty, mock_get_branch
+        self,
+        mock_exists,
+        mock_notify,
+        mock_abort,
+        mock_rebase,
+        mock_fetch,
+        mock_is_dirty,
+        mock_get_branch,
     ):
         mock_exists.return_value = True
         mock_get_branch.return_value = "feature-branch"
@@ -103,3 +111,4 @@ class TestPRPreChecker:
         assert result["review_status"] == "pr_failed"
         mock_fetch.assert_called_once_with(node="pr_pre_checker")
         mock_abort.assert_called_once_with(node="pr_pre_checker")
+        mock_notify.assert_called_once()
