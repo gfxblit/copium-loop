@@ -57,19 +57,22 @@ async def test_run_command_timeout():
                 self.calls += 1
                 if self.calls == 1:
                     return b"working..."
-                await asyncio.sleep(2)
-                return b""
 
         mock_proc.stdout = MockStream()
         mock_proc.stderr.read = AsyncMock(return_value=b"")
-        mock_proc.wait = AsyncMock(return_value=0)
+
+        async def mock_wait():
+            # Simulate waiting for the process to be killed or exit
+            await asyncio.sleep(0.5) # Give some time for kill to be called
+            return -1 # Indicate a killed process
+
+        mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
         mock_proc.kill = MagicMock()
         mock_exec.return_value = mock_proc
 
         # Set a very short timeout
         result = await shell.run_command("sleep", ["10"], command_timeout=0.1)
-
         assert "TIMEOUT" in result["output"]
         assert result["exit_code"] == -1
         assert mock_proc.kill.called
@@ -226,15 +229,18 @@ async def test_run_command_inactivity_timeout():
 
         mock_proc.stdout.read = AsyncMock(side_effect=slow_read)
         mock_proc.stderr.read = AsyncMock(side_effect=slow_read)
-        mock_proc.wait = AsyncMock(return_value=0)
+
+        async def mock_wait():
+            await killed_event.wait()
+            return -1
+
+        mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
         mock_proc.kill = MagicMock(side_effect=killed_event.set)
         mock_proc.terminate = MagicMock(side_effect=killed_event.set)
         mock_exec.return_value = mock_proc
 
-        result = await shell.run_command("slow_command")
-
-        # Check if kill or terminate was called
+        result = await shell.run_command("slow_command")        # Check if kill or terminate was called
         assert mock_proc.kill.called or mock_proc.terminate.called
         assert "[TIMEOUT]" in result["output"]
 
@@ -260,7 +266,12 @@ async def test_run_command_total_timeout_while_streaming():
 
         mock_proc.stdout.read = AsyncMock(side_effect=streaming_read)
         mock_proc.stderr.read = AsyncMock(return_value=b"")
-        mock_proc.wait = AsyncMock(return_value=0)
+
+        async def mock_wait():
+            await killed_event.wait()
+            return -1
+
+        mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
         mock_proc.kill = MagicMock(side_effect=killed_event.set)
         mock_proc.terminate = MagicMock(side_effect=killed_event.set)
@@ -296,7 +307,12 @@ async def test_run_command_default_inactivity_timeout():
 
         mock_proc.stdout.read = AsyncMock(side_effect=slow_read)
         mock_proc.stderr.read = AsyncMock(return_value=b"")
-        mock_proc.wait = AsyncMock(return_value=0)
+
+        async def mock_wait():
+            await killed_event.wait()
+            return -1
+
+        mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
         mock_proc.kill = MagicMock(side_effect=killed_event.set)
         mock_exec.return_value = mock_proc
@@ -331,7 +347,12 @@ async def test_run_command_default_total_timeout_streaming():
 
         mock_proc.stdout.read = AsyncMock(side_effect=streaming_read)
         mock_proc.stderr.read = AsyncMock(return_value=b"")
-        mock_proc.wait = AsyncMock(return_value=0)
+
+        async def mock_wait():
+            await killed_event.wait()
+            return -1
+
+        mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
         mock_proc.kill = MagicMock(side_effect=killed_event.set)
         mock_exec.return_value = mock_proc

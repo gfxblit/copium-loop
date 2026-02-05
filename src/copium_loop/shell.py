@@ -207,12 +207,18 @@ async def stream_subprocess(
     monitor_task = asyncio.create_task(monitor.run())
 
     try:
-        # Wait for the process to exit OR the monitor to detect a timeout
-        # We wrap process.wait() in a task so we can wait on it alongside monitor_task
         wait_task = asyncio.create_task(process.wait())
-        await asyncio.wait(
+        done, pending = await asyncio.wait(
             [wait_task, monitor_task], return_when=asyncio.FIRST_COMPLETED
         )
+
+        # If monitor_task completed first (meaning a timeout occurred),
+        # ensure wait_task is cancelled.
+        if monitor_task in done and wait_task in pending:
+            wait_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await wait_task # Await to clean up the task
+
     except asyncio.CancelledError:
         # If the stream_subprocess task itself is cancelled, ensure we kill the process
         if process.returncode is None:
@@ -224,16 +230,17 @@ async def stream_subprocess(
         if process.returncode is None:
             try:
                 process.kill()
-                # Use a small timeout for reaping to avoid hanging if things are really stuck
-                with contextlib.suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(process.wait(), timeout=0.5)
+                # Use communicate() wrapped in wait_for to avoid hanging on pipes held by descendants
+                with contextlib.suppress(asyncio.TimeoutError, Exception):
+                    await asyncio.wait_for(process.communicate(), timeout=0.5)
             except (ProcessLookupError, Exception):
                 pass
 
         # Stop reader tasks and monitor task
         for task in [read_stdout_task, read_stderr_task, monitor_task]:
-            if task and not task.done():
-                task.cancel()
+            if task: # Only attempt to cancel and await if the task was actually created
+                if not task.done():
+                    task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
 
@@ -297,9 +304,13 @@ async def run_command(
 
     # Combine streamed output with any timeout message
     full_output = output
-    if timeout_msg_list:
-        full_output += "".join(timeout_msg_list)
-    elif timed_out:
-        full_output += f"\n[TIMEOUT] {timeout_message} Killing process.\n"
+    final_exit_code = exit_code
 
-    return {"output": full_output, "exit_code": exit_code}
+    if timed_out:
+        full_output += f"\n[TIMEOUT] {timeout_message}"
+        if timeout_msg_list:
+            full_output += "".join(timeout_msg_list)
+        full_output += " Killing process.\n"
+        final_exit_code = -1
+
+    return {"output": full_output, "exit_code": final_exit_code}

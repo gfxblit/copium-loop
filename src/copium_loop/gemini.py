@@ -1,6 +1,6 @@
 import os
 
-from copium_loop.constants import COMMAND_TIMEOUT, DEFAULT_MODELS
+from copium_loop.constants import COMMAND_TIMEOUT, DEFAULT_MODELS, INACTIVITY_TIMEOUT
 from copium_loop.shell import stream_subprocess
 from copium_loop.telemetry import get_telemetry
 
@@ -11,10 +11,14 @@ async def _execute_gemini(
     args: list[str] | None = None,
     node: str | None = None,
     command_timeout: int | None = None,
+    inactivity_timeout: int | None = None,
 ) -> str:
     """Internal method to execute the Gemini CLI with a specific model."""
     if command_timeout is None:
         command_timeout = COMMAND_TIMEOUT
+
+    if inactivity_timeout is None:
+        inactivity_timeout = INACTIVITY_TIMEOUT
 
     if args is None:
         args = []
@@ -44,6 +48,7 @@ async def _execute_gemini(
         env,
         node,
         command_timeout,
+        inactivity_timeout=inactivity_timeout,
         capture_stderr=False,
     )
 
@@ -64,6 +69,7 @@ async def invoke_gemini(
     label: str | None = None,
     node: str | None = None,
     command_timeout: int | None = None,
+    inactivity_timeout: int | None = None,
 ) -> str:
     """
     Invokes the Gemini CLI with a prompt, supporting model fallback.
@@ -89,7 +95,12 @@ async def invoke_gemini(
             if verbose:
                 print(f"Using model: {model_display}")
             return await _execute_gemini(
-                prompt, model, args, node, command_timeout=command_timeout
+                prompt,
+                model,
+                args,
+                node,
+                command_timeout=command_timeout,
+                inactivity_timeout=inactivity_timeout,
             )
         except Exception as error:
             error_msg = str(error)
