@@ -60,16 +60,16 @@ class TestDashboardCodexbar:
         class DummyClient:
             def get_usage(self):
                 return {"pro": 10, "flash": 10, "reset": "00:00"}
-        
+
         my_client = DummyClient()
         dash = Dashboard(codexbar_client=my_client)
-        
+
         # Verify injection worked
         assert dash.codexbar_client is my_client
-        
+
         # Verify it uses the injected client
         footer_panel = dash.make_footer()
         plain_text = footer_panel.renderable.plain
-        
+
         # 100 - 10 = 90
         assert "PRO LEFT: 90%" in plain_text

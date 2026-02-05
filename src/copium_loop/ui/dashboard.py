@@ -14,8 +14,8 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-from ..input_reader import InputReader
 from ..codexbar import CodexbarClient
+from ..input_reader import InputReader
 from .column import SessionColumn
 from .tmux import extract_tmux_session, switch_to_tmux_session
 
