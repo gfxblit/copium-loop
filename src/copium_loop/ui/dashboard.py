@@ -15,6 +15,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from ..input_reader import InputReader
+from .codexbar import CodexbarClient
 from .column import SessionColumn
 from .tmux import extract_tmux_session, switch_to_tmux_session
 
@@ -29,6 +30,7 @@ class Dashboard:
         self.log_offsets = {}
         self.current_page = 0
         self.sessions_per_page = 3
+        self.codexbar_client = CodexbarClient()
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
         """Returns sessions sorted by status (running first) and then by activation/completion time."""
@@ -76,10 +78,7 @@ class Dashboard:
 
             # Pass column width to each session for display
             layout["main"].split_row(
-                *[
-                    Layout(s.render(column_width=column_width))
-                    for s in active_sessions
-                ]
+                *[Layout(s.render(column_width=column_width)) for s in active_sessions]
             )
         else:
             layout["main"].update(
@@ -90,10 +89,6 @@ class Dashboard:
         return layout
 
     def make_footer(self) -> Panel:
-        cpu = psutil.cpu_percent()
-        mem = psutil.virtual_memory().percent
-        spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
-
         num_sessions = len(self.sessions)
         num_pages = (
             (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
@@ -107,14 +102,42 @@ class Dashboard:
             else ""
         )
 
+        codex_data = self.codexbar_client.get_usage()
+
+        if codex_data:
+            pro = codex_data.get("pro", 0)
+            flash = codex_data.get("flash", 0)
+            reset = codex_data.get("reset", "?")
+
+            pro_spark = "".join(["█" if i < pro / 10 else " " for i in range(10)])
+            flash_spark = "".join(["█" if i < flash / 10 else " " for i in range(10)])
+
+            stats_text = (
+                (f"PRO: {pro}%", "bright_green"),
+                f" [{pro_spark}] ",
+                "  ",
+                (f"FLASH: {flash}%", "bright_yellow"),
+                f" [{flash_spark}] ",
+                "  ",
+                (f"RESET: {reset}", "cyan"),
+            )
+        else:
+            cpu = psutil.cpu_percent()
+            mem = psutil.virtual_memory().percent
+            spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
+
+            stats_text = (
+                (f"CPU: {cpu}%", "bright_green"),
+                f" [{spark}] ",
+                "  ",
+                (f"MEM: {mem}%", "bright_cyan"),
+            )
+
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
             f"  SESSIONS: {num_sessions}  ",
             (f"  {pagination_info}  ", "bold yellow"),
-            (f"CPU: {cpu}%", "bright_green"),
-            f" [{spark}] ",
-            "  ",
-            (f"MEM: {mem}%", "bright_cyan"),
+            *stats_text,
         )
         return Panel(footer_text, border_style="blue")
 
