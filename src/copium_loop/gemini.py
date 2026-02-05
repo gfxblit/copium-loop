@@ -1,6 +1,6 @@
 import os
 
-from copium_loop.constants import COMMAND_TIMEOUT, DEFAULT_MODELS, INACTIVITY_TIMEOUT
+from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT, MODELS
 from copium_loop.shell import stream_subprocess
 from copium_loop.telemetry import get_telemetry
 
@@ -88,7 +88,7 @@ async def invoke_gemini(
 
     if args is None:
         args = []
-    model_list = models if models is not None else DEFAULT_MODELS
+    model_list = models if models is not None else MODELS
     for i, model in enumerate(model_list):
         try:
             model_display = model if model else "auto"

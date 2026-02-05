@@ -1,4 +1,4 @@
-from copium_loop.constants import DEFAULT_MODELS
+from copium_loop.constants import MODELS
 from copium_loop.gemini import invoke_gemini
 from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
@@ -68,7 +68,7 @@ async def journaler(state: AgentState) -> dict:
 
     Output ONLY the project lesson or "NO_LESSON"."""
 
-        models = [None] + DEFAULT_MODELS
+        models = [None] + MODELS
         lesson = await invoke_gemini(
             prompt,
             ["--yolo"],
