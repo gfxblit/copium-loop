@@ -7,7 +7,7 @@ import traceback
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from copium_loop.constants import NODE_TIMEOUT
+from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
 from copium_loop.git import get_head
 from copium_loop.graph import create_graph
@@ -34,18 +34,9 @@ class WorkflowManager:
 
     def create_graph(self):
         """Creates and compiles the workflow graph."""
-        valid_nodes = [
-            "coder",
-            "tester",
-            "architect",
-            "reviewer",
-            "pr_pre_checker",
-            "pr_creator",
-            "journaler",
-        ]
-        if self.start_node and self.start_node not in valid_nodes:
+        if self.start_node and self.start_node not in VALID_NODES:
             print(f'Warning: Invalid start node "{self.start_node}".')
-            print(f"Valid nodes are: {', '.join(valid_nodes)}")
+            print(f"Valid nodes are: {', '.join(VALID_NODES)}")
             print('Falling back to "coder".')
         self.graph = create_graph(self._wrap_node, self.start_node)
         return self.graph
@@ -123,6 +114,9 @@ class WorkflowManager:
 
     async def run(self, input_prompt: str, initial_state: dict | None = None):
         """Run the workflow with the given prompt."""
+        if self.start_node and self.start_node not in VALID_NODES:
+            raise ValueError(f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}")
+
         if not await self.verify_environment():
             return {"error": "Environment verification failed."}
 
