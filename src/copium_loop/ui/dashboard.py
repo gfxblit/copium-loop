@@ -7,28 +7,34 @@ import tty
 from datetime import datetime
 from pathlib import Path
 
-import psutil
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
+from ..codexbar import CodexbarClient
 from ..input_reader import InputReader
 from .column import SessionColumn
+from .footer_stats import CodexStatsStrategy, SystemStatsStrategy
 from .tmux import extract_tmux_session, switch_to_tmux_session
 
 
 class Dashboard:
     """The main Rich dashboard for visualizing multiple sessions side-by-side."""
 
-    def __init__(self):
+    def __init__(self, codexbar_client=None):
         self.console = Console()
         self.sessions = {}  # session_id -> SessionColumn
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
         self.current_page = 0
         self.sessions_per_page = 3
+        self.codexbar_client = codexbar_client or CodexbarClient()
+        self.stats_strategies = [
+            CodexStatsStrategy(self.codexbar_client),
+            SystemStatsStrategy(),
+        ]
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
         """Returns sessions sorted by status (running first) and then by activation/completion time."""
@@ -76,10 +82,7 @@ class Dashboard:
 
             # Pass column width to each session for display
             layout["main"].split_row(
-                *[
-                    Layout(s.render(column_width=column_width))
-                    for s in active_sessions
-                ]
+                *[Layout(s.render(column_width=column_width)) for s in active_sessions]
             )
         else:
             layout["main"].update(
@@ -90,10 +93,6 @@ class Dashboard:
         return layout
 
     def make_footer(self) -> Panel:
-        cpu = psutil.cpu_percent()
-        mem = psutil.virtual_memory().percent
-        spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
-
         num_sessions = len(self.sessions)
         num_pages = (
             (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
@@ -107,14 +106,18 @@ class Dashboard:
             else ""
         )
 
+        stats_text = []
+        for strategy in self.stats_strategies:
+            stats = strategy.get_stats()
+            if stats:
+                stats_text = stats
+                break
+
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
             f"  SESSIONS: {num_sessions}  ",
             (f"  {pagination_info}  ", "bold yellow"),
-            (f"CPU: {cpu}%", "bright_green"),
-            f" [{spark}] ",
-            "  ",
-            (f"MEM: {mem}%", "bright_cyan"),
+            *stats_text,
         )
         return Panel(footer_text, border_style="blue")
 
