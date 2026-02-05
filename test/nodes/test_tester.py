@@ -36,9 +36,11 @@ class TestTesterNode:
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_lint(self):
         """Test that test runner returns FAIL if linting fails."""
-        with patch(
-            "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
-        ) as mock_run:
+        with (
+            patch("copium_loop.nodes.tester.run_command", new_callable=AsyncMock) as mock_run,
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             mock_run.return_value = {"output": "Linting failed", "exit_code": 1}
             state = {"retry_count": 0}
             result = await tester(state)
@@ -47,6 +49,7 @@ class TestTesterNode:
             assert result["retry_count"] == 1
             # Should NOT call build or unit tests if lint fails
             assert mock_run.call_count == 1
+            mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_build(self):
@@ -59,7 +62,9 @@ class TestTesterNode:
                 "copium_loop.nodes.tester.get_build_command",
                 return_value=("npm", ["run", "build"]),
             ),
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Build fails
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
@@ -72,6 +77,7 @@ class TestTesterNode:
             assert result["retry_count"] == 1
             # Should NOT call unit tests if build fails
             assert mock_run.call_count == 2
+            mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_test(self):
@@ -85,7 +91,9 @@ class TestTesterNode:
                 "copium_loop.nodes.tester.get_build_command",
                 return_value=("npm", ["run", "build"]),
             ),
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Build passes, 3. Test fails
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
@@ -98,6 +106,7 @@ class TestTesterNode:
             assert "FAIL (Unit)" in result["test_output"]
             assert result["retry_count"] == 1
             assert mock_run.call_count == 3
+            mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
     async def test_tester_false_positive_avoidance(self):
@@ -170,7 +179,9 @@ class TestTesterNode:
                 "copium_loop.nodes.tester.get_build_command",
                 return_value=("", []),
             ),
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
@@ -185,6 +196,7 @@ class TestTesterNode:
             assert "FAIL (Coverage)" in result["test_output"]
             assert "Total coverage: 75.0%" in result["test_output"]
             assert result["retry_count"] == 1
+            mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_coverage_jest(self):
@@ -198,7 +210,9 @@ class TestTesterNode:
                 "copium_loop.nodes.tester.get_build_command",
                 return_value=("", []),
             ),
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
@@ -212,6 +226,7 @@ class TestTesterNode:
 
             assert "FAIL (Coverage)" in result["test_output"]
             assert "Jest: Coverage for lines (75%)" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
     async def test_tester_returns_fail_on_coverage_nyc(self):
@@ -225,7 +240,9 @@ class TestTesterNode:
                 "copium_loop.nodes.tester.get_build_command",
                 return_value=("", []),
             ),
+            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
             mock_run.side_effect = [
                 {"output": "Linting passed", "exit_code": 0},
@@ -235,3 +252,4 @@ class TestTesterNode:
             result = await tester(state)
 
             assert "FAIL (Coverage)" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")
