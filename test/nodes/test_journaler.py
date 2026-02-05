@@ -265,7 +265,11 @@ async def test_journaler_telemetry(mock_invoke, mock_mm, mock_get_telemetry):
     mock_mm_instance.get_project_memories.return_value = []
     mock_invoke.return_value = "Remember this."
 
-    state: AgentState = {"review_status": "pending", "git_diff": "diff", "test_output": "PASS"}
+    state: AgentState = {
+        "review_status": "pending",
+        "git_diff": "diff",
+        "test_output": "PASS",
+    }
     await journaler(state)
 
     mock_telemetry.log_status.assert_any_call("journaler", "active")

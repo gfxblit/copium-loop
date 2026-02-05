@@ -14,7 +14,10 @@ def main():
         sys.exit(0)
 
     if not instructions_path or not os.path.exists(instructions_path):
-        print(f"Mock {tool_name} called but CLI_MOCK_INSTRUCTIONS not set or file missing.", file=sys.stderr)
+        print(
+            f"Mock {tool_name} called but CLI_MOCK_INSTRUCTIONS not set or file missing.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     with open(instructions_path) as f:
@@ -34,7 +37,10 @@ def main():
     index = counters.get(tool_name, 0)
 
     if index >= len(tool_instructions):
-        print(f"Mock {tool_name} called more times than instructions provided (call index {index}).", file=sys.stderr)
+        print(
+            f"Mock {tool_name} called more times than instructions provided (call index {index}).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     instruction = tool_instructions[index]
@@ -58,6 +64,7 @@ def main():
 
     if shell:
         import subprocess
+
         subprocess.run(shell, shell=True, check=False)
 
     if stdout:
@@ -66,6 +73,7 @@ def main():
         print(stderr, file=sys.stderr)
 
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

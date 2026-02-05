@@ -54,7 +54,7 @@ class Dashboard:
     def make_layout(self) -> Layout:
         layout = Layout()
         footer_content = self.make_footer()
-        
+
         # Calculate height: Panel adds 2 lines for borders
         # We wrap the text to the console width minus border space (2 chars)
         footer_text = footer_content.renderable
@@ -109,9 +109,7 @@ class Dashboard:
         )
 
         pagination_info = (
-            f"PAGE {self.current_page + 1}/{num_pages}"
-            if num_sessions > 0
-            else ""
+            f"PAGE {self.current_page + 1}/{num_pages}" if num_sessions > 0 else ""
         )
 
         stats_text = []

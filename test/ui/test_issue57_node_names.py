@@ -1,4 +1,3 @@
-
 import json
 import tempfile
 from pathlib import Path
@@ -32,9 +31,9 @@ def test_actual_node_names_in_ui():
 
     for node in expected_nodes:
         # Check if the node name (uppercased) appears in the output
-        assert (
-            node.upper() in output
-        ), f"Node name {node.upper()} not found in UI output"
+        assert node.upper() in output, (
+            f"Node name {node.upper()} not found in UI output"
+        )
 
     # Specifically check that "JOURNAL" (the old name) is NOT there as a standalone header
     # Note: "JOURNAL" might be part of "JOURNALER", so we check for boundary or just ensure "JOURNALER" is there.
@@ -80,4 +79,3 @@ def test_dynamic_node_discovery_in_ui():
         output = capture.get().upper()
 
         assert "SECURITY_SCANNER" in output
-

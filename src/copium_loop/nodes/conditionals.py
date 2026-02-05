@@ -99,7 +99,9 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
-    print(f"PR Pre-Checker failed or needs commit (status: {status}). Returning to coder.")
+    print(
+        f"PR Pre-Checker failed or needs commit (status: {status}). Returning to coder."
+    )
     return "coder"
 
 

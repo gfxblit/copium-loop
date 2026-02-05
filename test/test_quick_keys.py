@@ -51,7 +51,7 @@ class TestQuickKeys(unittest.TestCase):
             ["tmux", "switch-client", "-t", "target"],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
     @patch("src.copium_loop.ui.tmux.subprocess.run")
@@ -77,6 +77,7 @@ class TestQuickKeys(unittest.TestCase):
         """Test switch when not in tmux."""
         switch_to_tmux_session("target")
         mock_run.assert_not_called()
+
 
 class TestDashboardQuickKeys(unittest.TestCase):
     def setUp(self):
@@ -106,7 +107,7 @@ class TestDashboardQuickKeys(unittest.TestCase):
             "s1": self.s1,
             "s2": self.s2,
             "s3": self.s3,
-            "s4": self.s4
+            "s4": self.s4,
         }
         self.dashboard.sessions_per_page = 3
 
@@ -117,27 +118,36 @@ class TestDashboardQuickKeys(unittest.TestCase):
     @patch("src.copium_loop.ui.dashboard.termios")
     @patch("src.copium_loop.ui.dashboard.tty")
     @patch("src.copium_loop.ui.dashboard.sys.stdin")
-    def test_quick_key_page_1(self, mock_stdin, _mock_tty, _mock_termios, mock_extract, mock_switch, _mock_live, mock_input_reader):
+    def test_quick_key_page_1(
+        self,
+        mock_stdin,
+        _mock_tty,
+        _mock_termios,
+        mock_extract,
+        mock_switch,
+        _mock_live,
+        mock_input_reader,
+    ):
         """Test pressing '2' on page 1."""
         # Setup mocks
         mock_reader_instance = mock_input_reader.return_value
         # Sequence: '2', then 'q' to quit
         mock_reader_instance.get_key.side_effect = ["2", "q"]
 
-        mock_extract.side_effect = lambda x: x # Identity for simplicity
+        mock_extract.side_effect = lambda x: x  # Identity for simplicity
 
         # Mock termios/tty calls
         mock_stdin.fileno.return_value = 1
 
         # Prevent update_from_logs from overwriting our sessions
-        with patch.object(self.dashboard, 'update_from_logs'):
-             self.dashboard.run_monitor()
+        with patch.object(self.dashboard, "update_from_logs"):
+            self.dashboard.run_monitor()
 
         # On page 1 (idx 0), sessions are s1, s2, s3 (sorted by time)
         # s1 is oldest (100), s2 (200), s3 (300).
         # key '2' corresponds to 2nd session -> s2.
 
-        mock_extract.assert_called_with("session2") # session_id of s2
+        mock_extract.assert_called_with("session2")  # session_id of s2
         mock_switch.assert_called_with("session2")
 
     @patch("src.copium_loop.ui.dashboard.InputReader")
@@ -147,7 +157,16 @@ class TestDashboardQuickKeys(unittest.TestCase):
     @patch("src.copium_loop.ui.dashboard.termios")
     @patch("src.copium_loop.ui.dashboard.tty")
     @patch("src.copium_loop.ui.dashboard.sys.stdin")
-    def test_quick_key_page_2(self, mock_stdin, _mock_tty, _mock_termios, mock_extract, mock_switch, _mock_live, mock_input_reader):
+    def test_quick_key_page_2(
+        self,
+        mock_stdin,
+        _mock_tty,
+        _mock_termios,
+        mock_extract,
+        mock_switch,
+        _mock_live,
+        mock_input_reader,
+    ):
         """Test pressing '1' on page 2."""
         # Setup mocks
         mock_reader_instance = mock_input_reader.return_value
@@ -159,7 +178,7 @@ class TestDashboardQuickKeys(unittest.TestCase):
         mock_stdin.fileno.return_value = 1
 
         # Prevent update_from_logs from overwriting our sessions
-        with patch.object(self.dashboard, 'update_from_logs'):
+        with patch.object(self.dashboard, "update_from_logs"):
             self.dashboard.run_monitor()
 
         # On page 2 (idx 1), session is s4.
@@ -174,7 +193,15 @@ class TestDashboardQuickKeys(unittest.TestCase):
     @patch("src.copium_loop.ui.dashboard.termios")
     @patch("src.copium_loop.ui.dashboard.tty")
     @patch("src.copium_loop.ui.dashboard.sys.stdin")
-    def test_quick_key_invalid(self, mock_stdin, _mock_tty, _mock_termios, mock_switch, _mock_live, mock_input_reader):
+    def test_quick_key_invalid(
+        self,
+        mock_stdin,
+        _mock_tty,
+        _mock_termios,
+        mock_switch,
+        _mock_live,
+        mock_input_reader,
+    ):
         """Test pressing '9' when only 3 sessions on page."""
         mock_reader_instance = mock_input_reader.return_value
         mock_reader_instance.get_key.side_effect = ["9", "q"]
@@ -182,7 +209,7 @@ class TestDashboardQuickKeys(unittest.TestCase):
         mock_stdin.fileno.return_value = 1
 
         # Prevent update_from_logs from overwriting our sessions
-        with patch.object(self.dashboard, 'update_from_logs'):
+        with patch.object(self.dashboard, "update_from_logs"):
             self.dashboard.run_monitor()
 
         mock_switch.assert_not_called()

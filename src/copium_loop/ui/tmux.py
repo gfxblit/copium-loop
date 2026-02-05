@@ -66,6 +66,7 @@ def switch_to_tmux_session(session_name: str):
             continue
         except Exception as e:
             import sys
+
             print(
                 f"Unexpected error switching to tmux session '{session_name}': {e}",
                 file=sys.stderr,

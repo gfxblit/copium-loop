@@ -54,8 +54,12 @@ def mock_run_command():
 @pytest.fixture
 def mock_verify_environment():
     """Fixture to mock WorkflowManager.verify_environment."""
-    with patch("copium_loop.copium_loop.WorkflowManager.verify_environment", new_callable=AsyncMock) as mock:
+    with patch(
+        "copium_loop.copium_loop.WorkflowManager.verify_environment",
+        new_callable=AsyncMock,
+    ) as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_get_telemetry():
@@ -63,11 +67,13 @@ def mock_get_telemetry():
     with patch("copium_loop.copium_loop.get_telemetry") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_create_graph():
     """Fixture to mock create_graph."""
     with patch("copium_loop.copium_loop.create_graph") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_get_head():
@@ -75,17 +81,20 @@ def mock_get_head():
     with patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock) as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_get_test_command():
     """Fixture to mock get_test_command."""
     with patch("copium_loop.copium_loop.get_test_command") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_os_path_exists():
     """Fixture to mock os.path.exists."""
     with patch("os.path.exists") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_notify():
@@ -107,5 +116,3 @@ def temp_git_repo(tmp_path, monkeypatch):
     subprocess.run(["git", "config", "user.name", "Your Name"], check=True)
 
     yield tmp_path
-
-

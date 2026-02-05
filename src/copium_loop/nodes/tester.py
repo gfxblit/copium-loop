@@ -123,7 +123,9 @@ async def tester(state: AgentState) -> dict:
         return {
             "test_output": f"{fail_prefix}\n" + output,
             "retry_count": retry_count + 1,
-            "messages": [SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)],
+            "messages": [
+                SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)
+            ],
         }
 
     telemetry.log_status("tester", "success")

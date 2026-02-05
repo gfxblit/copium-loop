@@ -61,7 +61,7 @@ class CodexbarClient:
             # Normalize data: codexbar returns a list of provider objects.
             # We look for the gemini provider and extract primary/secondary usage.
             normalized = {"pro": 0, "flash": 0, "reset": "?"}
-            
+
             if isinstance(raw_data, list) and len(raw_data) > 0:
                 # Default to first provider if we can't find 'gemini'
                 provider_data = raw_data[0]
@@ -69,11 +69,11 @@ class CodexbarClient:
                     if p.get("provider") == "gemini":
                         provider_data = p
                         break
-                
+
                 usage = provider_data.get("usage", {})
                 primary = usage.get("primary", {})
                 secondary = usage.get("secondary", {})
-                
+
                 normalized["pro"] = primary.get("usedPercent", 0)
                 normalized["flash"] = secondary.get("usedPercent", 0)
                 normalized["reset"] = primary.get("resetDescription", "?")
@@ -87,5 +87,11 @@ class CodexbarClient:
             self._last_check = now
             return normalized
 
-        except (subprocess.SubprocessError, json.JSONDecodeError, OSError, KeyError, TypeError):
+        except (
+            subprocess.SubprocessError,
+            json.JSONDecodeError,
+            OSError,
+            KeyError,
+            TypeError,
+        ):
             return None

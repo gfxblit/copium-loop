@@ -115,7 +115,9 @@ class WorkflowManager:
     async def run(self, input_prompt: str, initial_state: dict | None = None):
         """Run the workflow with the given prompt."""
         if self.start_node and self.start_node not in VALID_NODES:
-            raise ValueError(f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}")
+            raise ValueError(
+                f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
+            )
 
         if not await self.verify_environment():
             return {"error": "Environment verification failed."}

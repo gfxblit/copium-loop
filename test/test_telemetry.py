@@ -109,9 +109,12 @@ class TestTelemetryLogReading:
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
         # Verify timestamps are present in [HH:MM:SS] format
         import re
+
         timestamp_pattern = r"\[\d{2}:\d{2}:\d{2}\]"
         assert re.search(timestamp_pattern + " coder: status: active", formatted_log)
-        assert re.search(timestamp_pattern + " coder: output: Writing code...", formatted_log)
+        assert re.search(
+            timestamp_pattern + " coder: output: Writing code...", formatted_log
+        )
         assert re.search(timestamp_pattern + " tester: status: active", formatted_log)
 
     def test_get_formatted_log_truncation(self, telemetry_with_temp_dir):
@@ -122,7 +125,7 @@ class TestTelemetryLogReading:
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
         # Default max_output_chars is 200
         assert "coder: output: " + "x" * 200 + "... (truncated)" in formatted_log
-        assert "[" in formatted_log # Check for timestamp start
+        assert "[" in formatted_log  # Check for timestamp start
 
     def test_get_formatted_log_filtering_and_windowing(self, telemetry_with_temp_dir):
         """Test metric filtering and head/tail windowing."""
@@ -130,7 +133,7 @@ class TestTelemetryLogReading:
         telemetry_with_temp_dir.log_metric("coder", "tokens", 100)
 
         # Log some status events for different nodes
-        telemetry_with_temp_dir.log_status("coder", "start") # Head
+        telemetry_with_temp_dir.log_status("coder", "start")  # Head
         for i in range(150):
             node = "tester" if i < 75 else "reviewer"
             telemetry_with_temp_dir.log_status(node, f"status_{i}")

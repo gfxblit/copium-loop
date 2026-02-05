@@ -60,7 +60,10 @@ class TestConditionalLogic:
         """Test END transition on max retries from architect."""
         assert (
             should_continue_from_architect(
-                {"architect_status": "refactor", "retry_count": constants.MAX_RETRIES + 1}
+                {
+                    "architect_status": "refactor",
+                    "retry_count": constants.MAX_RETRIES + 1,
+                }
             )
             == END
         )
@@ -74,7 +77,8 @@ class TestConditionalLogic:
     def test_should_continue_from_review_on_approved(self):
         """Test transition from review to pr_pre_checker on approval."""
         assert (
-            should_continue_from_review({"review_status": "approved"}) == "pr_pre_checker"
+            should_continue_from_review({"review_status": "approved"})
+            == "pr_pre_checker"
         )
 
     def test_should_continue_from_review_on_rejected(self):
@@ -147,8 +151,7 @@ class TestConditionalLogic:
     def test_should_continue_from_pr_pre_checker_on_skipped(self):
         """Test journaler transition on skipped from pr_pre_checker."""
         assert (
-            should_continue_from_pr_pre_checker({"review_status": "pr_skipped"})
-            == END
+            should_continue_from_pr_pre_checker({"review_status": "pr_skipped"}) == END
         )
 
     def test_should_continue_from_pr_pre_checker_on_failure(self):
@@ -168,4 +171,3 @@ class TestConditionalLogic:
     def test_should_continue_from_journaler_on_normal_flow(self):
         """Test END transition from journaler if not in PR flow."""
         assert should_continue_from_journaler({"review_status": "pending"}) == END
-

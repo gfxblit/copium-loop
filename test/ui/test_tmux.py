@@ -86,10 +86,7 @@ def test_switch_to_tmux_session_fallback():
         mock_result.returncode = 0
 
         # First call fails, second succeeds
-        mock_run.side_effect = [
-            subprocess.CalledProcessError(1, "tmux"),
-            mock_result
-        ]
+        mock_run.side_effect = [subprocess.CalledProcessError(1, "tmux"), mock_result]
 
         switch_to_tmux_session("target_session")
 

@@ -139,7 +139,9 @@ class TestCoderNode:
             state = {
                 "messages": [
                     HumanMessage(content="Original request"),
-                    SystemMessage(content="Architecture needs improvement: file too large."),
+                    SystemMessage(
+                        content="Architecture needs improvement: file too large."
+                    ),
                 ],
                 "architect_status": "refactor",
             }

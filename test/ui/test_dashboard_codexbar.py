@@ -57,6 +57,7 @@ class TestDashboardCodexbar:
 
     def test_dependency_injection(self):
         """Test that we can inject a custom client."""
+
         class DummyClient:
             def get_usage(self):
                 return {"pro": 10, "flash": 10, "reset": "00:00"}

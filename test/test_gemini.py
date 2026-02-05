@@ -69,8 +69,10 @@ class TestExecuteGemini:
 
             async def mock_wait():
                 await killed_event.wait()
-                await asyncio.sleep(0.05) # Give ProcessMonitor a chance to detect timeout
-                return -1 # Indicate a killed process
+                await asyncio.sleep(
+                    0.05
+                )  # Give ProcessMonitor a chance to detect timeout
+                return -1  # Indicate a killed process
 
             mock_proc.wait = AsyncMock(side_effect=mock_wait)
             mock_proc.communicate = AsyncMock(return_value=(b"", b""))
@@ -199,12 +201,16 @@ class TestInvokeGemini:
             mock_telemetry_instance = MagicMock()
             mock_get_telemetry.return_value = mock_telemetry_instance
 
-            with patch("copium_loop.gemini._execute_gemini", new_callable=AsyncMock) as mock_exec:
+            with patch(
+                "copium_loop.gemini._execute_gemini", new_callable=AsyncMock
+            ) as mock_exec:
                 mock_exec.return_value = "Response"
 
                 await gemini.invoke_gemini("Test Prompt", node="test-node")
 
-                mock_telemetry_instance.log.assert_called_with("test-node", "prompt", "Test Prompt")
+                mock_telemetry_instance.log.assert_called_with(
+                    "test-node", "prompt", "Test Prompt"
+                )
 
     @pytest.mark.asyncio
     @patch("asyncio.create_subprocess_exec")

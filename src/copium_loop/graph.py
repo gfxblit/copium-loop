@@ -27,7 +27,9 @@ def create_graph(wrap_node_func, start_node: str | None = None):
     workflow.add_node("tester", wrap_node_func("tester", tester))
     workflow.add_node("architect", wrap_node_func("architect", architect))
     workflow.add_node("reviewer", wrap_node_func("reviewer", reviewer))
-    workflow.add_node("pr_pre_checker", wrap_node_func("pr_pre_checker", pr_pre_checker))
+    workflow.add_node(
+        "pr_pre_checker", wrap_node_func("pr_pre_checker", pr_pre_checker)
+    )
     workflow.add_node("pr_creator", wrap_node_func("pr_creator", pr_creator))
     workflow.add_node("journaler", wrap_node_func("journaler", journaler))
 

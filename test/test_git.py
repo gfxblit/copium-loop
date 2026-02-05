@@ -83,7 +83,9 @@ async def test_push():
 
         # Test push specific branch
         await git.push(branch="my-branch")
-        mock_run.assert_called_with("git", ["push", "-u", "origin", "my-branch"], node=None)
+        mock_run.assert_called_with(
+            "git", ["push", "-u", "origin", "my-branch"], node=None
+        )
 
 
 @pytest.mark.asyncio
