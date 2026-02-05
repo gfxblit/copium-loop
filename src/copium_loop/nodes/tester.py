@@ -58,6 +58,7 @@ async def tester(state: AgentState) -> dict:
     lint_cmd, lint_args = get_lint_command()
     success, output = await _run_stage("linting", lint_cmd, lint_args, telemetry)
     if not success:
+        telemetry.log_status("tester", "failed")
         return {
             "test_output": "FAIL (Lint):\n" + output,
             "retry_count": retry_count + 1,
@@ -74,6 +75,7 @@ async def tester(state: AgentState) -> dict:
     if build_cmd:
         success, output = await _run_stage("build", build_cmd, build_args, telemetry)
         if not success:
+            telemetry.log_status("tester", "failed")
             return {
                 "test_output": "FAIL (Build):\n" + output,
                 "retry_count": retry_count + 1,
@@ -89,6 +91,7 @@ async def tester(state: AgentState) -> dict:
     test_cmd, test_args = get_test_command()
     success, output = await _run_stage("unit tests", test_cmd, test_args, telemetry)
     if not success:
+        telemetry.log_status("tester", "failed")
         message = (
             "Max retries exceeded. Aborting."
             if retry_count >= constants.MAX_RETRIES
