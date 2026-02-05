@@ -1,15 +1,9 @@
-# Default models to try in order
-DEFAULT_MODELS = [
+# Default models to try in order. Gemeni-3 and 2.5
+# share the same quota, so no point in add those as
+# fallbacks.
+MODELS = [
     "gemini-3-pro-preview",
     "gemini-3-flash-preview",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-]
-
-# Reviewer node models (starts with gemini-2.5-pro)
-REVIEWER_MODELS = [
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
 ]
 
 # Valid workflow nodes
@@ -21,13 +15,6 @@ VALID_NODES = [
     "pr_pre_checker",
     "pr_creator",
     "journaler",
-]
-
-# Architect node models
-ARCHITECT_MODELS = [
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
 ]
 
 # Max retries for the workflow

@@ -1,4 +1,4 @@
-from copium_loop.constants import ARCHITECT_MODELS
+from copium_loop.constants import MODELS
 from copium_loop.state import AgentState
 
 
@@ -20,7 +20,6 @@ def test_agent_state_has_architect_status():
     }
     assert state["architect_status"] == "ok"
 
-def test_architect_models_defined():
-    assert "gemini-3-flash-preview" in ARCHITECT_MODELS
-    assert "gemini-2.5-pro" in ARCHITECT_MODELS
-    assert "gemini-2.5-flash" in ARCHITECT_MODELS
+def test_models_defined():
+    assert "gemini-3-pro-preview" in MODELS
+    assert "gemini-3-flash-preview" in MODELS

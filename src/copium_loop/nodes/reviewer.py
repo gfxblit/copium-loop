@@ -3,7 +3,7 @@ import re
 
 from langchain_core.messages import SystemMessage
 
-from copium_loop.constants import REVIEWER_MODELS
+from copium_loop.constants import MODELS
 from copium_loop.gemini import invoke_gemini
 from copium_loop.git import get_diff
 from copium_loop.state import AgentState
@@ -76,7 +76,7 @@ async def reviewer(state: AgentState) -> dict:
         review_content = await invoke_gemini(
             system_prompt,
             ["--yolo"],
-            models=REVIEWER_MODELS,
+            models=MODELS,
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
