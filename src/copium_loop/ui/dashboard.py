@@ -15,7 +15,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from ..input_reader import InputReader
-from .codexbar import CodexbarClient
+from ..codexbar import CodexbarClient
 from .column import SessionColumn
 from .tmux import extract_tmux_session, switch_to_tmux_session
 
@@ -23,14 +23,14 @@ from .tmux import extract_tmux_session, switch_to_tmux_session
 class Dashboard:
     """The main Rich dashboard for visualizing multiple sessions side-by-side."""
 
-    def __init__(self):
+    def __init__(self, codexbar_client=None):
         self.console = Console()
         self.sessions = {}  # session_id -> SessionColumn
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
         self.current_page = 0
         self.sessions_per_page = 3
-        self.codexbar_client = CodexbarClient()
+        self.codexbar_client = codexbar_client or CodexbarClient()
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
         """Returns sessions sorted by status (running first) and then by activation/completion time."""
@@ -109,14 +109,17 @@ class Dashboard:
             flash = codex_data.get("flash", 0)
             reset = codex_data.get("reset", "?")
 
-            pro_spark = "".join(["█" if i < pro / 10 else " " for i in range(10)])
-            flash_spark = "".join(["█" if i < flash / 10 else " " for i in range(10)])
+            remaining_pro = max(0, 100 - pro)
+            remaining_flash = max(0, 100 - flash)
+
+            pro_spark = "".join(["█" if i < remaining_pro / 10 else " " for i in range(10)])
+            flash_spark = "".join(["█" if i < remaining_flash / 10 else " " for i in range(10)])
 
             stats_text = (
-                (f"PRO: {pro}%", "bright_green"),
+                (f"PRO LEFT: {remaining_pro}%", "bright_green"),
                 f" [{pro_spark}] ",
                 "  ",
-                (f"FLASH: {flash}%", "bright_yellow"),
+                (f"FLASH LEFT: {remaining_flash}%", "bright_yellow"),
                 f" [{flash_spark}] ",
                 "  ",
                 (f"RESET: {reset}", "cyan"),

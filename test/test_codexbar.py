@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from copium_loop.ui.codexbar import CodexbarClient
+from copium_loop.codexbar import CodexbarClient
 
 
 class TestCodexbarClient:
