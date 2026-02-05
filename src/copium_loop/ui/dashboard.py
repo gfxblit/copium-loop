@@ -7,7 +7,6 @@ import tty
 from datetime import datetime
 from pathlib import Path
 
-import psutil
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
@@ -17,6 +16,7 @@ from rich.text import Text
 from ..codexbar import CodexbarClient
 from ..input_reader import InputReader
 from .column import SessionColumn
+from .footer_stats import CodexStatsStrategy, SystemStatsStrategy
 from .tmux import extract_tmux_session, switch_to_tmux_session
 
 
@@ -31,6 +31,10 @@ class Dashboard:
         self.current_page = 0
         self.sessions_per_page = 3
         self.codexbar_client = codexbar_client or CodexbarClient()
+        self.stats_strategies = [
+            CodexStatsStrategy(self.codexbar_client),
+            SystemStatsStrategy(),
+        ]
 
     def get_sorted_sessions(self) -> list[SessionColumn]:
         """Returns sessions sorted by status (running first) and then by activation/completion time."""
@@ -102,39 +106,12 @@ class Dashboard:
             else ""
         )
 
-        codex_data = self.codexbar_client.get_usage()
-
-        if codex_data:
-            pro = codex_data.get("pro", 0)
-            flash = codex_data.get("flash", 0)
-            reset = codex_data.get("reset", "?")
-
-            remaining_pro = max(0, 100 - pro)
-            remaining_flash = max(0, 100 - flash)
-
-            pro_spark = "".join(["█" if i < remaining_pro / 10 else " " for i in range(10)])
-            flash_spark = "".join(["█" if i < remaining_flash / 10 else " " for i in range(10)])
-
-            stats_text = (
-                (f"PRO LEFT: {remaining_pro}%", "bright_green"),
-                f" [{pro_spark}] ",
-                "  ",
-                (f"FLASH LEFT: {remaining_flash}%", "bright_yellow"),
-                f" [{flash_spark}] ",
-                "  ",
-                (f"RESET: {reset}", "cyan"),
-            )
-        else:
-            cpu = psutil.cpu_percent()
-            mem = psutil.virtual_memory().percent
-            spark = "".join(["█" if i < cpu / 10 else " " for i in range(10)])
-
-            stats_text = (
-                (f"CPU: {cpu}%", "bright_green"),
-                f" [{spark}] ",
-                "  ",
-                (f"MEM: {mem}%", "bright_cyan"),
-            )
+        stats_text = []
+        for strategy in self.stats_strategies:
+            stats = strategy.get_stats()
+            if stats:
+                stats_text = stats
+                break
 
         footer_text = Text.assemble(
             (" COPIUM MULTI-MONITOR ", "bold white on blue"),
