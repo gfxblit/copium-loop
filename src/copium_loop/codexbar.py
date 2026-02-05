@@ -49,23 +49,43 @@ class CodexbarClient:
                 [executable, "--format", "json"],
                 capture_output=True,
                 text=True,
-                timeout=1.0,
+                timeout=5.0,
                 check=False,
             )
 
             if result.returncode != 0:
                 return None
 
-            data = json.loads(result.stdout)
+            raw_data = json.loads(result.stdout)
 
-            # minimal validation
-            # The issue implies keys related to Pro, Flash, Reset.
-            # We accept whatever is there as long as it parses.
-            # But the test expects specific keys, so let's rely on the CLI output matching expectation.
+            # Normalize data: codexbar returns a list of provider objects.
+            # We look for the gemini provider and extract primary/secondary usage.
+            normalized = {"pro": 0, "flash": 0, "reset": "?"}
+            
+            if isinstance(raw_data, list) and len(raw_data) > 0:
+                # Default to first provider if we can't find 'gemini'
+                provider_data = raw_data[0]
+                for p in raw_data:
+                    if p.get("provider") == "gemini":
+                        provider_data = p
+                        break
+                
+                usage = provider_data.get("usage", {})
+                primary = usage.get("primary", {})
+                secondary = usage.get("secondary", {})
+                
+                normalized["pro"] = primary.get("usedPercent", 0)
+                normalized["flash"] = secondary.get("usedPercent", 0)
+                normalized["reset"] = primary.get("resetDescription", "?")
+            elif isinstance(raw_data, dict):
+                # Fallback for old/alternative format if it was already flat
+                normalized["pro"] = raw_data.get("pro", 0)
+                normalized["flash"] = raw_data.get("flash", 0)
+                normalized["reset"] = raw_data.get("reset", "?")
 
-            self._cached_data = data
+            self._cached_data = normalized
             self._last_check = now
-            return data
+            return normalized
 
-        except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
+        except (subprocess.SubprocessError, json.JSONDecodeError, OSError, KeyError, TypeError):
             return None
