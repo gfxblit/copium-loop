@@ -30,7 +30,9 @@ class TestArchitectNode:
         with patch(
             "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            mock_gemini.return_value = "VERDICT: REFACTOR\nToo many responsibilities in one file."
+            mock_gemini.return_value = (
+                "VERDICT: REFACTOR\nToo many responsibilities in one file."
+            )
 
             state = {"test_output": "PASS", "retry_count": 0}
             result = await architect(state)

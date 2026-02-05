@@ -63,8 +63,8 @@ async def test_run_command_timeout():
 
         async def mock_wait():
             # Simulate waiting for the process to be killed or exit
-            await asyncio.sleep(0.5) # Give some time for kill to be called
-            return -1 # Indicate a killed process
+            await asyncio.sleep(0.5)  # Give some time for kill to be called
+            return -1  # Indicate a killed process
 
         mock_proc.wait = AsyncMock(side_effect=mock_wait)
         mock_proc.returncode = None
@@ -240,7 +240,9 @@ async def test_run_command_inactivity_timeout():
         mock_proc.terminate = MagicMock(side_effect=killed_event.set)
         mock_exec.return_value = mock_proc
 
-        result = await shell.run_command("slow_command")        # Check if kill or terminate was called
+        result = await shell.run_command(
+            "slow_command"
+        )  # Check if kill or terminate was called
         assert mock_proc.kill.called or mock_proc.terminate.called
         assert "[TIMEOUT]" in result["output"]
 

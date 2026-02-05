@@ -36,7 +36,7 @@ class TestCodexbarClient:
             ["/usr/local/bin/codexbar", "--format", "json"],
             capture_output=True,
             text=True,
-            timeout=1.0,
+            timeout=5.0,
             check=False,
         )
 

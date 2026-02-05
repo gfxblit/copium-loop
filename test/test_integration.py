@@ -18,29 +18,51 @@ def temp_repo(tmp_path):
     os.chdir(repo_dir)
 
     subprocess.run(["git", "init"], check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test User"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"], check=True, capture_output=True
+    )
 
     # Create a dummy pyproject.toml
-    (repo_dir / "pyproject.toml").write_text("[tool.pytest.ini_options]\ntestpaths = ['test']")
+    (repo_dir / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\ntestpaths = ['test']"
+    )
     (repo_dir / "test").mkdir()
 
     # Initial commit is often needed
     (repo_dir / "README.md").write_text("# Test Repo")
     subprocess.run(["git", "add", "README.md"], check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "Initial commit"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"], check=True, capture_output=True
+    )
 
     # Setup origin
     origin_dir = tmp_path / "origin"
     origin_dir.mkdir()
-    subprocess.run(["git", "init", "--bare"], cwd=origin_dir, check=True, capture_output=True)
-    subprocess.run(["git", "remote", "add", "origin", str(origin_dir)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--bare"], cwd=origin_dir, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(origin_dir)],
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True)
 
     # Create and switch to feature branch
-    subprocess.run(["git", "checkout", "-b", "feature-branch"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", "-b", "feature-branch"], check=True, capture_output=True
+    )
     # Push feature branch to origin so it's tracked
-    subprocess.run(["git", "push", "-u", "origin", "feature-branch"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "push", "-u", "origin", "feature-branch"],
+        check=True,
+        capture_output=True,
+    )
 
     yield repo_dir
 
@@ -146,6 +168,7 @@ async def test_happy_path(mock_instructions):
     assert os.path.exists("src/feature.py")
     assert os.path.exists("test/test_feature.py")
 
+
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
 @pytest.mark.asyncio
 async def test_retry_loop(mock_instructions):
@@ -207,6 +230,7 @@ async def test_retry_loop(mock_instructions):
 
     assert result["retry_count"] == 1
     assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/124"
+
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
 @pytest.mark.asyncio

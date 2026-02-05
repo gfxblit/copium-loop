@@ -40,6 +40,7 @@ def test_session_column_no_number_hints():
 
     # We want to ensure no bracketed numbers like "[1]" or "[2]" are in the title area
     import re
+
     assert not re.search(r"\[\d+\]", output)
     assert "test_session" in output
 

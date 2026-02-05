@@ -16,9 +16,10 @@ def test_agent_state_has_architect_status():
         "initial_commit_hash": "",
         "git_diff": "",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
     assert state["architect_status"] == "ok"
+
 
 def test_models_defined():
     assert "gemini-3-pro-preview" in MODELS

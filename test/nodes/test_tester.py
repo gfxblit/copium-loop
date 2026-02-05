@@ -37,7 +37,9 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_lint(self):
         """Test that test runner returns FAIL if linting fails."""
         with (
-            patch("copium_loop.nodes.tester.run_command", new_callable=AsyncMock) as mock_run,
+            patch(
+                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            ) as mock_run,
             patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status

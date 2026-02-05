@@ -59,7 +59,9 @@ class Telemetry:
                         continue
         return events
 
-    def get_formatted_log(self, max_lines: int = 100, max_output_chars: int = 200) -> str:
+    def get_formatted_log(
+        self, max_lines: int = 100, max_output_chars: int = 200
+    ) -> str:
         """
         Returns a human-readable summary of the telemetry log.
 
@@ -162,7 +164,14 @@ class Telemetry:
 
         # Determine which node was last active but didn't complete
         # Node progression: coder -> tester -> reviewer -> pr_pre_checker -> journaler -> pr_creator
-        node_order = ["coder", "tester", "reviewer", "pr_pre_checker", "journaler", "pr_creator"]
+        node_order = [
+            "coder",
+            "tester",
+            "reviewer",
+            "pr_pre_checker",
+            "journaler",
+            "pr_creator",
+        ]
 
         # Find the last node that was active
         last_active_node = None

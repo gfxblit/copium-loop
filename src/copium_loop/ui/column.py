@@ -100,7 +100,6 @@ class SessionColumn:
                     Panel(status_text, border_style="green")
                 )
 
-
         # Dynamically truncate session_id based on available column width
         display_name = self.session_id
 

@@ -217,7 +217,7 @@ async def stream_subprocess(
         if monitor_task in done and wait_task in pending:
             wait_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await wait_task # Await to clean up the task
+                await wait_task  # Await to clean up the task
 
     except asyncio.CancelledError:
         # If the stream_subprocess task itself is cancelled, ensure we kill the process
@@ -238,7 +238,9 @@ async def stream_subprocess(
 
         # Stop reader tasks and monitor task
         for task in [read_stdout_task, read_stderr_task, monitor_task]:
-            if task: # Only attempt to cancel and await if the task was actually created
+            if (
+                task
+            ):  # Only attempt to cancel and await if the task was actually created
                 if not task.done():
                     task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):

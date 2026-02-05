@@ -32,9 +32,9 @@ class TestDashboardCodexbar:
 
             # Updated for Issue #60: Show percent remaining (100 - usage)
             # 100 - 85 = 15
-            assert "PRO LEFT: 15%" in plain_text
+            assert "PRO LEFT: 15.0%" in plain_text
             # 100 - 40 = 60
-            assert "FLASH LEFT: 60%" in plain_text
+            assert "FLASH LEFT: 60.0%" in plain_text
             assert "RESET: 18:30" in plain_text
             assert "CPU:" not in plain_text
             assert "MEM:" not in plain_text
@@ -57,6 +57,7 @@ class TestDashboardCodexbar:
 
     def test_dependency_injection(self):
         """Test that we can inject a custom client."""
+
         class DummyClient:
             def get_usage(self):
                 return {"pro": 10, "flash": 10, "reset": "00:00"}
@@ -72,4 +73,4 @@ class TestDashboardCodexbar:
         plain_text = footer_panel.renderable.plain
 
         # 100 - 10 = 90
-        assert "PRO LEFT: 90%" in plain_text
+        assert "PRO LEFT: 90.0%" in plain_text

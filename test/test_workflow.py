@@ -76,7 +76,9 @@ class TestGraphCreation:
             # Verify add_edge was called with START -> coder (fallback)
             mock_graph.add_edge.assert_any_call(START, "coder")
 
-    def test_create_graph_with_invalid_start_node(self, workflow_manager_factory, capsys):
+    def test_create_graph_with_invalid_start_node(
+        self, workflow_manager_factory, capsys
+    ):
         """Test graph creation falls back to coder for invalid start node."""
         workflow = workflow_manager_factory(start_node="invalid")
         graph = workflow.create_graph()
@@ -97,7 +99,9 @@ class TestContinueFeature:
         assert workflow.graph is not None
         assert workflow.start_node == "tester"
 
-    def test_workflow_run_accepts_initial_state_parameter(self, workflow_manager_factory):
+    def test_workflow_run_accepts_initial_state_parameter(
+        self, workflow_manager_factory
+    ):
         """Test that workflow.run() accepts initial_state parameter."""
         workflow = workflow_manager_factory(start_node="coder", verbose=False)
 
@@ -134,9 +138,7 @@ class TestWorkflowRun:
     """Tests for workflow execution."""
 
     @pytest.mark.asyncio
-    async def test_run_verify_failure(
-        self, mock_verify_environment, workflow
-    ):
+    async def test_run_verify_failure(self, mock_verify_environment, workflow):
         mock_verify_environment.return_value = False
         result = await workflow.run("test prompt")
         assert "error" in result
@@ -191,7 +193,14 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_run_baseline_test_failure(
-        self, mock_os_path_exists, mock_create_graph, mock_run_command, mock_get_head, mock_verify_environment, mock_get_test_command, workflow
+        self,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_run_command,
+        mock_get_head,
+        mock_verify_environment,
+        mock_get_test_command,
+        workflow,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
@@ -208,7 +217,14 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_run_baseline_test_exception(
-        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, mock_get_test_command, mock_run_command, workflow
+        self,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_get_head,
+        mock_verify_environment,
+        mock_get_test_command,
+        mock_run_command,
+        workflow,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
@@ -225,11 +241,18 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_run_get_head_exception(
-        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, workflow
+        self,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_get_head,
+        mock_verify_environment,
+        workflow,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
-        mock_get_head.side_effect = Exception("git error") # This was previously inline patch, moved to fixture setup in this example.
+        mock_get_head.side_effect = Exception(
+            "git error"
+        )  # This was previously inline patch, moved to fixture setup in this example.
 
         mock_graph = AsyncMock()
         mock_graph.ainvoke.return_value = {"status": "completed"}
@@ -240,7 +263,12 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_run_with_initial_state(
-        self, mock_os_path_exists, mock_create_graph, mock_get_head, mock_verify_environment, workflow
+        self,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_get_head,
+        mock_verify_environment,
+        workflow,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
@@ -268,9 +296,27 @@ class TestNodeTimeouts:
         [
             ("tester", "test_output", "FAIL: Node 'tester' timed out", None, None),
             ("coder", "last_error", "Node 'coder' timed out", "code_status", "failed"),
-            ("architect", "messages", "Node 'architect' timed out", "architect_status", "error"),
-            ("reviewer", "messages", "Node 'reviewer' timed out", "review_status", "error"),
-            ("pr_creator", "messages", "Node 'pr_creator' timed out", "review_status", "pr_failed"),
+            (
+                "architect",
+                "messages",
+                "Node 'architect' timed out",
+                "architect_status",
+                "error",
+            ),
+            (
+                "reviewer",
+                "messages",
+                "Node 'reviewer' timed out",
+                "review_status",
+                "error",
+            ),
+            (
+                "pr_creator",
+                "messages",
+                "Node 'pr_creator' timed out",
+                "review_status",
+                "pr_failed",
+            ),
             ("unknown_node", "last_error", "Node 'unknown_node' timed out", None, None),
         ],
     )
@@ -287,7 +333,9 @@ class TestNodeTimeouts:
 
         async def slow_node(_state):
             await asyncio.sleep(2)  # Simulate a node taking too long
-            return {"arbitrary_key": "arbitrary_value"} # Return something to be overridden
+            return {
+                "arbitrary_key": "arbitrary_value"
+            }  # Return something to be overridden
 
         manager = workflow_manager_factory()
         with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):  # Set a short timeout
@@ -298,7 +346,10 @@ class TestNodeTimeouts:
             assert result["retry_count"] == 1
             if expected_output_key == "messages":
                 # For messages, we check if the content contains the expected string
-                assert any(expected_output_value_part in msg.content for msg in result.get(expected_output_key, []))
+                assert any(
+                    expected_output_value_part in msg.content
+                    for msg in result.get(expected_output_key, [])
+                )
             elif expected_output_key:
                 assert expected_output_value_part in result.get(expected_output_key, "")
 
@@ -306,11 +357,14 @@ class TestNodeTimeouts:
                 assert result.get(expected_status_key) == expected_status_value
 
     @pytest.mark.asyncio
-    async def test_node_exceeds_inactivity_but_below_node_timeout(self, workflow_manager_factory):
+    async def test_node_exceeds_inactivity_but_below_node_timeout(
+        self, workflow_manager_factory
+    ):
         """
         Test that a node can run longer than INACTIVITY_TIMEOUT if it's below NODE_TIMEOUT.
         This test remains separate as it's not a timeout scenario but a successful execution.
         """
+
         async def mid_length_node(_state):
             await asyncio.sleep(0.5)
             return {"test_output": "PASS"}
@@ -326,11 +380,14 @@ class TestNodeTimeouts:
             assert result.get("retry_count", 0) == 0
 
     @pytest.mark.asyncio
-    async def test_node_exceeds_node_timeout_specific_assertion(self, workflow_manager_factory):
+    async def test_node_exceeds_node_timeout_specific_assertion(
+        self, workflow_manager_factory
+    ):
         """
         Test that a node still times out if it exceeds NODE_TIMEOUT, with a more specific assertion
         for the 'timed out' message as it appears in 'last_error' when no other status is set.
         """
+
         async def very_slow_node(_state):
             await asyncio.sleep(1.0)
             return {"test_output": "PASS"}
@@ -344,5 +401,6 @@ class TestNodeTimeouts:
             assert "retry_count" in result
             assert result["retry_count"] == 1
             # Check for the specific timeout message in last_error or other relevant field
-            assert "timed out after 0.5s" in result.get("last_error", "") or \
-                   "timed out after 0.5s" in result.get("test_output", "")
+            assert "timed out after 0.5s" in result.get(
+                "last_error", ""
+            ) or "timed out after 0.5s" in result.get("test_output", "")

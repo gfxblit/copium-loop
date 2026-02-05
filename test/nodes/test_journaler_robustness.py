@@ -20,11 +20,13 @@ async def test_journaler_handles_invoke_gemini_exception_gracefully():
         "initial_commit_hash": "abc",
         "git_diff": "diff content",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
 
     # Simulate an exception in invoke_gemini
-    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_invoke:
         mock_invoke.side_effect = Exception("Gemini service unavailable")
 
         # The function should NOT raise an exception
@@ -34,7 +36,10 @@ async def test_journaler_handles_invoke_gemini_exception_gracefully():
         assert "journal_status" in result
         assert result["journal_status"] == "failed"
         # And ensure review_status is not lost or is set to a sensible default
-        assert result["review_status"] == "journaled" # or "pending", depending on desired behavior. Let's assume we proceed.
+        assert (
+            result["review_status"] == "journaled"
+        )  # or "pending", depending on desired behavior. Let's assume we proceed.
+
 
 @pytest.mark.asyncio
 async def test_journaler_handles_memory_manager_exception_gracefully():
@@ -50,10 +55,12 @@ async def test_journaler_handles_memory_manager_exception_gracefully():
         "initial_commit_hash": "abc",
         "git_diff": "diff content",
         "verbose": False,
-        "last_error": ""
+        "last_error": "",
     }
 
-    with patch("copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock) as mock_invoke:
+    with patch(
+        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    ) as mock_invoke:
         mock_invoke.return_value = "Critical Lesson"
 
         # Simulate exception in MemoryManager

@@ -53,9 +53,17 @@ class Dashboard:
 
     def make_layout(self) -> Layout:
         layout = Layout()
+        footer_content = self.make_footer()
+
+        # Calculate height: Panel adds 2 lines for borders
+        # We wrap the text to the console width minus border space (2 chars)
+        footer_text = footer_content.renderable
+        lines = footer_text.wrap(self.console, self.console.width - 2)
+        footer_height = len(lines) + 2
+
         layout.split_column(
             Layout(name="main"),
-            Layout(name="footer", size=3),
+            Layout(name="footer", size=footer_height),
         )
 
         # Pagination logic - sort by running status and creation order
@@ -101,9 +109,7 @@ class Dashboard:
         )
 
         pagination_info = (
-            f"PAGE {self.current_page + 1}/{num_pages} [TAB/ARROWS to navigate]"
-            if num_sessions > 0
-            else ""
+            f"PAGE {self.current_page + 1}/{num_pages}" if num_sessions > 0 else ""
         )
 
         stats_text = []
@@ -114,9 +120,9 @@ class Dashboard:
                 break
 
         footer_text = Text.assemble(
-            (" COPIUM MULTI-MONITOR ", "bold white on blue"),
-            f"  SESSIONS: {num_sessions}  ",
+            f"SESSIONS: {num_sessions}  ",
             (f"  {pagination_info}  ", "bold yellow"),
+            "  ",
             *stats_text,
         )
         return Panel(footer_text, border_style="blue")
