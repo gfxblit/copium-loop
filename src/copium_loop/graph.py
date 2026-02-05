@@ -1,5 +1,6 @@
 from langgraph.graph import END, START, StateGraph
 
+from copium_loop.constants import VALID_NODES
 from copium_loop.nodes import (
     architect,
     coder,
@@ -31,16 +32,7 @@ def create_graph(wrap_node_func, start_node: str | None = None):
     workflow.add_node("journaler", wrap_node_func("journaler", journaler))
 
     # Determine entry point
-    valid_nodes = [
-        "coder",
-        "tester",
-        "architect",
-        "reviewer",
-        "pr_pre_checker",
-        "pr_creator",
-        "journaler",
-    ]
-    entry_node = start_node if start_node in valid_nodes else "coder"
+    entry_node = start_node if start_node in VALID_NODES else "coder"
 
     # Edges
     workflow.add_edge(START, entry_node)

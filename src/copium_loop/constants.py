@@ -12,6 +12,17 @@ REVIEWER_MODELS = [
     "gemini-2.5-flash",
 ]
 
+# Valid workflow nodes
+VALID_NODES = [
+    "coder",
+    "tester",
+    "architect",
+    "reviewer",
+    "pr_pre_checker",
+    "pr_creator",
+    "journaler",
+]
+
 # Architect node models
 ARCHITECT_MODELS = [
     "gemini-3-flash-preview",

@@ -158,6 +158,10 @@ async def async_main():
             await workflow.notify("Workflow: Failed", msg, 5)
             sys.exit(1)
 
+    except ValueError as err:
+        print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
+
     except Exception as err:
         print(f"Workflow failed: {err}", file=sys.stderr)
         await workflow.notify(
