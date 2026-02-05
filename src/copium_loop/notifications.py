@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import os
 import subprocess
 
@@ -23,7 +24,8 @@ async def get_tmux_session() -> str:
                 return output
         except asyncio.TimeoutError:
             process.kill()
-            await process.wait()
+            with contextlib.suppress(asyncio.TimeoutError, Exception):
+                await asyncio.wait_for(process.communicate(), timeout=0.5)
     except Exception:
         pass
     return "no-tmux"

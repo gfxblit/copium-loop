@@ -65,14 +65,22 @@ class TestExecuteGemini:
                 return b""
 
             mock_proc.stdout.read = AsyncMock(side_effect=slow_read)
-            mock_proc.wait = AsyncMock(return_value=0)
+            mock_proc.stderr.read = AsyncMock(return_value=b"")
+
+            async def mock_wait():
+                await killed_event.wait()
+                await asyncio.sleep(0.05) # Give ProcessMonitor a chance to detect timeout
+                return -1 # Indicate a killed process
+
+            mock_proc.wait = AsyncMock(side_effect=mock_wait)
+            mock_proc.communicate = AsyncMock(return_value=(b"", b""))
             mock_proc.returncode = None
             mock_proc.kill = MagicMock(side_effect=killed_event.set)
             mock_proc.terminate = MagicMock(side_effect=killed_event.set)
             mock_exec.return_value = mock_proc
 
             with pytest.raises(Exception) as excinfo:
-                await gemini._execute_gemini("prompt", "model")
+                await gemini._execute_gemini("prompt", "model", inactivity_timeout=0.01)
 
             assert "TIMEOUT" in str(excinfo.value)
             assert mock_proc.kill.called or mock_proc.terminate.called
@@ -229,6 +237,7 @@ class TestInvokeGemini:
 
         mock_process.wait.side_effect = mock_wait
         mock_process.kill.side_effect = mock_kill
+        mock_process.communicate = AsyncMock(return_value=(b"", b""))
         mock_process.returncode = None
         mock_create_subprocess_exec.return_value = mock_process
 

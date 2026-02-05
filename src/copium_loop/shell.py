@@ -8,7 +8,7 @@ import time
 
 from copium_loop.constants import (
     COMMAND_TIMEOUT,
-    INACTIVITY_TIMEOUT,
+    INACTIVITY_TIMEOUT,  # noqa: F401
     MAX_OUTPUT_SIZE,
 )
 from copium_loop.telemetry import get_telemetry
@@ -44,14 +44,14 @@ class StreamLogger:
 
 
 class ProcessMonitor:
-    """Monitors a subprocess for total timeout and inactivity timeout."""
+    """Monitors a subprocess for total command timeout and inactivity timeout."""
 
     def __init__(
         self,
         process: asyncio.subprocess.Process,
         start_time: float,
-        command_timeout: int | None,
-        inactivity_timeout: int,
+        command_timeout: float | None,
+        inactivity_timeout: float | None,
         node: str | None,
         on_timeout_callback=None,
     ):
@@ -61,57 +61,64 @@ class ProcessMonitor:
         self.inactivity_timeout = inactivity_timeout
         self.node = node
         self.on_timeout_callback = on_timeout_callback
-        self.last_activity_time = time.monotonic()
+        self.last_activity = time.monotonic()
         self.timed_out = False
         self.timeout_message = ""
 
     def update_activity(self):
-        """Updates the last activity time."""
-        self.last_activity_time = time.monotonic()
+        """Resets the inactivity timer."""
+        self.last_activity = time.monotonic()
 
     async def run(self):
-        """Runs the monitoring loop."""
-        while True:
-            await asyncio.sleep(0.1)
-            if self.process.returncode is not None:
-                break
+        """Polls the process until it finishes or a timeout occurs."""
+        while self.process.returncode is None:
+            now = time.monotonic()
 
-            current_time = time.monotonic()
-            elapsed_total_time = current_time - self.start_time
-            elapsed_inactivity_time = current_time - self.last_activity_time
-
-            timeout_triggered = False
-
-            if (
-                self.command_timeout is not None
-                and elapsed_total_time >= self.command_timeout
-            ):
-                timeout_triggered = True
+            # Check for command timeout
+            if self.command_timeout and (now - self.start_time) > self.command_timeout:
+                self.timed_out = True
                 self.timeout_message = (
                     f"Process exceeded command_timeout of {self.command_timeout}s."
                 )
-            elif elapsed_inactivity_time >= self.inactivity_timeout:
-                timeout_triggered = True
-                self.timeout_message = f"No output for {self.inactivity_timeout}s."
+                break
 
-            if timeout_triggered:
+            # Check for inactivity timeout
+            if (
+                self.inactivity_timeout
+                and (now - self.last_activity) > self.inactivity_timeout
+            ):
                 self.timed_out = True
+                self.timeout_message = (
+                    f"No output for {self.inactivity_timeout}s "
+                    f"(inactivity_timeout exceeded)."
+                )
+                break
+
+            await asyncio.sleep(0.1)
+
+        if self.timed_out:
+            msg = f"\n[TIMEOUT] {self.timeout_message} Killing process.\n"
+            print(msg)
+            telemetry = get_telemetry()
+            if telemetry and self.node:
+                telemetry.log_output(self.node, msg)
+
+            if self.on_timeout_callback:
+                if asyncio.iscoroutinefunction(self.on_timeout_callback):
+                    await self.on_timeout_callback(msg)
+                else:
+                    self.on_timeout_callback(msg)
+
+            if self.process.returncode is None:
                 try:
                     self.process.kill()
-                    msg = f"\n[TIMEOUT] {self.timeout_message} Killing process.\n"
-                    print(msg)
-                    telemetry = get_telemetry()
-                    if telemetry and self.node:
-                        telemetry.log_output(self.node, msg)
-
-                    if self.on_timeout_callback:
-                        if asyncio.iscoroutinefunction(self.on_timeout_callback):
-                            await self.on_timeout_callback(msg)
-                        else:
-                            self.on_timeout_callback(msg)
+                except ProcessLookupError:
+                    pass
                 except Exception as e:
-                    print(f"\n[WARNING] Failed to kill process or log timeout: {e}\n")
-                break
+                    print(
+                        f"[WARNING] Error during process kill on timeout: {e}",
+                        file=sys.stderr,
+                    )
 
 
 def _clean_chunk(chunk: str | bytes) -> str:
@@ -141,6 +148,7 @@ async def stream_subprocess(
     env: dict,
     node: str | None,
     command_timeout: int | None,
+    inactivity_timeout: int | None = None,
     capture_stderr: bool = True,
     on_timeout_callback=None,
 ) -> tuple[str, int, bool, str]:
@@ -148,7 +156,6 @@ async def stream_subprocess(
     Common helper to execute a subprocess and stream its output.
     Returns (full_output, exit_code, timed_out, timeout_message).
     """
-    start_time = time.monotonic()
     stderr_target = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
 
     process = await asyncio.create_subprocess_exec(
@@ -157,30 +164,33 @@ async def stream_subprocess(
 
     full_output = ""
     logger = StreamLogger(node)
+    start_time = time.monotonic()
 
     monitor = ProcessMonitor(
         process,
         start_time,
-        command_timeout,
-        INACTIVITY_TIMEOUT,
-        node,
+        command_timeout=command_timeout,
+        inactivity_timeout=inactivity_timeout,
+        node=node,
         on_timeout_callback=on_timeout_callback,
     )
-    monitor_task = asyncio.create_task(monitor.run())
 
     async def read_stream(stream, is_stderr):
         nonlocal full_output
         while True:
-            chunk = await stream.read(1024)
+            try:
+                chunk = await stream.read(1024)
+            except (asyncio.CancelledError, Exception):
+                break
             if not chunk:
                 break
+
             monitor.update_activity()
             decoded = _clean_chunk(chunk)
             if decoded:
                 if not is_stderr:
                     logger.process_chunk(decoded)
 
-                # Limit capture size to prevent memory exhaustion
                 if len(full_output) < MAX_OUTPUT_SIZE:
                     full_output += decoded
                     if len(full_output) >= MAX_OUTPUT_SIZE:
@@ -189,33 +199,56 @@ async def stream_subprocess(
                             + "\n[... Output Truncated ...]"
                         )
 
-    try:
-        tasks = [read_stream(process.stdout, False)]
-        if capture_stderr:
-            tasks.append(read_stream(process.stderr, True))
-        tasks.append(process.wait())
-        await asyncio.gather(*tasks)
-    finally:
-        if not monitor_task.done():
-            monitor_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await monitor_task
+    read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
+    read_stderr_task = None
+    if capture_stderr:
+        read_stderr_task = asyncio.create_task(read_stream(process.stderr, True))
 
-        # Ensure process is killed if it's still running (e.g., on cancellation)
+    monitor_task = asyncio.create_task(monitor.run())
+
+    try:
+        wait_task = asyncio.create_task(process.wait())
+        done, pending = await asyncio.wait(
+            [wait_task, monitor_task], return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # If monitor_task completed first (meaning a timeout occurred),
+        # ensure wait_task is cancelled.
+        if monitor_task in done and wait_task in pending:
+            wait_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await wait_task # Await to clean up the task
+
+    except asyncio.CancelledError:
+        # If the stream_subprocess task itself is cancelled, ensure we kill the process
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+        raise
+    finally:
+        # Final cleanup: ensure process is reaped and monitor/readers are stopped
         if process.returncode is None:
             try:
                 process.kill()
-                await process.wait()
-            except ProcessLookupError:
-                # Process already terminated
+                # Use communicate() wrapped in wait_for to avoid hanging on pipes held by descendants
+                with contextlib.suppress(asyncio.TimeoutError, Exception):
+                    await asyncio.wait_for(process.communicate(), timeout=0.5)
+            except (ProcessLookupError, Exception):
                 pass
 
-    logger.flush()
+        # Stop reader tasks and monitor task
+        for task in [read_stdout_task, read_stderr_task, monitor_task]:
+            if task: # Only attempt to cancel and await if the task was actually created
+                if not task.done():
+                    task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+
+        logger.flush()
 
     if monitor.timed_out:
         exit_code = -1
     else:
-        # Ensure returncode is an integer, default to 0 if None
         exit_code = process.returncode if process.returncode is not None else 0
 
     return full_output, exit_code, monitor.timed_out, monitor.timeout_message
@@ -258,19 +291,26 @@ async def run_command(
     async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
-    output, exit_code, _, _ = await stream_subprocess(
+    output, exit_code, timed_out, timeout_message = await stream_subprocess(
         command,
         args,
         env,
         node,
         command_timeout,
+        inactivity_timeout=INACTIVITY_TIMEOUT,
         capture_stderr=True,
         on_timeout_callback=on_timeout,
     )
 
     # Combine streamed output with any timeout message
     full_output = output
-    if timeout_msg_list:
-        full_output += "".join(timeout_msg_list)
+    final_exit_code = exit_code
 
-    return {"output": full_output, "exit_code": exit_code}
+    if timed_out:
+        full_output += f"\n[TIMEOUT] {timeout_message}"
+        if timeout_msg_list:
+            full_output += "".join(timeout_msg_list)
+        full_output += " Killing process.\n"
+        final_exit_code = -1
+
+    return {"output": full_output, "exit_code": final_exit_code}
