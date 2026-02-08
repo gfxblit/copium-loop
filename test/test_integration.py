@@ -39,6 +39,7 @@ def temp_repo(tmp_path):
     subprocess.run(
         ["git", "commit", "-m", "Initial commit"], check=True, capture_output=True
     )
+    subprocess.run(["git", "branch", "-M", "main"], check=True, capture_output=True)
 
     # Setup origin
     origin_dir = tmp_path / "origin"
