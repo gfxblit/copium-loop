@@ -386,18 +386,23 @@ class TestFindLatestSession:
         monkeypatch.setattr(Path, "home", lambda: temp_log_dir.parent.parent)
 
         # Create multiple log files with different timestamps
+        import os
         import time
 
         session1 = temp_log_dir / "session1.jsonl"
         session1.write_text("{}\n")
-        time.sleep(0.01)
+        # Set mtime to 1000s
+        os.utime(session1, (1000, 1000))
 
         session2 = temp_log_dir / "session2.jsonl"
         session2.write_text("{}\n")
-        time.sleep(0.01)
+        # Set mtime to 2000s
+        os.utime(session2, (2000, 2000))
 
         session3 = temp_log_dir / "session3.jsonl"
         session3.write_text("{}\n")
+        # Set mtime to 3000s
+        os.utime(session3, (3000, 3000))
 
         session_id = find_latest_session()
         assert session_id == "session3"
