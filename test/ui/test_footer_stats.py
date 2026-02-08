@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
+
 from copium_loop.ui.footer_stats import CodexStatsStrategy
+
 
 class TestCodexStatsStrategy:
     def test_get_stats_shows_both_resets(self):

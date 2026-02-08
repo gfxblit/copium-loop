@@ -41,9 +41,9 @@ class CodexStatsStrategy(FooterStatsStrategy):
         if reset_pro == reset_flash or reset_flash == "?":
             stats.append((f"RESET: {reset_pro}", "cyan"))
         else:
-            stats.append((f"PRO RESET: {reset_pro}", "cyan"))
+            stats.append((f"PRO RESET: {reset_pro}", "bright_green"))
             stats.append("  ")
-            stats.append((f"FLASH RESET: {reset_flash}", "cyan"))
+            stats.append((f"FLASH RESET: {reset_flash}", "bright_yellow"))
 
         return stats
 
