@@ -9,7 +9,6 @@ from copium_loop.git import (
     rebase,
     rebase_abort,
 )
-from copium_loop.notifications import notify
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -72,11 +71,6 @@ async def pr_pre_checker(state: AgentState) -> dict:
             print(msg, end="")
             await rebase_abort(node="pr_pre_checker")
             error_msg = f"Automatic rebase on origin/main failed with the following error:\n{res_rebase['output']}\n\nThe rebase has been aborted to keep the repository in a clean state. Please manually resolve the conflicts by running 'git rebase origin/main', fixing the files, and committing the changes before trying again."
-            await notify(
-                "Workflow: Rebase Conflict",
-                "Automatic rebase failed. Manual resolution required by coder.",
-                4,
-            )
             telemetry.log_status("pr_pre_checker", "failed")
             return {
                 "review_status": "pr_failed",
