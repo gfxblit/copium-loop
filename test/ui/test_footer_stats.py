@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from copium_loop.ui.footer_stats import CodexStatsStrategy
+from copium_loop.ui.footer_stats import CodexStatsStrategy, SystemStatsStrategy
 
 
 class TestCodexStatsStrategy:
@@ -24,7 +24,6 @@ class TestCodexStatsStrategy:
         mock_client.get_usage.return_value = {
             "pro": 85,
             "flash": 40,
-            "reset": "18:30",
             "reset_pro": "18:30",
             "reset_flash": "19:45",
         }
@@ -43,7 +42,6 @@ class TestCodexStatsStrategy:
         mock_client.get_usage.return_value = {
             "pro": 85,
             "flash": 40,
-            "reset": "18:30",
             "reset_pro": "18:30",
             "reset_flash": "18:30",
         }
@@ -63,7 +61,6 @@ class TestCodexStatsStrategy:
         mock_client.get_usage.return_value = {
             "pro": 85,
             "flash": 40,
-            "reset": "18:30",
             "reset_pro": "18:30",
             "reset_flash": "?",
         }
@@ -75,3 +72,98 @@ class TestCodexStatsStrategy:
         # We expect to see only one reset entry
         assert "RESET: 18:30" in full_text
         assert "PRO RESET:" not in full_text
+
+    def test_get_stats_success_legacy_reset(self):
+        # Setup mock client with legacy 'reset' field
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = {
+            "pro": 20.5,
+            "flash": 40.0,
+            "reset": "2h 30m",
+        }
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+
+        assert stats is not None
+        assert stats[0] == ("PRO LEFT: 79.5%", "bright_green")
+        assert stats[2] == ("FLASH LEFT: 60.0%", "bright_yellow")
+        # Since reset_flash defaults to '?' and reset_pro defaults to data.get('reset')
+        assert stats[4] == ("RESET: 2h 30m", "cyan")
+
+    def test_get_stats_none(self):
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = None
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+
+        assert stats is None
+
+    def test_get_stats_zero_usage(self):
+        # Setup mock client for 0% usage (100% left)
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = {"pro": 0, "flash": 0, "reset": "never"}
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+        assert stats[0][0] == "PRO LEFT: 100.0%"
+        assert stats[2][0] == "FLASH LEFT: 100.0%"
+
+    def test_get_stats_full_usage(self):
+        # Setup mock client for 100% usage (0% left)
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = {"pro": 100, "flash": 100, "reset": "now"}
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+        assert stats[0][0] == "PRO LEFT: 0.0%"
+        assert stats[2][0] == "FLASH LEFT: 0.0%"
+
+    def test_get_stats_over_usage(self):
+        # Setup mock client for >100% usage (0% left)
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = {
+            "pro": 120,
+            "flash": 150,
+            "reset": "long ago",
+        }
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+        assert stats[0][0] == "PRO LEFT: 0.0%"
+        assert stats[2][0] == "FLASH LEFT: 0.0%"
+
+    def test_get_stats_missing_fields(self):
+        # Setup mock client with missing fields but non-empty dict to avoid 'not data' returning None
+        mock_client = MagicMock()
+        mock_client.get_usage.return_value = {"other": "field"}
+
+        strategy = CodexStatsStrategy(mock_client)
+        stats = strategy.get_stats()
+
+        assert stats is not None
+        # Should use default 0 for pro/flash and '?' for reset
+        assert stats[0][0] == "PRO LEFT: 100.0%"
+        assert stats[2][0] == "FLASH LEFT: 100.0%"
+        assert stats[4][0] == "RESET: ?"
+
+
+class TestSystemStatsStrategy:
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    def test_get_stats(self, mock_virtual_memory, mock_cpu_percent):
+        mock_cpu_percent.return_value = 15.5
+        mock_mem = MagicMock()
+        mock_mem.percent = 62.3
+        mock_virtual_memory.return_value = mock_mem
+
+        strategy = SystemStatsStrategy()
+        stats = strategy.get_stats()
+
+        assert stats is not None
+        assert len(stats) == 3
+        assert stats[0] == ("CPU: 15.5%", "bright_green")
+        assert stats[1] == "  "
+        assert stats[2] == ("MEM: 62.3%", "bright_cyan")
