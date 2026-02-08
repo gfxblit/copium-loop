@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,6 +9,10 @@ from copium_loop.nodes.architect import architect
 from copium_loop.nodes.coder import coder
 from copium_loop.nodes.reviewer import reviewer
 
+architect_module = sys.modules["copium_loop.nodes.architect"]
+coder_module = sys.modules["copium_loop.nodes.coder"]
+reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
+
 
 @pytest.mark.asyncio
 async def test_nodes_do_not_call_get_all_memories():
@@ -16,8 +21,8 @@ async def test_nodes_do_not_call_get_all_memories():
 
     state = {"messages": [HumanMessage(content="test")]}
 
-    with patch(
-        "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        coder_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_coder_gemini:
         mock_coder_gemini.return_value = "Done"
         await coder(state)
@@ -27,8 +32,8 @@ async def test_nodes_do_not_call_get_all_memories():
         assert "## Global Persona Memory" not in prompt
         assert "## Project-Specific Memory" not in prompt
 
-    with patch(
-        "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        architect_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_arch_gemini:
         mock_arch_gemini.return_value = "VERDICT: OK"
         await architect(state)
@@ -36,8 +41,8 @@ async def test_nodes_do_not_call_get_all_memories():
         assert "## Global Persona Memory" not in prompt
         assert "## Project-Specific Memory" not in prompt
 
-    with patch(
-        "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        reviewer_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_rev_gemini:
         mock_rev_gemini.return_value = "VERDICT: APPROVED"
         await reviewer(state)

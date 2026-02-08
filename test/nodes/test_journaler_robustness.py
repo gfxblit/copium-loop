@@ -1,9 +1,13 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from copium_loop.nodes.journaler import journaler
 from copium_loop.state import AgentState
+
+# Get the module object explicitly to avoid shadowing issues
+journaler_module = sys.modules["copium_loop.nodes.journaler"]
 
 
 @pytest.mark.asyncio
@@ -24,8 +28,8 @@ async def test_journaler_handles_invoke_gemini_exception_gracefully():
     }
 
     # Simulate an exception in invoke_gemini
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_invoke:
         mock_invoke.side_effect = Exception("Gemini service unavailable")
 
@@ -58,13 +62,15 @@ async def test_journaler_handles_memory_manager_exception_gracefully():
         "last_error": "",
     }
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_invoke:
         mock_invoke.return_value = "Critical Lesson"
 
         # Simulate exception in MemoryManager
-        with patch("copium_loop.nodes.journaler.MemoryManager") as MockMemoryManager:
+        with patch.object(
+            journaler_module, "MemoryManager"
+        ) as MockMemoryManager:
             mock_instance = MockMemoryManager.return_value
             mock_instance.log_learning.side_effect = Exception("Disk full")
 

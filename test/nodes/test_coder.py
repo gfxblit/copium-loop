@@ -1,9 +1,13 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.nodes import coder
+
+# Get the module object explicitly to avoid shadowing issues
+coder_module = sys.modules["copium_loop.nodes.coder"]
 
 
 class TestCoderNode:
@@ -12,8 +16,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_returns_coded_status(self):
         """Test that coder node returns coded status."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Mocked Code Response"
 
@@ -26,8 +30,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_includes_test_failure_in_prompt(self):
         """Test that coder includes test failure in prompt."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Fixing..."
 
@@ -46,8 +50,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_logs_prompt_when_verbose(self):
         """Test that coder logs system prompt when verbose is True."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Response"
 
@@ -62,8 +66,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_handles_pr_failure(self):
         """Test that coder node handles PR creation failure."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Retrying PR..."
 
@@ -87,8 +91,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_handles_needs_commit(self):
         """Test that coder node handles needs_commit status."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Committing..."
 
@@ -106,8 +110,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_handles_rejected_status(self):
         """Test that coder node handles rejected status from reviewer."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Fixing rejected code..."
 
@@ -131,8 +135,8 @@ class TestCoderNode:
     @pytest.mark.asyncio
     async def test_coder_handles_architect_refactor(self):
         """Test that coder node handles refactor status from architect."""
-        with patch(
-            "copium_loop.nodes.coder.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            coder_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Refactoring code..."
 
