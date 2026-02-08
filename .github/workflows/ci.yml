@@ -10,29 +10,30 @@ jobs:
   build-test-lint:
     runs-on: ubuntu-latest
     if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association || github.event.sender.author_association)
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          
+          cache: "pip"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install .[dev] build
-          
+
       - name: Lint with ruff
         run: |
           ruff check .
           ruff format --check .
-          
+
       - name: Test with pytest
         run: |
           pytest
-          
+
       - name: Build package
         run: |
           python -m build
