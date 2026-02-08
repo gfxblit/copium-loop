@@ -9,10 +9,10 @@ on:
 jobs:
   build-test-lint:
     runs-on: ubuntu-latest
-    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association || github.event.sender.author_association)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
