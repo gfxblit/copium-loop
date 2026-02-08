@@ -176,8 +176,8 @@ async def test_run_command_total_timeout_exceeded():
     """
     import time
 
-    # Use a sleep duration longer than the total_timeout
-    sleep_duration = 2
+    # Use a sleep duration significantly longer than the total_timeout to avoid CI flakes
+    sleep_duration = 10
     total_timeout = 0.5  # Shorter than sleep_duration
     start_time = time.monotonic()
     result = await shell.run_command(
