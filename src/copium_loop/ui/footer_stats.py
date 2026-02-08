@@ -25,18 +25,27 @@ class CodexStatsStrategy(FooterStatsStrategy):
         # Calculate remaining
         pro = data.get("pro", 0)
         flash = data.get("flash", 0)
-        reset = data.get("reset", "?")
+        reset_pro = data.get("reset_pro", data.get("reset", "?"))
+        reset_flash = data.get("reset_flash", "?")
 
         remaining_pro = max(0, 100 - pro)
         remaining_flash = max(0, 100 - flash)
 
-        return [
+        stats = [
             (f"PRO LEFT: {remaining_pro:.1f}%", "bright_green"),
             "  ",
             (f"FLASH LEFT: {remaining_flash:.1f}%", "bright_yellow"),
             "  ",
-            (f"RESET: {reset}", "cyan"),
         ]
+
+        if reset_pro == reset_flash or reset_flash == "?":
+            stats.append((f"RESET: {reset_pro}", "cyan"))
+        else:
+            stats.append((f"PRO RESET: {reset_pro}", "bright_green"))
+            stats.append("  ")
+            stats.append((f"FLASH RESET: {reset_flash}", "bright_yellow"))
+
+        return stats
 
 
 class SystemStatsStrategy(FooterStatsStrategy):

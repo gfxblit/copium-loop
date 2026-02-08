@@ -60,7 +60,13 @@ class CodexbarClient:
 
             # Normalize data: codexbar returns a list of provider objects.
             # We look for the gemini provider and extract primary/secondary usage.
-            normalized = {"pro": 0, "flash": 0, "reset": "?"}
+            normalized = {
+                "pro": 0,
+                "flash": 0,
+                "reset": "?",
+                "reset_pro": "?",
+                "reset_flash": "?",
+            }
 
             if isinstance(raw_data, list) and len(raw_data) > 0:
                 # Default to first provider if we can't find 'gemini'
@@ -77,11 +83,15 @@ class CodexbarClient:
                 normalized["pro"] = primary.get("usedPercent", 0)
                 normalized["flash"] = secondary.get("usedPercent", 0)
                 normalized["reset"] = primary.get("resetDescription", "?")
+                normalized["reset_pro"] = primary.get("resetDescription", "?")
+                normalized["reset_flash"] = secondary.get("resetDescription", "?")
             elif isinstance(raw_data, dict):
                 # Fallback for old/alternative format if it was already flat
                 normalized["pro"] = raw_data.get("pro", 0)
                 normalized["flash"] = raw_data.get("flash", 0)
                 normalized["reset"] = raw_data.get("reset", "?")
+                normalized["reset_pro"] = raw_data.get("reset", "?")
+                normalized["reset_flash"] = "?"  # Can't know for sure in flat format
 
             self._cached_data = normalized
             self._last_check = now

@@ -90,3 +90,30 @@ class TestCodexbarClient:
             # Third call - should fetch again
             client.get_usage()
             assert mock_subprocess.call_count == 2
+
+    def test_get_usage_list_format_two_resets(self, client, mock_subprocess):
+        # Mock successful JSON output with list format and two resets
+        mock_raw_data = [
+            {
+                "provider": "gemini",
+                "usage": {
+                    "primary": {"usedPercent": 85, "resetDescription": "18:30"},
+                    "secondary": {"usedPercent": 40, "resetDescription": "19:45"},
+                },
+            }
+        ]
+        mock_output = json.dumps(mock_raw_data)
+
+        mock_subprocess.return_value = MagicMock(stdout=mock_output, returncode=0)
+
+        with patch("shutil.which", return_value="/usr/local/bin/codexbar"):
+            data = client.get_usage()
+
+        assert data is not None
+        assert data["pro"] == 85
+        assert data["flash"] == 40
+        # We expect both resets to be available
+        assert data["reset_pro"] == "18:30"
+        assert data["reset_flash"] == "19:45"
+        # Backward compatibility
+        assert data["reset"] == "18:30"
