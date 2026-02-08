@@ -115,4 +115,7 @@ def temp_git_repo(tmp_path, monkeypatch):
     subprocess.run(["git", "config", "user.email", "you@example.com"], check=True)
     subprocess.run(["git", "config", "user.name", "Your Name"], check=True)
 
+    # Rename branch to main to ensure consistency
+    subprocess.run(["git", "branch", "-M", "main"], check=True)
+
     yield tmp_path

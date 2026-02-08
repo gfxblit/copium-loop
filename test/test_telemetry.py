@@ -387,7 +387,6 @@ class TestFindLatestSession:
 
         # Create multiple log files with different timestamps
         import os
-        import time
 
         session1 = temp_log_dir / "session1.jsonl"
         session1.write_text("{}\n")
