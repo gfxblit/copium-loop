@@ -119,3 +119,30 @@ async def invoke_gemini(
             # If we're on the last model and it failed, raise the error
             raise Exception(f"All models exhausted. Last error: {error_msg}") from error
     return ""
+
+
+def sanitize_for_prompt(text: str, max_length: int = 12000) -> str:
+    """
+    Sanitizes untrusted text for inclusion in a prompt to prevent injection.
+    Escapes common delimiters and truncates excessively long input.
+    """
+    if not text:
+        return ""
+
+    # Escape common XML-like tags to prevent prompt injection breakouts
+    replacements = {
+        "</test_output>": "[/test_output]",
+        "</reviewer_feedback>": "[/reviewer_feedback]",
+        "</architect_feedback>": "[/architect_feedback]",
+        "</git_diff>": "[/git_diff]",
+        "</error>": "[/error]",
+    }
+
+    safe_text = str(text)
+    for tag, replacement in replacements.items():
+        safe_text = safe_text.replace(tag, replacement)
+
+    if len(safe_text) > max_length:
+        safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
+
+    return safe_text

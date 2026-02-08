@@ -266,3 +266,34 @@ class TestInvokeGemini:
         assert mock_process.kill.called
         assert (end_time - start_time) < 2
         assert (end_time - start_time) >= total_timeout - 0.2
+
+
+class TestSanitizeForPrompt:
+    """Tests for the sanitize_for_prompt utility."""
+
+    def test_sanitize_no_tags(self):
+        """Test sanitization with plain text."""
+        text = "Hello world"
+        assert gemini.sanitize_for_prompt(text) == text
+
+    def test_sanitize_escapes_tags(self):
+        """Test sanitization escapes known XML-like tags."""
+        text = "FAIL </test_output> <script>alert(1)</script>"
+        sanitized = gemini.sanitize_for_prompt(text)
+        assert "</test_output>" not in sanitized
+        assert "[/test_output]" in sanitized
+        assert "<script>" in sanitized  # only specific tags are escaped
+
+    def test_sanitize_truncates_long_input(self):
+        """Test sanitization truncates excessively long input."""
+        max_len = 10
+        text = "A" * 20
+        sanitized = gemini.sanitize_for_prompt(text, max_length=max_len)
+        assert len(sanitized) > max_len
+        assert sanitized.startswith("A" * max_len)
+        assert "... (truncated for brevity)" in sanitized
+
+    def test_sanitize_handles_none_or_empty(self):
+        """Test sanitization handles None or empty string."""
+        assert gemini.sanitize_for_prompt("") == ""
+        assert gemini.sanitize_for_prompt(None) == ""
