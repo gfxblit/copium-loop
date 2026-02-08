@@ -19,10 +19,10 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
-    @patch("os.path.exists")
+    @patch.object(pr_creator_module, "os")
     async def test_pr_creator_creates_pr(
         self,
-        mock_exists,
+        mock_os,
         mock_run,
         mock_push,
         mock_commit,
@@ -31,7 +31,7 @@ class TestPrCreatorNode:
         mock_branch,
     ):
         """Test that PR creator creates a PR successfully."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 0}
@@ -58,10 +58,10 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
-    @patch("os.path.exists")
+    @patch.object(pr_creator_module, "os")
     async def test_pr_creator_commits_dirty_files(
         self,
-        mock_exists,
+        mock_os,
         mock_run,
         mock_push,
         mock_commit,
@@ -70,7 +70,7 @@ class TestPrCreatorNode:
         mock_branch,
     ):
         """Test that PR creator commits dirty files (from journaler)."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = True
         mock_add.return_value = {"exit_code": 0}
@@ -96,17 +96,17 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
-    @patch("os.path.exists")
+    @patch.object(pr_creator_module, "os")
     async def test_pr_creator_handles_existing_pr(
         self,
-        mock_exists,
+        mock_os,
         mock_run,
         mock_push,
         mock_is_dirty,
         mock_branch,
     ):
         """Test that PR creator handles existing PR."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 0}
@@ -123,10 +123,10 @@ class TestPrCreatorNode:
 
     @pytest.mark.asyncio
     @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
-    @patch("os.path.exists")
-    async def test_pr_creator_skips_on_main_branch(self, mock_exists, mock_branch):
+    @patch.object(pr_creator_module, "os")
+    async def test_pr_creator_skips_on_main_branch(self, mock_os, mock_branch):
         """Test that PR creator skips on main branch."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_branch.return_value = "main"
 
         state = {"retry_count": 0}
@@ -135,10 +135,10 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch("os.path.exists")
-    async def test_pr_creator_no_git(self, mock_exists):
+    @patch.object(pr_creator_module, "os")
+    async def test_pr_creator_no_git(self, mock_os):
         """Test that PR creator skips if not a git repository."""
-        mock_exists.return_value = False
+        mock_os.path.exists.return_value = False
         result = await pr_creator({"retry_count": 0})
         assert result["review_status"] == "pr_skipped"
 
@@ -147,17 +147,17 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "notify", new_callable=AsyncMock)
-    @patch("os.path.exists")
+    @patch.object(pr_creator_module, "os")
     async def test_pr_creator_push_failure(
         self,
-        mock_exists,
+        mock_os,
         mock_notify,
         mock_push,
         mock_is_dirty,
         mock_branch,
     ):
         """Test that PR creator handles push failure."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 1, "output": "push failed"}
