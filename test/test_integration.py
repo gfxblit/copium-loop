@@ -40,6 +40,9 @@ def temp_repo(tmp_path):
         ["git", "commit", "-m", "Initial commit"], check=True, capture_output=True
     )
 
+    # Rename branch to main to ensure consistency
+    subprocess.run(["git", "branch", "-M", "main"], check=True, capture_output=True)
+
     # Setup origin
     origin_dir = tmp_path / "origin"
     origin_dir.mkdir()
