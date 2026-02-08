@@ -120,6 +120,7 @@ async def invoke_gemini(
             raise Exception(f"All models exhausted. Last error: {error_msg}") from error
     return ""
 
+
 def sanitize_for_prompt(text: str, max_length: int = 12000) -> str:
     """
     Sanitizes untrusted text for inclusion in a prompt to prevent injection.
