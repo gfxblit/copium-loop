@@ -1,10 +1,14 @@
 import subprocess
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 # We'll need to import from copium_loop.nodes.architect once it exists
 from copium_loop.nodes.architect import architect
+
+# Get the module object explicitly to avoid shadowing issues
+architect_module = sys.modules["copium_loop.nodes.architect"]
 
 
 class TestArchitectNode:
@@ -13,8 +17,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_returns_ok(self):
         """Test that architect returns ok status."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 
@@ -27,8 +31,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_returns_refactor(self):
         """Test that architect returns refactor status."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = (
                 "VERDICT: REFACTOR\nToo many responsibilities in one file."
@@ -43,8 +47,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_takes_last_verdict(self):
         """Test that architect takes the last verdict found in the content."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = (
                 "VERDICT: REFACTOR\nActually, it is fine.\nVERDICT: OK"
@@ -58,8 +62,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_returns_error_on_exception(self):
         """Test that architect returns error status on exception."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
@@ -72,8 +76,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_returns_error_on_missing_verdict(self):
         """Test that architect returns error status when no verdict is found."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
@@ -84,15 +88,15 @@ class TestArchitectNode:
             assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.architect.os.path.exists")
-    @patch("copium_loop.nodes.architect.get_diff", new_callable=AsyncMock)
-    async def test_architect_includes_git_diff(self, mock_get_diff, mock_exists):
+    @patch.object(architect_module, "os")
+    @patch.object(architect_module, "get_diff", new_callable=AsyncMock)
+    async def test_architect_includes_git_diff(self, mock_get_diff, mock_os):
         """Test that architect includes git diff in the prompt."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_get_diff.return_value = "some diff"
 
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 
@@ -110,8 +114,8 @@ class TestArchitectNode:
     @pytest.mark.asyncio
     async def test_architect_forbids_file_modifications(self):
         """Test that architect node explicitly forbids filesystem modifications."""
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 
@@ -154,8 +158,8 @@ class TestArchitectNode:
         }
 
         # Mock invoke_gemini
-        with patch(
-            "copium_loop.nodes.architect.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 

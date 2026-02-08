@@ -1,20 +1,24 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from copium_loop.nodes import pr_creator
 
+# Get the module object explicitly to avoid shadowing issues
+pr_creator_module = sys.modules["copium_loop.nodes.pr_creator"]
+
 
 class TestPrCreatorNode:
     """Tests for the PR creator node."""
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.is_dirty", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.add", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.commit", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.push", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_creates_pr(
         self,
@@ -48,12 +52,12 @@ class TestPrCreatorNode:
         mock_commit.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.is_dirty", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.add", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.commit", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.push", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_commits_dirty_files(
         self,
@@ -88,10 +92,10 @@ class TestPrCreatorNode:
         mock_push.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.is_dirty", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.push", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_handles_existing_pr(
         self,
@@ -118,7 +122,7 @@ class TestPrCreatorNode:
         assert "already exists" in result["messages"][0].content
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_skips_on_main_branch(self, mock_exists, mock_branch):
         """Test that PR creator skips on main branch."""
@@ -139,10 +143,10 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.pr_creator.get_current_branch", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.is_dirty", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.push", new_callable=AsyncMock)
-    @patch("copium_loop.nodes.pr_creator.notify", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "notify", new_callable=AsyncMock)
     @patch("os.path.exists")
     async def test_pr_creator_push_failure(
         self,

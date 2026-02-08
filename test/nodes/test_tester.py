@@ -1,8 +1,12 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from copium_loop.nodes import tester
+
+# Get the module object explicitly to avoid shadowing issues
+tester_module = sys.modules["copium_loop.nodes.tester"]
 
 
 class TestTesterNode:
@@ -12,11 +16,12 @@ class TestTesterNode:
     async def test_tester_returns_pass_with_build(self):
         """Test that test runner returns PASS when build, lint and tests pass."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("npm", ["run", "build"]),
             ),
         ):
@@ -37,10 +42,10 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_lint(self):
         """Test that test runner returns FAIL if linting fails."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             mock_run.return_value = {"output": "Linting failed", "exit_code": 1}
@@ -57,14 +62,15 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_build(self):
         """Test that test runner returns FAIL if build fails."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("npm", ["run", "build"]),
             ),
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Build fails
@@ -85,15 +91,16 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_test(self):
         """Test that test runner returns FAIL if unit tests fail."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("npm", ["run", "build"]),
             ),
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Build passes, 3. Test fails
@@ -114,12 +121,13 @@ class TestTesterNode:
     async def test_tester_false_positive_avoidance(self):
         """Test that '0 failed' or 'failed' in test names don't trigger failure with exit code 0."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("", []),
             ),
         ):
@@ -145,12 +153,13 @@ class TestTesterNode:
     async def test_tester_still_detects_failure_with_exit_0(self):
         """Test that explicit failure indicators still trigger failure even if exit code is 0."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("", []),
             ),
         ):
@@ -173,15 +182,16 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_pytest(self):
         """Test that test runner returns FAIL (Coverage) if pytest coverage is low."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("", []),
             ),
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
@@ -204,15 +214,16 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_jest(self):
         """Test that test runner returns FAIL (Coverage) if Jest coverage is low."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("", []),
             ),
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
@@ -234,15 +245,16 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_nyc(self):
         """Test that test runner returns FAIL (Coverage) if nyc/c8 coverage is low."""
         with (
-            patch(
-                "copium_loop.nodes.tester.run_command", new_callable=AsyncMock
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch("copium_loop.nodes.tester.notify", new_callable=AsyncMock),
-            patch(
-                "copium_loop.nodes.tester.get_build_command",
+            patch.object(tester_module, "notify", new_callable=AsyncMock),
+            patch.object(
+                tester_module,
+                "get_build_command",
                 return_value=("", []),
             ),
-            patch("copium_loop.nodes.tester.get_telemetry") as mock_get_telemetry,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
             # 1. Lint passes, 2. Unit tests fail due to coverage
