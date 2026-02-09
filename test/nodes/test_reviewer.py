@@ -1,8 +1,12 @@
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from copium_loop.nodes.reviewer import reviewer
+
+# Get the module object explicitly to avoid shadowing issues
+reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
 
 
 class TestReviewerNode:
@@ -11,8 +15,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_returns_approved(self):
         """Test that reviewer returns approved status."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 
@@ -24,8 +28,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_returns_rejected(self):
         """Test that reviewer returns rejected status."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED\nissues"
 
@@ -38,8 +42,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_takes_last_verdict(self):
         """Test that reviewer takes the last verdict found in the content."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = (
                 "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
@@ -62,8 +66,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_allows_empty_test_output(self):
         """Test that reviewer proceeds with empty test output."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "Thinking...\nVERDICT: APPROVED"
 
@@ -75,8 +79,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_returns_error_on_exception(self):
         """Test that reviewer returns error status on exception."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
@@ -89,8 +93,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_returns_error_on_missing_verdict(self):
         """Test that reviewer returns error status when no verdict is found."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
@@ -103,8 +107,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_no_notification_on_rejected(self):
         """Test that reviewer does not send notification on rejection."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED"
 
@@ -116,8 +120,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_false_rejection_repro(self):
         """Test that reviewer does not falsely reject on options string."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             # This simulates the failure reported in issue #20
             mock_gemini.return_value = "I cannot determine the final status (APPROVED/REJECTED). I hit a quota limit."
@@ -129,15 +133,15 @@ class TestReviewerNode:
             assert result["review_status"] == "error"
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.reviewer.os.path.exists")
-    @patch("copium_loop.nodes.reviewer.get_diff", new_callable=AsyncMock)
-    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_exists):
+    @patch.object(reviewer_module, "os")
+    @patch.object(reviewer_module, "get_diff", new_callable=AsyncMock)
+    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_os):
         """Test that reviewer handles failure to get git diff."""
-        mock_exists.return_value = True
+        mock_os.path.exists.return_value = True
         mock_get_diff.side_effect = Exception("git diff error")
 
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 
@@ -154,8 +158,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_prompt_contains_example(self):
         """Test that the reviewer system prompt contains an example block."""
-        with patch(
-            "copium_loop.nodes.reviewer.invoke_gemini", new_callable=AsyncMock
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 

@@ -1,9 +1,13 @@
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from copium_loop.nodes.journaler import journaler
 from copium_loop.state import AgentState
+
+# Get the module object explicitly to avoid shadowing issues
+journaler_module = sys.modules["copium_loop.nodes.journaler"]
 
 
 @pytest.mark.asyncio
@@ -23,12 +27,12 @@ async def test_journaler_success():
         "last_error": "",
     }
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_invoke:
         mock_invoke.return_value = "Always ensure memory is persisted."
 
-        with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
+        with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
             instance = mock_memory_manager.return_value
 
             result = await journaler(state)
@@ -57,11 +61,11 @@ async def test_journaler_updates_pending_status():
         "last_error": "",
     }
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_invoke:
         mock_invoke.return_value = "A lesson"
-        with patch("copium_loop.nodes.journaler.MemoryManager"):
+        with patch.object(journaler_module, "MemoryManager"):
             result = await journaler(state)
             assert result["review_status"] == "journaled"
             mock_invoke.assert_called_once()
@@ -89,14 +93,14 @@ async def test_journaler_includes_telemetry_log():
         "last_error": "",
     }
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_invoke:
         mock_invoke.return_value = "Always ensure memory is persisted."
 
         with (
-            patch("copium_loop.nodes.journaler.MemoryManager"),
-            patch("copium_loop.nodes.journaler.get_telemetry") as mock_get_telemetry,
+            patch.object(journaler_module, "MemoryManager"),
+            patch.object(journaler_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_telemetry = MagicMock()
             mock_get_telemetry.return_value = mock_telemetry
@@ -133,10 +137,10 @@ async def test_journaler_verbosity_and_filtering():
 
     # Mock dependencies
     with (
-        patch(
-            "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+        patch.object(
+            journaler_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini,
-        patch("copium_loop.nodes.journaler.MemoryManager") as MockMemoryManager,
+        patch.object(journaler_module, "MemoryManager") as MockMemoryManager,
     ):
         # Setup MemoryManager mock
         mock_mem_instance = MockMemoryManager.return_value
@@ -178,11 +182,11 @@ async def test_journaler_prompt_content():
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_gemini:
         mock_gemini.return_value = "A lesson"  # Needed so lesson.strip() works
-        with patch("copium_loop.nodes.journaler.MemoryManager"):
+        with patch.object(journaler_module, "MemoryManager"):
             await journaler(state)
 
             call_args = mock_gemini.call_args
@@ -205,11 +209,11 @@ async def test_journaler_prompt_includes_timestamp_instruction():
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_gemini:
         mock_gemini.return_value = "A lesson"
-        with patch("copium_loop.nodes.journaler.MemoryManager"):
+        with patch.object(journaler_module, "MemoryManager"):
             await journaler(state)
 
             call_args = mock_gemini.call_args
@@ -232,11 +236,11 @@ async def test_journaler_prompt_includes_existing_memories():
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_gemini:
         mock_gemini.return_value = "A lesson"
-        with patch("copium_loop.nodes.journaler.MemoryManager") as mock_memory_manager:
+        with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
             instance = mock_memory_manager.return_value
             instance.get_project_memories.return_value = [
                 "Existing Memory 1",
@@ -256,9 +260,9 @@ async def test_journaler_prompt_includes_existing_memories():
 
 
 @pytest.mark.asyncio
-@patch("copium_loop.nodes.journaler.get_telemetry")
-@patch("copium_loop.nodes.journaler.MemoryManager")
-@patch("copium_loop.nodes.journaler.invoke_gemini")
+@patch.object(journaler_module, "get_telemetry")
+@patch.object(journaler_module, "MemoryManager")
+@patch.object(journaler_module, "invoke_gemini")
 async def test_journaler_telemetry(mock_invoke, mock_mm, mock_get_telemetry):
     mock_telemetry = mock_get_telemetry.return_value
     mock_mm_instance = mock_mm.return_value
@@ -295,11 +299,11 @@ async def test_journaler_prompt_bans_changelogs():
         "journal_status": "",
     }
 
-    with patch(
-        "copium_loop.nodes.journaler.invoke_gemini", new_callable=AsyncMock
+    with patch.object(
+        journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_gemini:
         mock_gemini.return_value = "NO_LESSON"
-        with patch("copium_loop.nodes.journaler.MemoryManager"):
+        with patch.object(journaler_module, "MemoryManager"):
             await journaler(state)
 
             call_args = mock_gemini.call_args
