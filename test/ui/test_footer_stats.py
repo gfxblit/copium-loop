@@ -136,9 +136,9 @@ class TestCodexStatsStrategy:
         assert stats[2][0] == "FLASH LEFT: 0.0%"
 
     def test_get_stats_missing_fields(self):
-        # Setup mock client with missing fields but non-empty dict to avoid 'not data' returning None
+        # Setup mock client with empty dict
         mock_client = MagicMock()
-        mock_client.get_usage.return_value = {"other": "field"}
+        mock_client.get_usage.return_value = {}
 
         strategy = CodexStatsStrategy(mock_client)
         stats = strategy.get_stats()
