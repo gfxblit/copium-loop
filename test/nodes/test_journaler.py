@@ -240,9 +240,7 @@ async def test_journaler_prompt_includes_existing_memories():
         journaler_module, "invoke_gemini", new_callable=AsyncMock
     ) as mock_gemini:
         mock_gemini.return_value = "A lesson"
-        with patch.object(
-            journaler_module, "MemoryManager"
-        ) as mock_memory_manager:
+        with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
             instance = mock_memory_manager.return_value
             instance.get_project_memories.return_value = [
                 "Existing Memory 1",

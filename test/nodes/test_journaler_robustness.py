@@ -68,9 +68,7 @@ async def test_journaler_handles_memory_manager_exception_gracefully():
         mock_invoke.return_value = "Critical Lesson"
 
         # Simulate exception in MemoryManager
-        with patch.object(
-            journaler_module, "MemoryManager"
-        ) as MockMemoryManager:
+        with patch.object(journaler_module, "MemoryManager") as MockMemoryManager:
             mock_instance = MockMemoryManager.return_value
             mock_instance.log_learning.side_effect = Exception("Disk full")
 
