@@ -37,6 +37,17 @@ async def architect(state: AgentState) -> dict:
             print(msg, end="")
 
     safe_git_diff = sanitize_for_prompt(git_diff)
+    if not safe_git_diff.strip():
+        msg = "\nNo changes detected, skipping architectural evaluation.\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "ok")
+        return {
+            "architect_status": "ok",
+            "messages": [SystemMessage(content="No changes detected.")],
+            "retry_count": retry_count,
+        }
+
     system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
     <git_diff>

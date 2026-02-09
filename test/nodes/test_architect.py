@@ -14,6 +14,22 @@ architect_module = sys.modules["copium_loop.nodes.architect"]
 class TestArchitectNode:
     """Tests for the architect node."""
 
+    @pytest.fixture(autouse=True)
+    def setup_architect_mocks(self):
+        """Setup common mocks for architect tests."""
+        self.mock_get_diff_patcher = patch.object(architect_module, "get_diff", new_callable=AsyncMock)
+        self.mock_get_diff = self.mock_get_diff_patcher.start()
+        self.mock_get_diff.return_value = "diff"
+
+        self.mock_os_patcher = patch.object(architect_module, "os")
+        self.mock_os = self.mock_os_patcher.start()
+        self.mock_os.path.exists.return_value = True
+
+        yield
+
+        self.mock_get_diff_patcher.stop()
+        self.mock_os_patcher.stop()
+
     @pytest.mark.asyncio
     async def test_architect_returns_ok(self):
         """Test that architect returns ok status."""
@@ -22,7 +38,7 @@ class TestArchitectNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await architect(state)
 
             assert result["architect_status"] == "ok"
@@ -38,7 +54,7 @@ class TestArchitectNode:
                 "VERDICT: REFACTOR\nToo many responsibilities in one file."
             )
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await architect(state)
 
             assert result["architect_status"] == "refactor"
@@ -54,7 +70,7 @@ class TestArchitectNode:
                 "VERDICT: REFACTOR\nActually, it is fine.\nVERDICT: OK"
             )
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await architect(state)
 
             assert result["architect_status"] == "ok"
@@ -67,7 +83,7 @@ class TestArchitectNode:
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await architect(state)
 
             assert result["architect_status"] == "error"
@@ -81,19 +97,16 @@ class TestArchitectNode:
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await architect(state)
 
             assert result["architect_status"] == "error"
             assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    @patch.object(architect_module, "os")
-    @patch.object(architect_module, "get_diff", new_callable=AsyncMock)
-    async def test_architect_includes_git_diff(self, mock_get_diff, mock_os):
+    async def test_architect_includes_git_diff(self):
         """Test that architect includes git diff in the prompt."""
-        mock_os.path.exists.return_value = True
-        mock_get_diff.return_value = "some diff"
+        self.mock_get_diff.return_value = "some diff"
 
         with patch.object(
             architect_module, "invoke_gemini", new_callable=AsyncMock
@@ -122,6 +135,7 @@ class TestArchitectNode:
             state = {
                 "test_output": "PASS",
                 "retry_count": 0,
+                "initial_commit_hash": "abc",
             }
             await architect(state)
 
@@ -133,9 +147,40 @@ class TestArchitectNode:
             assert "replace" in system_prompt
 
     @pytest.mark.asyncio
+    async def test_architect_skips_llm_on_empty_diff(self):
+        """Test that architect returns OK immediately if git diff is empty, without invoking LLM."""
+        self.mock_get_diff.return_value = ""  # Force empty diff
+
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            # We don't need to set return_value because it shouldn't be called.
+            # But if it is called, we want it to not crash so we can assert not called.
+            mock_gemini.return_value = "VERDICT: OK"
+
+            state = {
+                "initial_commit_hash": "some_hash",
+                "retry_count": 0,
+                "verbose": False,
+            }
+
+            # Run architect node
+            result = await architect(state)
+
+            # Verify
+            self.mock_get_diff.assert_called_once()
+            mock_gemini.assert_not_called()
+            assert result["architect_status"] == "ok"
+            assert result["retry_count"] == 0
+
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_git_repo")
     async def test_architect_integration(self):
         """Test architect node integration with a real git repo and uncommitted changes."""
+        # Stop the class-level mocks so we can use real git
+        self.mock_get_diff_patcher.stop()
+        self.mock_os_patcher.stop()
+
         # Setup repo with uncommitted changes
         with open("test.txt", "w") as f:
             f.write("initial content")
