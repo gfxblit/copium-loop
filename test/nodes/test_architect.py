@@ -21,6 +21,10 @@ class TestArchitectNode:
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff"
 
+        self.mock_is_git_repo_patcher = patch.object(architect_module, "is_git_repo", new_callable=AsyncMock)
+        self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
+        self.mock_is_git_repo.return_value = True
+
         self.mock_os_patcher = patch.object(architect_module, "os")
         self.mock_os = self.mock_os_patcher.start()
         self.mock_os.path.exists.return_value = True
@@ -28,10 +32,12 @@ class TestArchitectNode:
         yield
 
         self.mock_get_diff_patcher.stop()
+        self.mock_is_git_repo_patcher.stop()
         self.mock_os_patcher.stop()
 
     @pytest.mark.asyncio
     async def test_architect_returns_ok(self):
+
         """Test that architect returns ok status."""
         with patch.object(
             architect_module, "invoke_gemini", new_callable=AsyncMock
@@ -147,15 +153,13 @@ class TestArchitectNode:
             assert "replace" in system_prompt
 
     @pytest.mark.asyncio
-    async def test_architect_skips_llm_on_empty_diff(self):
-        """Test that architect returns OK immediately if git diff is empty, without invoking LLM."""
+    async def test_architect_calls_llm_even_on_empty_diff(self):
+        """Test that architect still invokes LLM if git diff is empty, to be consistent with reviewer."""
         self.mock_get_diff.return_value = ""  # Force empty diff
 
         with patch.object(
             architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
-            # We don't need to set return_value because it shouldn't be called.
-            # But if it is called, we want it to not crash so we can assert not called.
             mock_gemini.return_value = "VERDICT: OK"
 
             state = {
@@ -169,9 +173,10 @@ class TestArchitectNode:
 
             # Verify
             self.mock_get_diff.assert_called_once()
-            mock_gemini.assert_not_called()
+            mock_gemini.assert_called_once()
             assert result["architect_status"] == "ok"
             assert result["retry_count"] == 0
+
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_git_repo")
