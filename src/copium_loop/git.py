@@ -1,6 +1,12 @@
 from copium_loop.shell import run_command
 
 
+async def is_git_repo(node: str | None = None) -> bool:
+    """Returns True if the current directory is inside a git repository."""
+    res = await run_command("git", ["rev-parse", "--is-inside-work-tree"], node=node)
+    return res["exit_code"] == 0
+
+
 async def get_current_branch(node: str | None = None) -> str:
     """Returns the current git branch name."""
     res = await run_command("git", ["branch", "--show-current"], node=node)

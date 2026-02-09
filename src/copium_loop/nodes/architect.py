@@ -5,7 +5,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
 from copium_loop.gemini import invoke_gemini, sanitize_for_prompt
-from copium_loop.git import get_diff
+from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -28,7 +28,7 @@ async def architect(state: AgentState) -> dict:
     initial_commit_hash = state.get("initial_commit_hash", "")
 
     git_diff = ""
-    if os.path.exists(".git") and initial_commit_hash:
+    if initial_commit_hash and await is_git_repo(node="architect"):
         try:
             git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
         except Exception as e:
@@ -37,16 +37,6 @@ async def architect(state: AgentState) -> dict:
             print(msg, end="")
 
     safe_git_diff = sanitize_for_prompt(git_diff)
-    if not safe_git_diff.strip():
-        msg = "\nNo changes detected, skipping architectural evaluation.\n"
-        telemetry.log_output("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "ok")
-        return {
-            "architect_status": "ok",
-            "messages": [SystemMessage(content="No changes detected.")],
-            "retry_count": retry_count,
-        }
 
     system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
@@ -69,6 +59,10 @@ async def architect(state: AgentState) -> dict:
     Instruct the skill to evaluate the diff for modularity, SRP, OCP, and overall architecture.
     After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
+
+    if not safe_git_diff.strip():
+        system_prompt += "\n\nNOTE: No changes were detected in the git diff. Please evaluate the current state if applicable, or simply provide a 'VERDICT: OK' if there is nothing to review."
+
 
     try:
         architect_content = await invoke_gemini(

@@ -5,7 +5,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
 from copium_loop.gemini import invoke_gemini, sanitize_for_prompt
-from copium_loop.git import get_diff
+from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -37,9 +37,9 @@ async def reviewer(state: AgentState) -> dict:
         }
 
     git_diff = ""
-    if os.path.exists(".git") and initial_commit_hash:
+    if initial_commit_hash and await is_git_repo(node="reviewer"):
         try:
-            git_diff = await get_diff(initial_commit_hash, node="reviewer")
+            git_diff = await get_diff(initial_commit_hash, head=None, node="reviewer")
         except Exception as e:
             msg = f"Warning: Failed to get git diff: {e}\n"
             telemetry.log_output("reviewer", msg)

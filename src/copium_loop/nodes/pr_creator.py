@@ -8,6 +8,7 @@ from copium_loop.git import (
     commit,
     get_current_branch,
     is_dirty,
+    is_git_repo,
     push,
 )
 from copium_loop.shell import run_command
@@ -24,7 +25,7 @@ async def pr_creator(state: AgentState) -> dict:
     issue_url = state.get("issue_url", "")
 
     try:
-        if not os.path.exists(".git"):
+        if not await is_git_repo(node="pr_creator"):
             msg = "Not a git repository. Skipping PR creation.\n"
             telemetry.log_output("pr_creator", msg)
             print(msg, end="")

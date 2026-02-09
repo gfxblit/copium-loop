@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
-from copium_loop.git import get_head
+from copium_loop.git import get_head, is_git_repo
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
 from copium_loop.shell import run_command
@@ -139,7 +139,7 @@ class WorkflowManager:
             self.graph = create_graph(self._wrap_node, self.start_node)
 
         initial_commit_hash = ""
-        if os.path.exists(".git"):
+        if await is_git_repo(node=self.start_node):
             try:
                 initial_commit_hash = await get_head(node=self.start_node)
                 msg = f"Initial commit hash: {initial_commit_hash}\n"
