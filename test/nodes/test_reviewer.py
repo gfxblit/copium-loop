@@ -40,7 +40,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "approved"
@@ -53,7 +57,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED\nissues"
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
@@ -69,7 +77,11 @@ class TestReviewerNode:
                 "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
             )
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "approved"
@@ -104,7 +116,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "error"
@@ -118,7 +134,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "error"
@@ -132,7 +152,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED"
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
@@ -146,7 +170,11 @@ class TestReviewerNode:
             # This simulates the failure reported in issue #20
             mock_gemini.return_value = "I cannot determine the final status (APPROVED/REJECTED). I hit a quota limit."
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             # Expected: it should be "error" because no REAL verdict was given
@@ -229,7 +257,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             await reviewer(state)
 
             args, kwargs = mock_gemini.call_args

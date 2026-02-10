@@ -71,7 +71,6 @@ class TestPRPreChecker:
         result = await pr_pre_checker(state)
         assert result["review_status"] == "pr_skipped"
 
-
     @patch.object(pr_pre_checker_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "get_current_branch", new_callable=AsyncMock)
     async def test_pr_pre_checker_on_main(self, mock_get_branch, mock_is_git):
@@ -85,7 +84,9 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "get_current_branch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
-    async def test_pr_pre_checker_dirty(self, mock_is_dirty, mock_get_branch, mock_is_git):
+    async def test_pr_pre_checker_dirty(
+        self, mock_is_dirty, mock_get_branch, mock_is_git
+    ):
         mock_is_git.return_value = True
 
         mock_get_branch.return_value = "feature-branch"

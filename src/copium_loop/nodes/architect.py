@@ -61,7 +61,11 @@ async def architect(state: AgentState) -> dict:
         telemetry.log_status("architect", "ok")
         return {
             "architect_status": "ok",
-            "messages": [SystemMessage(content="No changes detected. Skipping architectural review.")],
+            "messages": [
+                SystemMessage(
+                    content="No changes detected. Skipping architectural review."
+                )
+            ],
             "retry_count": retry_count,
         }
 

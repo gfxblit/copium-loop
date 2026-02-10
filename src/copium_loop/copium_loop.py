@@ -142,7 +142,9 @@ class WorkflowManager:
             try:
                 # Use origin/main as base for architect and reviewer to get meaningful diffs
                 if self.start_node in ["architect", "reviewer"]:
-                    origin_main = await resolve_ref(ref="origin/main", node=self.start_node)
+                    origin_main = await resolve_ref(
+                        ref="origin/main", node=self.start_node
+                    )
                     if origin_main:
                         initial_commit_hash = origin_main
                         msg = f"Using origin/main as diff base: {initial_commit_hash}\n"

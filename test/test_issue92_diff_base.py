@@ -142,7 +142,9 @@ async def test_integration_architect_diff_base(
     # Simulate origin/main by creating a remote-tracking branch
     # In a real scenario, this would be there after a fetch.
     # We can just create the ref manually for testing purposes.
-    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "main"], check=True)
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", "main"], check=True
+    )
 
     # Create feature branch and add a commit
     subprocess.run(["git", "checkout", "-b", "feature"], check=True)
@@ -151,7 +153,9 @@ async def test_integration_architect_diff_base(
     subprocess.run(["git", "add", "feature.txt"], check=True)
     subprocess.run(["git", "commit", "-m", "Feature commit"], check=True)
 
-    feature_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    feature_hash = (
+        subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    )
 
     assert main_hash != feature_hash
 

@@ -146,7 +146,6 @@ class TestPrCreatorNode:
         result = await pr_creator({"retry_count": 0})
         assert result["review_status"] == "pr_skipped"
 
-
     @pytest.mark.asyncio
     @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)

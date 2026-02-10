@@ -70,7 +70,9 @@ async def reviewer(state: AgentState) -> dict:
         telemetry.log_status("reviewer", "approved")
         return {
             "review_status": "approved",
-            "messages": [SystemMessage(content="No changes detected. Skipping review.")],
+            "messages": [
+                SystemMessage(content="No changes detected. Skipping review.")
+            ],
             "retry_count": retry_count,
         }
 

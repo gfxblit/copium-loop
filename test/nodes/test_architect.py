@@ -17,11 +17,15 @@ class TestArchitectNode:
     @pytest.fixture(autouse=True)
     def setup_architect_mocks(self):
         """Setup common mocks for architect tests."""
-        self.mock_get_diff_patcher = patch.object(architect_module, "get_diff", new_callable=AsyncMock)
+        self.mock_get_diff_patcher = patch.object(
+            architect_module, "get_diff", new_callable=AsyncMock
+        )
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff"
 
-        self.mock_is_git_repo_patcher = patch.object(architect_module, "is_git_repo", new_callable=AsyncMock)
+        self.mock_is_git_repo_patcher = patch.object(
+            architect_module, "is_git_repo", new_callable=AsyncMock
+        )
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True
 
@@ -32,14 +36,17 @@ class TestArchitectNode:
 
     @pytest.mark.asyncio
     async def test_architect_returns_ok(self):
-
         """Test that architect returns ok status."""
         with patch.object(
             architect_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: OK"
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await architect(state)
 
             assert result["architect_status"] == "ok"
@@ -55,7 +62,11 @@ class TestArchitectNode:
                 "VERDICT: REFACTOR\nToo many responsibilities in one file."
             )
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await architect(state)
 
             assert result["architect_status"] == "refactor"
@@ -71,7 +82,11 @@ class TestArchitectNode:
                 "VERDICT: REFACTOR\nActually, it is fine.\nVERDICT: OK"
             )
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await architect(state)
 
             assert result["architect_status"] == "ok"
@@ -84,7 +99,11 @@ class TestArchitectNode:
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await architect(state)
 
             assert result["architect_status"] == "error"
@@ -98,7 +117,11 @@ class TestArchitectNode:
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
-            state = {"test_output": "PASS", "retry_count": 0, "initial_commit_hash": "abc"}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await architect(state)
 
             assert result["architect_status"] == "error"
@@ -207,7 +230,6 @@ class TestArchitectNode:
         assert result["architect_status"] == "error"
         assert result["retry_count"] == 1
         assert "Missing initial commit hash" in result["messages"][0].content
-
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_git_repo")
