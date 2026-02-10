@@ -149,7 +149,9 @@ class WorkflowManager:
                     if current_branch in base_refs:
                         base_refs = [r for r in base_refs if r != current_branch]
                     if f"origin/{current_branch}" in base_refs:
-                        base_refs = [r for r in base_refs if r != f"origin/{current_branch}"]
+                        base_refs = [
+                            r for r in base_refs if r != f"origin/{current_branch}"
+                        ]
 
                     base_hash = None
                     used_ref = None
