@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 from textual.app import App
 from textual.widgets import Footer, Header, Static

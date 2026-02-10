@@ -109,6 +109,15 @@ class SessionWidget(Vertical):
                         pass
             elif node and node != "workflow":
                 pillar = self.session_column.get_pillar(node)
+                if node not in self.pillars:
+                    # New pillar discovered, add it to the UI
+                    scroll = self.query_one(
+                        f"#scroll-{self.session_id}", VerticalScroll
+                    )
+                    widget = PillarWidget(node, id=f"pillar-{self.session_id}-{node}")
+                    self.pillars[node] = widget
+                    scroll.mount(widget)
+
                 if etype == "output":
                     for line in data.splitlines():
                         if line.strip():
