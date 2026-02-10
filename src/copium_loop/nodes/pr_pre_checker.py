@@ -1,11 +1,10 @@
-import os
-
 from langchain_core.messages import SystemMessage
 
 from copium_loop.git import (
     fetch,
     get_current_branch,
     is_dirty,
+    is_git_repo,
     rebase,
     rebase_abort,
 )
@@ -21,7 +20,7 @@ async def pr_pre_checker(state: AgentState) -> dict:
     retry_count = state.get("retry_count", 0)
 
     try:
-        if not os.path.exists(".git"):
+        if not await is_git_repo(node="pr_pre_checker"):
             msg = "Not a git repository. Skipping PR creation.\n"
             telemetry.log_output("pr_pre_checker", msg)
             print(msg, end="")

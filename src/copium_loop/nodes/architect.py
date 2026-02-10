@@ -1,11 +1,10 @@
-import os
 import re
 
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
 from copium_loop.gemini import invoke_gemini, sanitize_for_prompt
-from copium_loop.git import get_diff
+from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -28,15 +27,48 @@ async def architect(state: AgentState) -> dict:
     initial_commit_hash = state.get("initial_commit_hash", "")
 
     git_diff = ""
-    if os.path.exists(".git") and initial_commit_hash:
+    if initial_commit_hash and await is_git_repo(node="architect"):
         try:
             git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
         except Exception as e:
-            msg = f"Warning: Failed to get git diff: {e}\n"
+            msg = f"Error: Failed to get git diff: {e}\n"
             telemetry.log_output("architect", msg)
             print(msg, end="")
+            telemetry.log_status("architect", "error")
+            return {
+                "architect_status": "error",
+                "messages": [SystemMessage(content=f"Failed to get git diff: {e}")],
+                "retry_count": retry_count + 1,
+            }
+    elif await is_git_repo(node="architect"):
+        # We are in a git repo but don't have an initial hash. This is unexpected.
+        msg = "Error: Missing initial commit hash in a git repository.\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "error")
+        return {
+            "architect_status": "error",
+            "messages": [SystemMessage(content="Missing initial commit hash.")],
+            "retry_count": retry_count + 1,
+        }
 
     safe_git_diff = sanitize_for_prompt(git_diff)
+
+    if not safe_git_diff.strip():
+        msg = "\nArchitectural decision: OK (no changes to review)\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "ok")
+        return {
+            "architect_status": "ok",
+            "messages": [
+                SystemMessage(
+                    content="No changes detected. Skipping architectural review."
+                )
+            ],
+            "retry_count": retry_count,
+        }
+
     system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
     <git_diff>

@@ -12,6 +12,26 @@ reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
 class TestReviewerNode:
     """Tests for the reviewer node."""
 
+    @pytest.fixture(autouse=True)
+    def setup_reviewer_mocks(self):
+        """Setup common mocks for reviewer tests."""
+        self.mock_get_diff_patcher = patch.object(
+            reviewer_module, "get_diff", new_callable=AsyncMock
+        )
+        self.mock_get_diff = self.mock_get_diff_patcher.start()
+        self.mock_get_diff.return_value = "diff content"
+
+        self.mock_is_git_repo_patcher = patch.object(
+            reviewer_module, "is_git_repo", new_callable=AsyncMock
+        )
+        self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
+        self.mock_is_git_repo.return_value = True
+
+        yield
+
+        self.mock_get_diff_patcher.stop()
+        self.mock_is_git_repo_patcher.stop()
+
     @pytest.mark.asyncio
     async def test_reviewer_returns_approved(self):
         """Test that reviewer returns approved status."""
@@ -20,7 +40,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: APPROVED"
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "approved"
@@ -33,7 +57,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED\nissues"
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
@@ -49,7 +77,11 @@ class TestReviewerNode:
                 "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
             )
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "approved"
@@ -71,7 +103,7 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "Thinking...\nVERDICT: APPROVED"
 
-            state = {"test_output": "", "retry_count": 0}
+            state = {"test_output": "", "retry_count": 0, "initial_commit_hash": "abc"}
             result = await reviewer(state)
 
             assert result["review_status"] == "approved"
@@ -84,7 +116,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.side_effect = Exception("API Error")
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "error"
@@ -98,7 +134,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "I am not sure what to do."
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "error"
@@ -112,7 +152,11 @@ class TestReviewerNode:
         ) as mock_gemini:
             mock_gemini.return_value = "VERDICT: REJECTED"
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             assert result["review_status"] == "rejected"
@@ -126,20 +170,88 @@ class TestReviewerNode:
             # This simulates the failure reported in issue #20
             mock_gemini.return_value = "I cannot determine the final status (APPROVED/REJECTED). I hit a quota limit."
 
-            state = {"test_output": "PASS", "retry_count": 0}
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
             result = await reviewer(state)
 
             # Expected: it should be "error" because no REAL verdict was given
             assert result["review_status"] == "error"
 
     @pytest.mark.asyncio
-    @patch.object(reviewer_module, "os")
     @patch.object(reviewer_module, "get_diff", new_callable=AsyncMock)
-    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_os):
-        """Test that reviewer handles failure to get git diff."""
-        mock_os.path.exists.return_value = True
+    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff):
+        """Test that reviewer returns error status on git diff failure."""
         mock_get_diff.side_effect = Exception("git diff error")
 
+        state = {
+            "test_output": "PASS",
+            "retry_count": 0,
+            "initial_commit_hash": "abc",
+        }
+        result = await reviewer(state)
+
+        assert result["review_status"] == "error"
+        assert result["retry_count"] == 1
+        assert "git diff error" in result["messages"][0].content
+        mock_get_diff.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reviewer_handles_missing_initial_hash(self):
+        """Test that reviewer returns error status on missing initial hash in git repo."""
+        with patch.object(
+            reviewer_module, "is_git_repo", new_callable=AsyncMock
+        ) as mock_is_git:
+            mock_is_git.return_value = True
+            state = {
+                "test_output": "PASS",
+                "initial_commit_hash": "",
+                "retry_count": 0,
+                "verbose": False,
+            }
+
+            # Run reviewer node
+            result = await reviewer(state)
+
+            # Verify
+            assert result["review_status"] == "error"
+            assert result["retry_count"] == 1
+            assert "Missing initial commit hash" in result["messages"][0].content
+
+    @pytest.mark.asyncio
+    async def test_reviewer_skips_llm_on_empty_diff(self):
+        """Test that reviewer returns approved immediately if git diff is empty, without invoking LLM."""
+        with patch.object(
+            reviewer_module, "get_diff", new_callable=AsyncMock
+        ) as mock_get_diff:
+            mock_get_diff.return_value = ""  # Force empty diff
+
+            with patch.object(
+                reviewer_module, "invoke_gemini", new_callable=AsyncMock
+            ) as mock_gemini:
+                mock_gemini.return_value = "VERDICT: APPROVED"
+
+                state = {
+                    "test_output": "PASS",
+                    "initial_commit_hash": "some_hash",
+                    "retry_count": 0,
+                    "verbose": False,
+                }
+
+                # Run reviewer node
+                result = await reviewer(state)
+
+                # Verify
+                mock_get_diff.assert_called_once()
+                mock_gemini.assert_not_called()
+                assert result["review_status"] == "approved"
+                assert result["retry_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_reviewer_prompt_contains_example(self):
+        """Test that the reviewer system prompt contains an example block."""
         with patch.object(
             reviewer_module, "invoke_gemini", new_callable=AsyncMock
         ) as mock_gemini:
@@ -150,20 +262,6 @@ class TestReviewerNode:
                 "retry_count": 0,
                 "initial_commit_hash": "abc",
             }
-            result = await reviewer(state)
-
-            assert result["review_status"] == "approved"
-            mock_get_diff.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_reviewer_prompt_contains_example(self):
-        """Test that the reviewer system prompt contains an example block."""
-        with patch.object(
-            reviewer_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "VERDICT: APPROVED"
-
-            state = {"test_output": "PASS", "retry_count": 0}
             await reviewer(state)
 
             args, kwargs = mock_gemini.call_args

@@ -85,8 +85,8 @@ def test_get_lint_command_ruff():
 
     with patch("os.path.exists", side_effect=side_effect):
         cmd, args = discovery.get_lint_command()
-        assert cmd == "ruff"
-        assert args == ["check", "."]
+        assert cmd == "sh"
+        assert args == ["-c", "ruff check . && ruff format --check ."]
 
 
 def test_get_lint_command_npm_priority():

@@ -19,7 +19,11 @@ async def test_nodes_do_not_call_get_all_memories():
     # We want to ensure that nodes don't try to call get_all_memories
     # If we remove it from MemoryManager, calling it will raise AttributeError.
 
-    state = {"messages": [HumanMessage(content="test")]}
+    state = {
+        "messages": [HumanMessage(content="test")],
+        "initial_commit_hash": "abc",
+        "test_output": "PASS",
+    }
 
     with patch.object(
         coder_module, "invoke_gemini", new_callable=AsyncMock
@@ -33,22 +37,30 @@ async def test_nodes_do_not_call_get_all_memories():
         assert "## Project-Specific Memory" not in prompt
 
     with patch.object(
-        architect_module, "invoke_gemini", new_callable=AsyncMock
-    ) as mock_arch_gemini:
-        mock_arch_gemini.return_value = "VERDICT: OK"
-        await architect(state)
-        prompt = mock_arch_gemini.call_args[0][0]
-        assert "## Global Persona Memory" not in prompt
-        assert "## Project-Specific Memory" not in prompt
+        architect_module, "get_diff", new_callable=AsyncMock
+    ) as mock_arch_diff:
+        mock_arch_diff.return_value = "diff"
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
+        ) as mock_arch_gemini:
+            mock_arch_gemini.return_value = "VERDICT: OK"
+            await architect(state)
+            prompt = mock_arch_gemini.call_args[0][0]
+            assert "## Global Persona Memory" not in prompt
+            assert "## Project-Specific Memory" not in prompt
 
     with patch.object(
-        reviewer_module, "invoke_gemini", new_callable=AsyncMock
-    ) as mock_rev_gemini:
-        mock_rev_gemini.return_value = "VERDICT: APPROVED"
-        await reviewer(state)
-        prompt = mock_rev_gemini.call_args[0][0]
-        assert "## Global Persona Memory" not in prompt
-        assert "## Project-Specific Memory" not in prompt
+        reviewer_module, "get_diff", new_callable=AsyncMock
+    ) as mock_rev_diff:
+        mock_rev_diff.return_value = "diff"
+        with patch.object(
+            reviewer_module, "invoke_gemini", new_callable=AsyncMock
+        ) as mock_rev_gemini:
+            mock_rev_gemini.return_value = "VERDICT: APPROVED"
+            await reviewer(state)
+            prompt = mock_rev_gemini.call_args[0][0]
+            assert "## Global Persona Memory" not in prompt
+            assert "## Project-Specific Memory" not in prompt
 
 
 def test_memory_manager_methods_removed():

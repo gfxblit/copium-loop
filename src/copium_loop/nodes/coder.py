@@ -28,7 +28,7 @@ async def coder(state: AgentState) -> dict:
     3. Write minimal implementation to make tests pass
     4. Run tests to verify they pass
     5. Refactor and ensure 80%+ test coverage
-    6. Run linting to ensure code quality
+    6. Run linting and formatting (e.g., 'ruff check . && ruff format .' or 'npm run lint') to ensure code quality
 
     After the skill completes its guidance, implement the code following TDD principles.
     Do not skip writing tests - they are mandatory for all new functionality.
