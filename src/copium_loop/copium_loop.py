@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
-from copium_loop.git import get_head, is_git_repo, resolve_ref
+from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
 from copium_loop.shell import run_command
@@ -140,17 +140,32 @@ class WorkflowManager:
         initial_commit_hash = ""
         if await is_git_repo(node=self.start_node):
             try:
-                # Use origin/main as base for architect and reviewer to get meaningful diffs
+                # Use a common base branch for architect and reviewer to get meaningful diffs
                 if self.start_node in ["architect", "reviewer"]:
-                    origin_main = await resolve_ref(
-                        ref="origin/main", node=self.start_node
-                    )
-                    if origin_main:
-                        initial_commit_hash = origin_main
-                        msg = f"Using origin/main as diff base: {initial_commit_hash}\n"
+                    current_branch = await get_current_branch(node=self.start_node)
+                    base_refs = ["origin/main", "main", "origin/master", "master"]
+                    
+                    # If we are on a base branch, don't use it as the diff base
+                    if current_branch in base_refs:
+                        base_refs = [r for r in base_refs if r != current_branch]
+                    if f"origin/{current_branch}" in base_refs:
+                        base_refs = [r for r in base_refs if r != f"origin/{current_branch}"]
+
+                    base_hash = None
+                    used_ref = None
+
+                    for ref in base_refs:
+                        base_hash = await resolve_ref(ref=ref, node=self.start_node)
+                        if base_hash:
+                            used_ref = ref
+                            break
+
+                    if base_hash:
+                        initial_commit_hash = base_hash
+                        msg = f"Using {used_ref} as diff base: {initial_commit_hash}\n"
                     else:
                         initial_commit_hash = await get_head(node=self.start_node)
-                        msg = f"origin/main not found, using HEAD as diff base: {initial_commit_hash}\n"
+                        msg = f"No common base branch found, using HEAD as diff base: {initial_commit_hash}\n"
                 else:
                     initial_commit_hash = await get_head(node=self.start_node)
                     msg = f"Initial commit hash: {initial_commit_hash}\n"

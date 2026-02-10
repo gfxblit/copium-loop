@@ -45,6 +45,99 @@ async def test_initial_commit_hash_for_architect_with_origin_main(
 
 
 @pytest.mark.asyncio
+async def test_initial_commit_hash_for_architect_fallback_to_main(
+    mock_verify_environment,
+    mock_create_graph,
+    mock_get_head,
+):
+    """
+    Test that when start_node is 'architect', the initial_commit_hash
+    falls back to 'main' if 'origin/main' does not exist.
+    """
+    mock_verify_environment.return_value = True
+    mock_get_head.return_value = "head_hash"
+
+    with patch(
+        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+    ) as mock_is_git:
+        mock_is_git.return_value = True
+        with patch(
+            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+        ) as mock_get_branch:
+            mock_get_branch.return_value = "feature-branch"
+
+            with patch(
+                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+            ) as mock_resolve_ref:
+
+                def side_effect(ref, node):
+                    if ref == "main":
+                        return "main_hash"
+                    return None
+
+                mock_resolve_ref.side_effect = side_effect
+
+                manager = WorkflowManager(start_node="architect")
+                mock_graph = AsyncMock()
+                mock_graph.ainvoke.return_value = {"status": "completed"}
+                mock_create_graph.return_value = mock_graph
+
+                await manager.run("test prompt")
+
+                # Verify initial state
+                state = mock_graph.ainvoke.call_args[0][0]
+                assert state["initial_commit_hash"] == "main_hash"
+                # Should have tried origin/main then main
+                assert mock_resolve_ref.call_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_initial_commit_hash_for_architect_on_main(
+    mock_verify_environment,
+    mock_create_graph,
+    mock_get_head,
+):
+    """
+    Test that when start_node is 'architect' and we are on 'main',
+    it skips 'main' and 'origin/main' as diff base.
+    """
+    mock_verify_environment.return_value = True
+    mock_get_head.return_value = "head_hash"
+
+    with patch(
+        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+    ) as mock_is_git:
+        mock_is_git.return_value = True
+        with patch(
+            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+        ) as mock_get_branch:
+            mock_get_branch.return_value = "main"
+
+            with patch(
+                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+            ) as mock_resolve_ref:
+
+                def side_effect(ref, node):
+                    # Should NOT be called for 'main' or 'origin/main'
+                    if ref in ["main", "origin/main"]:
+                        pytest.fail(f"Should not try to resolve {ref} when on main")
+                    return None
+
+                mock_resolve_ref.side_effect = side_effect
+
+                manager = WorkflowManager(start_node="architect")
+                mock_graph = AsyncMock()
+                mock_graph.ainvoke.return_value = {"status": "completed"}
+                mock_create_graph.return_value = mock_graph
+
+                await manager.run("test prompt")
+
+                # Verify initial state falls back to HEAD
+                state = mock_graph.ainvoke.call_args[0][0]
+                assert state["initial_commit_hash"] == "head_hash"
+
+
+@pytest.mark.asyncio
 async def test_initial_commit_hash_for_architect_fallback_to_head(
     mock_verify_environment,
     mock_create_graph,
