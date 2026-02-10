@@ -149,7 +149,7 @@ class TextualDashboard(App):
     }
 
     SessionWidget:focus-within {
-        border: double bright_yellow;
+        border: double yellow;
     }
 
     .session-header {
@@ -205,9 +205,9 @@ class TextualDashboard(App):
         Binding("9", "switch_tmux(9)", "Tmux 9", show=False),
     ]
 
-    def __init__(self, **kwargs):
+    def __init__(self, log_dir: Path | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.log_dir = Path.home() / ".copium" / "logs"
+        self.log_dir = log_dir or (Path.home() / ".copium" / "logs")
         self.log_offsets = {}
         self.session_widgets = {}
         self.codexbar_client = CodexbarClient()
