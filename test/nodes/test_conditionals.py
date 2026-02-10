@@ -30,6 +30,12 @@ class TestConditionalLogic:
         """Test END transition on max retries."""
         assert (
             should_continue_from_test(
+                {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_test(
                 {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES + 1}
             )
             == END
@@ -63,8 +69,23 @@ class TestConditionalLogic:
             should_continue_from_architect(
                 {
                     "architect_status": "refactor",
+                    "retry_count": constants.MAX_RETRIES,
+                }
+            )
+            == END
+        )
+        assert (
+            should_continue_from_architect(
+                {
+                    "architect_status": "refactor",
                     "retry_count": constants.MAX_RETRIES + 1,
                 }
+            )
+            == END
+        )
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "error", "retry_count": constants.MAX_RETRIES}
             )
             == END
         )
@@ -100,7 +121,19 @@ class TestConditionalLogic:
         """Test END transition on max retries from reviewer."""
         assert (
             should_continue_from_review(
+                {"review_status": "rejected", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_review(
                 {"review_status": "rejected", "retry_count": constants.MAX_RETRIES + 1}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_review(
+                {"review_status": "error", "retry_count": constants.MAX_RETRIES}
             )
             == END
         )
@@ -185,13 +218,19 @@ class TestConditionalLogic:
         )
         assert (
             should_continue_from_coder(
-                {"code_status": "failed", "retry_count": constants.MAX_RETRIES}
+                {"code_status": "failed", "retry_count": constants.MAX_RETRIES - 1}
             )
             == "coder"
         )
 
     def test_should_continue_from_coder_max_retries(self):
         """Test END transition on max retries from coder."""
+        assert (
+            should_continue_from_coder(
+                {"code_status": "failed", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
         assert (
             should_continue_from_coder(
                 {"code_status": "failed", "retry_count": constants.MAX_RETRIES + 1}

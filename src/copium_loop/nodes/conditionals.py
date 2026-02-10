@@ -11,7 +11,7 @@ def should_continue_from_test(state: AgentState) -> str:
         telemetry.log_status("tester", "success")
         return "architect"
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("tester", "error")
         telemetry.log_workflow_status("failed")
@@ -27,7 +27,7 @@ def should_continue_from_architect(state: AgentState) -> str:
         telemetry.log_status("architect", "success")
         return "reviewer"
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("architect", "error")
         telemetry.log_workflow_status("failed")
@@ -46,7 +46,7 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_status("reviewer", "success")
         return "pr_pre_checker"
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded. Aborting.")
         telemetry.log_status("reviewer", "error")
         telemetry.log_workflow_status("failed")
@@ -72,13 +72,15 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
         telemetry.log_status("pr_creator", "success")
         return END
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded in PR Creator. Aborting.")
         telemetry.log_status("pr_creator", "error")
         telemetry.log_workflow_status("failed")
         return END
 
-    print(f"PR Creator failed or needs commit (status: {status}). Returning to coder.")
+    print(
+        f"PR Creator failed or needs commit (status: {repr(status)}). Returning to coder."
+    )
     return "coder"
 
 
@@ -93,14 +95,14 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
         telemetry.log_status("pr_pre_checker", "success")
         return END
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded in PR Pre-Checker. Aborting.")
         telemetry.log_status("pr_pre_checker", "error")
         telemetry.log_workflow_status("failed")
         return END
 
     print(
-        f"PR Pre-Checker failed or needs commit (status: {status}). Returning to coder."
+        f"PR Pre-Checker failed or needs commit (status: {repr(status)}). Returning to coder."
     )
     return "coder"
 
@@ -116,14 +118,15 @@ def should_continue_from_journaler(state: AgentState) -> str:
 
 def should_continue_from_coder(state: AgentState) -> str:
     telemetry = get_telemetry()
-    if state.get("code_status") == "coded":
+    status = state.get("code_status")
+    if status == "coded":
         return "tester"
 
-    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+    if state.get("retry_count", 0) >= constants.MAX_RETRIES:
         print("Max retries exceeded from coder. Aborting.")
         telemetry.log_status("coder", "error")
         telemetry.log_workflow_status("failed")
         return END
 
-    print(f"Coder failed (status: {state.get('code_status')}). Retrying...")
+    print(f"Coder failed (status: {repr(status)}). Retrying...")
     return "coder"
