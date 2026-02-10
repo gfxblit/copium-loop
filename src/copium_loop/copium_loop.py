@@ -1,7 +1,6 @@
 "Core workflow implementation."
 
 import asyncio
-import os
 import re
 import traceback
 

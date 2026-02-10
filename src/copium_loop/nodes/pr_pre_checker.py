@@ -1,5 +1,3 @@
-import os
-
 from langchain_core.messages import SystemMessage
 
 from copium_loop.git import (

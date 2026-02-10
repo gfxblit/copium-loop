@@ -17,12 +17,10 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "fetch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
     async def test_pr_pre_checker_success(
-        self, mock_os, mock_rebase, mock_fetch, mock_is_dirty, mock_get_branch, mock_is_git
+        self, mock_rebase, mock_fetch, mock_is_dirty, mock_get_branch, mock_is_git
     ):
         mock_is_git.return_value = True
-        mock_os.path.exists.return_value = True
 
         mock_get_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False
@@ -40,12 +38,10 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "fetch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
     @patch.object(pr_pre_checker_module, "get_telemetry")
     async def test_pr_pre_checker_telemetry(
         self,
         mock_get_telemetry,
-        mock_os,
         mock_rebase,
         _mock_fetch,
         mock_is_dirty,
@@ -53,7 +49,6 @@ class TestPRPreChecker:
         mock_is_git,
     ):
         mock_is_git.return_value = True
-        mock_os.path.exists.return_value = True
 
         mock_get_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False
@@ -70,10 +65,8 @@ class TestPRPreChecker:
         mock_telemetry.log_status.assert_any_call("pr_pre_checker", "success")
 
     @patch.object(pr_pre_checker_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
-    async def test_pr_pre_checker_no_git(self, mock_os, mock_is_git):
+    async def test_pr_pre_checker_no_git(self, mock_is_git):
         mock_is_git.return_value = False
-        mock_os.path.exists.return_value = False
         state: AgentState = {"retry_count": 0}
         result = await pr_pre_checker(state)
         assert result["review_status"] == "pr_skipped"
@@ -81,10 +74,8 @@ class TestPRPreChecker:
 
     @patch.object(pr_pre_checker_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "get_current_branch", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
-    async def test_pr_pre_checker_on_main(self, mock_os, mock_get_branch, mock_is_git):
+    async def test_pr_pre_checker_on_main(self, mock_get_branch, mock_is_git):
         mock_is_git.return_value = True
-        mock_os.path.exists.return_value = True
 
         mock_get_branch.return_value = "main"
         state: AgentState = {"retry_count": 0}
@@ -94,10 +85,8 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "get_current_branch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
-    async def test_pr_pre_checker_dirty(self, mock_os, mock_is_dirty, mock_get_branch, mock_is_git):
+    async def test_pr_pre_checker_dirty(self, mock_is_dirty, mock_get_branch, mock_is_git):
         mock_is_git.return_value = True
-        mock_os.path.exists.return_value = True
 
         mock_get_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = True
@@ -111,10 +100,8 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "fetch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase_abort", new_callable=AsyncMock)
-    @patch.object(pr_pre_checker_module, "os")
     async def test_pr_pre_checker_rebase_fail(
         self,
-        mock_os,
         mock_abort,
         mock_rebase,
         mock_fetch,
@@ -123,7 +110,6 @@ class TestPRPreChecker:
         mock_is_git,
     ):
         mock_is_git.return_value = True
-        mock_os.path.exists.return_value = True
 
         mock_get_branch.return_value = "feature-branch"
         mock_is_dirty.return_value = False

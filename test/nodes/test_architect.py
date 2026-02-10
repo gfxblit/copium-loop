@@ -25,15 +25,10 @@ class TestArchitectNode:
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True
 
-        self.mock_os_patcher = patch.object(architect_module, "os")
-        self.mock_os = self.mock_os_patcher.start()
-        self.mock_os.path.exists.return_value = True
-
         yield
 
         self.mock_get_diff_patcher.stop()
         self.mock_is_git_repo_patcher.stop()
-        self.mock_os_patcher.stop()
 
     @pytest.mark.asyncio
     async def test_architect_returns_ok(self):
@@ -153,8 +148,8 @@ class TestArchitectNode:
             assert "replace" in system_prompt
 
     @pytest.mark.asyncio
-    async def test_architect_calls_llm_even_on_empty_diff(self):
-        """Test that architect still invokes LLM if git diff is empty, to be consistent with reviewer."""
+    async def test_architect_skips_llm_on_empty_diff(self):
+        """Test that architect returns OK immediately if git diff is empty, without invoking LLM."""
         self.mock_get_diff.return_value = ""  # Force empty diff
 
         with patch.object(
@@ -173,7 +168,7 @@ class TestArchitectNode:
 
             # Verify
             self.mock_get_diff.assert_called_once()
-            mock_gemini.assert_called_once()
+            mock_gemini.assert_not_called()
             assert result["architect_status"] == "ok"
             assert result["retry_count"] == 0
 
@@ -184,7 +179,6 @@ class TestArchitectNode:
         """Test architect node integration with a real git repo and uncommitted changes."""
         # Stop the class-level mocks so we can use real git
         self.mock_get_diff_patcher.stop()
-        self.mock_os_patcher.stop()
 
         # Setup repo with uncommitted changes
         with open("test.txt", "w") as f:

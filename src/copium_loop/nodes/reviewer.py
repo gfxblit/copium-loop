@@ -1,4 +1,3 @@
-import os
 import re
 
 from langchain_core.messages import SystemMessage
@@ -46,6 +45,18 @@ async def reviewer(state: AgentState) -> dict:
             print(msg, end="")
 
     safe_git_diff = sanitize_for_prompt(git_diff)
+
+    if not safe_git_diff.strip():
+        msg = "\nReview decision: Approved (no changes to review)\n"
+        telemetry.log_output("reviewer", msg)
+        print(msg, end="")
+        telemetry.log_status("reviewer", "approved")
+        return {
+            "review_status": "approved",
+            "messages": [SystemMessage(content="No changes detected. Skipping review.")],
+            "retry_count": retry_count,
+        }
+
     system_prompt = f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
 
     <git_diff>

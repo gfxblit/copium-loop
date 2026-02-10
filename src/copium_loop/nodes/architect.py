@@ -1,4 +1,3 @@
-import os
 import re
 
 from langchain_core.messages import SystemMessage
@@ -38,6 +37,17 @@ async def architect(state: AgentState) -> dict:
 
     safe_git_diff = sanitize_for_prompt(git_diff)
 
+    if not safe_git_diff.strip():
+        msg = "\nArchitectural decision: OK (no changes to review)\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "ok")
+        return {
+            "architect_status": "ok",
+            "messages": [SystemMessage(content="No changes detected. Skipping architectural review.")],
+            "retry_count": retry_count,
+        }
+
     system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
     <git_diff>
@@ -59,10 +69,6 @@ async def architect(state: AgentState) -> dict:
     Instruct the skill to evaluate the diff for modularity, SRP, OCP, and overall architecture.
     After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
-
-    if not safe_git_diff.strip():
-        system_prompt += "\n\nNOTE: No changes were detected in the git diff. Please evaluate the current state if applicable, or simply provide a 'VERDICT: OK' if there is nothing to review."
-
 
     try:
         architect_content = await invoke_gemini(
