@@ -94,7 +94,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -124,7 +123,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -156,7 +154,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -185,7 +182,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -217,7 +213,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -248,7 +243,6 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "notify", new_callable=AsyncMock),
             patch.object(
                 tester_module,
                 "get_build_command",

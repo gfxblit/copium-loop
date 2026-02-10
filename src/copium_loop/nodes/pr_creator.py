@@ -3,7 +3,6 @@ import re
 
 from langchain_core.messages import SystemMessage
 
-from copium_loop import constants
 from copium_loop.git import (
     add,
     commit,
@@ -11,7 +10,6 @@ from copium_loop.git import (
     is_dirty,
     push,
 )
-from copium_loop.notifications import notify
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -132,12 +130,6 @@ async def pr_creator(state: AgentState) -> dict:
         msg = f"Error in PR creation: {error}\n"
         telemetry.log_output("pr_creator", msg)
         print(msg, end="")
-        message = (
-            "Max retries exceeded. Aborting."
-            if retry_count >= constants.MAX_RETRIES
-            else f"Failed to create PR: {error}"
-        )
-        await notify("Workflow: PR Failed", message, 5)
         telemetry.log_status("pr_creator", "failed")
         return {
             "review_status": "pr_failed",

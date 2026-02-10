@@ -4,7 +4,6 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop import constants
 from copium_loop.discovery import get_build_command, get_lint_command, get_test_command
-from copium_loop.notifications import notify
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -119,7 +118,6 @@ async def tester(state: AgentState) -> dict:
             )
 
         telemetry.log_output("tester", f"{message}\n")
-        await notify("Workflow: Tests Failed", message, 4)
         return {
             "test_output": f"{fail_prefix}\n" + output,
             "retry_count": retry_count + 1,
