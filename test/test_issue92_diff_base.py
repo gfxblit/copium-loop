@@ -70,7 +70,7 @@ async def test_initial_commit_hash_for_architect_fallback_to_main(
                 "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
             ) as mock_resolve_ref:
 
-                def side_effect(ref, node):
+                def side_effect(ref, node):  # noqa: ARG001
                     if ref == "main":
                         return "main_hash"
                     return None
@@ -117,7 +117,7 @@ async def test_initial_commit_hash_for_architect_on_main(
                 "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
             ) as mock_resolve_ref:
 
-                def side_effect(ref, node):
+                def side_effect(ref, node):  # noqa: ARG001
                     # Should NOT be called for 'main' or 'origin/main'
                     if ref in ["main", "origin/main"]:
                         pytest.fail(f"Should not try to resolve {ref} when on main")

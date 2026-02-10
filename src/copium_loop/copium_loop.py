@@ -144,7 +144,7 @@ class WorkflowManager:
                 if self.start_node in ["architect", "reviewer"]:
                     current_branch = await get_current_branch(node=self.start_node)
                     base_refs = ["origin/main", "main", "origin/master", "master"]
-                    
+
                     # If we are on a base branch, don't use it as the diff base
                     if current_branch in base_refs:
                         base_refs = [r for r in base_refs if r != current_branch]
