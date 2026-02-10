@@ -19,7 +19,7 @@ class CodexStatsStrategy(FooterStatsStrategy):
 
     def get_stats(self) -> list[Text | str | tuple[str, str]] | None:
         data = self.client.get_usage()
-        if not data:
+        if data is None:
             return None
 
         # Calculate remaining
