@@ -79,7 +79,7 @@ def get_lint_command() -> tuple[str, list[str]]:
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
     ):
-        lint_cmd = "ruff"
-        lint_args = ["check", "."]
+        lint_cmd = "sh"
+        lint_args = ["-c", "ruff check . && ruff format --check ."]
 
     return lint_cmd, lint_args
