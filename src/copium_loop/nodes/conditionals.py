@@ -112,3 +112,18 @@ def should_continue_from_journaler(state: AgentState) -> str:
     if status == "pre_check_passed":
         return "pr_creator"
     return END
+
+
+def should_continue_from_coder(state: AgentState) -> str:
+    telemetry = get_telemetry()
+    if state.get("code_status") == "coded":
+        return "tester"
+
+    if state.get("retry_count", 0) > constants.MAX_RETRIES:
+        print("Max retries exceeded from coder. Aborting.")
+        telemetry.log_status("coder", "error")
+        telemetry.log_workflow_status("failed")
+        return END
+
+    print(f"Coder failed (status: {state.get('code_status')}). Retrying...")
+    return "coder"

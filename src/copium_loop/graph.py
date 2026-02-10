@@ -9,6 +9,7 @@ from copium_loop.nodes import (
     pr_pre_checker,
     reviewer,
     should_continue_from_architect,
+    should_continue_from_coder,
     should_continue_from_journaler,
     should_continue_from_pr_creator,
     should_continue_from_pr_pre_checker,
@@ -38,7 +39,12 @@ def create_graph(wrap_node_func, start_node: str | None = None):
 
     # Edges
     workflow.add_edge(START, entry_node)
-    workflow.add_edge("coder", "tester")
+
+    workflow.add_conditional_edges(
+        "coder",
+        should_continue_from_coder,
+        {"tester": "tester", "coder": "coder", END: END},
+    )
 
     workflow.add_conditional_edges(
         "tester",
