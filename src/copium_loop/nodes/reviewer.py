@@ -40,9 +40,26 @@ async def reviewer(state: AgentState) -> dict:
         try:
             git_diff = await get_diff(initial_commit_hash, head=None, node="reviewer")
         except Exception as e:
-            msg = f"Warning: Failed to get git diff: {e}\n"
+            msg = f"Error: Failed to get git diff: {e}\n"
             telemetry.log_output("reviewer", msg)
             print(msg, end="")
+            telemetry.log_status("reviewer", "error")
+            return {
+                "review_status": "error",
+                "messages": [SystemMessage(content=f"Failed to get git diff: {e}")],
+                "retry_count": retry_count + 1,
+            }
+    elif await is_git_repo(node="reviewer"):
+        # We are in a git repo but don't have an initial hash.
+        msg = "Error: Missing initial commit hash in a git repository.\n"
+        telemetry.log_output("reviewer", msg)
+        print(msg, end="")
+        telemetry.log_status("reviewer", "error")
+        return {
+            "review_status": "error",
+            "messages": [SystemMessage(content="Missing initial commit hash.")],
+            "retry_count": retry_count + 1,
+        }
 
     safe_git_diff = sanitize_for_prompt(git_diff)
 

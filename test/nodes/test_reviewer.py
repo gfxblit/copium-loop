@@ -155,23 +155,42 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     @patch.object(reviewer_module, "get_diff", new_callable=AsyncMock)
     async def test_reviewer_handles_git_diff_failure(self, mock_get_diff):
-        """Test that reviewer handles failure to get git diff."""
+        """Test that reviewer returns error status on git diff failure."""
         mock_get_diff.side_effect = Exception("git diff error")
 
-        with patch.object(
-            reviewer_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "VERDICT: APPROVED"
+        state = {
+            "test_output": "PASS",
+            "retry_count": 0,
+            "initial_commit_hash": "abc",
+        }
+        result = await reviewer(state)
 
+        assert result["review_status"] == "error"
+        assert result["retry_count"] == 1
+        assert "git diff error" in result["messages"][0].content
+        mock_get_diff.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reviewer_handles_missing_initial_hash(self):
+        """Test that reviewer returns error status on missing initial hash in git repo."""
+        with patch.object(
+            reviewer_module, "is_git_repo", new_callable=AsyncMock
+        ) as mock_is_git:
+            mock_is_git.return_value = True
             state = {
                 "test_output": "PASS",
+                "initial_commit_hash": "",
                 "retry_count": 0,
-                "initial_commit_hash": "abc",
+                "verbose": False,
             }
+
+            # Run reviewer node
             result = await reviewer(state)
 
-            assert result["review_status"] == "approved"
-            mock_get_diff.assert_called_once()
+            # Verify
+            assert result["review_status"] == "error"
+            assert result["retry_count"] == 1
+            assert "Missing initial commit hash" in result["messages"][0].content
 
     @pytest.mark.asyncio
     async def test_reviewer_skips_llm_on_empty_diff(self):
@@ -180,7 +199,7 @@ class TestReviewerNode:
             reviewer_module, "get_diff", new_callable=AsyncMock
         ) as mock_get_diff:
             mock_get_diff.return_value = ""  # Force empty diff
-            
+
             with patch.object(
                 reviewer_module, "invoke_gemini", new_callable=AsyncMock
             ) as mock_gemini:

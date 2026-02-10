@@ -172,6 +172,42 @@ class TestArchitectNode:
             assert result["architect_status"] == "ok"
             assert result["retry_count"] == 0
 
+    @pytest.mark.asyncio
+    async def test_architect_handles_git_diff_failure(self):
+        """Test that architect returns error status on git diff failure."""
+        self.mock_get_diff.side_effect = Exception("git diff error")
+
+        state = {
+            "initial_commit_hash": "some_hash",
+            "retry_count": 0,
+            "verbose": False,
+        }
+
+        # Run architect node
+        result = await architect(state)
+
+        # Verify
+        assert result["architect_status"] == "error"
+        assert result["retry_count"] == 1
+        assert "git diff error" in result["messages"][0].content
+
+    @pytest.mark.asyncio
+    async def test_architect_handles_missing_initial_hash(self):
+        """Test that architect returns error status on missing initial hash in git repo."""
+        state = {
+            "initial_commit_hash": "",
+            "retry_count": 0,
+            "verbose": False,
+        }
+
+        # Run architect node
+        result = await architect(state)
+
+        # Verify
+        assert result["architect_status"] == "error"
+        assert result["retry_count"] == 1
+        assert "Missing initial commit hash" in result["messages"][0].content
+
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_git_repo")

@@ -31,9 +31,26 @@ async def architect(state: AgentState) -> dict:
         try:
             git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
         except Exception as e:
-            msg = f"Warning: Failed to get git diff: {e}\n"
+            msg = f"Error: Failed to get git diff: {e}\n"
             telemetry.log_output("architect", msg)
             print(msg, end="")
+            telemetry.log_status("architect", "error")
+            return {
+                "architect_status": "error",
+                "messages": [SystemMessage(content=f"Failed to get git diff: {e}")],
+                "retry_count": retry_count + 1,
+            }
+    elif await is_git_repo(node="architect"):
+        # We are in a git repo but don't have an initial hash. This is unexpected.
+        msg = "Error: Missing initial commit hash in a git repository.\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "error")
+        return {
+            "architect_status": "error",
+            "messages": [SystemMessage(content="Missing initial commit hash.")],
+            "retry_count": retry_count + 1,
+        }
 
     safe_git_diff = sanitize_for_prompt(git_diff)
 
