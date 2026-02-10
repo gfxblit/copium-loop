@@ -151,10 +151,9 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "notify", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     async def test_pr_creator_push_failure(
         self,
-        mock_notify,
         mock_push,
         mock_is_dirty,
         mock_branch,

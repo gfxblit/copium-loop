@@ -36,6 +36,14 @@ async def get_head(node: str | None = None) -> str:
     return res["output"].strip()
 
 
+async def resolve_ref(ref: str, node: str | None = None) -> str | None:
+    """Resolves a git ref to a commit hash. Returns None if ref doesn't exist."""
+    res = await run_command("git", ["rev-parse", "--verify", ref], node=node)
+    if res["exit_code"] == 0:
+        return res["output"].strip()
+    return None
+
+
 async def fetch(remote: str = "origin", node: str | None = None) -> dict:
     """Fetches updates from the remote repository."""
     return await run_command("git", ["fetch", remote], node=node)

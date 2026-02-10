@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
-from copium_loop.git import get_head, is_git_repo
+from copium_loop.git import get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
 from copium_loop.shell import run_command
@@ -140,8 +140,19 @@ class WorkflowManager:
         initial_commit_hash = ""
         if await is_git_repo(node=self.start_node):
             try:
-                initial_commit_hash = await get_head(node=self.start_node)
-                msg = f"Initial commit hash: {initial_commit_hash}\n"
+                # Use origin/main as base for architect and reviewer to get meaningful diffs
+                if self.start_node in ["architect", "reviewer"]:
+                    origin_main = await resolve_ref(ref="origin/main", node=self.start_node)
+                    if origin_main:
+                        initial_commit_hash = origin_main
+                        msg = f"Using origin/main as diff base: {initial_commit_hash}\n"
+                    else:
+                        initial_commit_hash = await get_head(node=self.start_node)
+                        msg = f"origin/main not found, using HEAD as diff base: {initial_commit_hash}\n"
+                else:
+                    initial_commit_hash = await get_head(node=self.start_node)
+                    msg = f"Initial commit hash: {initial_commit_hash}\n"
+
                 telemetry.log_output(self.start_node, msg)
                 print(msg, end="")
             except Exception as e:
