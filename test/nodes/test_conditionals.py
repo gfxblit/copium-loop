@@ -3,6 +3,7 @@ from langgraph.graph import END
 from copium_loop import constants
 from copium_loop.nodes import (
     should_continue_from_architect,
+    should_continue_from_coder,
     should_continue_from_journaler,
     should_continue_from_pr_creator,
     should_continue_from_pr_pre_checker,
@@ -27,6 +28,12 @@ class TestConditionalLogic:
 
     def test_should_continue_from_test_max_retries(self):
         """Test END transition on max retries."""
+        assert (
+            should_continue_from_test(
+                {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
         assert (
             should_continue_from_test(
                 {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES + 1}
@@ -62,8 +69,23 @@ class TestConditionalLogic:
             should_continue_from_architect(
                 {
                     "architect_status": "refactor",
+                    "retry_count": constants.MAX_RETRIES,
+                }
+            )
+            == END
+        )
+        assert (
+            should_continue_from_architect(
+                {
+                    "architect_status": "refactor",
                     "retry_count": constants.MAX_RETRIES + 1,
                 }
+            )
+            == END
+        )
+        assert (
+            should_continue_from_architect(
+                {"architect_status": "error", "retry_count": constants.MAX_RETRIES}
             )
             == END
         )
@@ -99,7 +121,19 @@ class TestConditionalLogic:
         """Test END transition on max retries from reviewer."""
         assert (
             should_continue_from_review(
+                {"review_status": "rejected", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_review(
                 {"review_status": "rejected", "retry_count": constants.MAX_RETRIES + 1}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_review(
+                {"review_status": "error", "retry_count": constants.MAX_RETRIES}
             )
             == END
         )
@@ -171,3 +205,35 @@ class TestConditionalLogic:
     def test_should_continue_from_journaler_on_normal_flow(self):
         """Test END transition from journaler if not in PR flow."""
         assert should_continue_from_journaler({"review_status": "pending"}) == END
+
+    def test_should_continue_from_coder_on_success(self):
+        """Test transition from coder to tester on success."""
+        assert should_continue_from_coder({"code_status": "coded"}) == "tester"
+
+    def test_should_continue_from_coder_on_fail_retry(self):
+        """Test transition from coder back to coder on fail if retries available."""
+        assert (
+            should_continue_from_coder({"code_status": "failed", "retry_count": 0})
+            == "coder"
+        )
+        assert (
+            should_continue_from_coder(
+                {"code_status": "failed", "retry_count": constants.MAX_RETRIES - 1}
+            )
+            == "coder"
+        )
+
+    def test_should_continue_from_coder_max_retries(self):
+        """Test END transition on max retries from coder."""
+        assert (
+            should_continue_from_coder(
+                {"code_status": "failed", "retry_count": constants.MAX_RETRIES}
+            )
+            == END
+        )
+        assert (
+            should_continue_from_coder(
+                {"code_status": "failed", "retry_count": constants.MAX_RETRIES + 1}
+            )
+            == END
+        )
