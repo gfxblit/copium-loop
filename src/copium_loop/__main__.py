@@ -27,7 +27,12 @@ async def async_main():
         "--monitor",
         "-m",
         action="store_true",
-        help="Start the Matrix visualization monitor",
+        help="Start the Matrix visualization monitor (Rich)",
+    )
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Start the Textual-based TUI monitor",
     )
     parser.add_argument(
         "--session", type=str, help="Specific session ID to monitor or continue"
@@ -48,6 +53,13 @@ async def async_main():
             dashboard.run_monitor(args.session)
         except KeyboardInterrupt:
             sys.exit(0)
+        return
+
+    if args.tui:
+        from copium_loop.ui import TextualDashboard
+
+        app = TextualDashboard()
+        app.run()
         return
 
     if not os.environ.get("NTFY_CHANNEL"):

@@ -4,10 +4,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-# Add src to sys.path to ensure local package is used during tests
-src_path = str(Path(__file__).parent.parent / "src")
+# Add src and .lib to sys.path to ensure local package and vendorized libs are used during tests
+root_path = Path(__file__).parent.parent
+src_path = str(root_path / "src")
+lib_path = str(root_path / ".lib")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
+if lib_path not in sys.path:
+    sys.path.insert(0, lib_path)
 
 
 @pytest.fixture(autouse=True)
