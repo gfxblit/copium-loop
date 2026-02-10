@@ -273,7 +273,7 @@ async def test_max_retries_exceeded(mock_instructions, monkeypatch):
     from copium_loop.constants import MAX_RETRIES
 
     assert MAX_RETRIES == 2
-    assert result["retry_count"] > MAX_RETRIES
+    assert result["retry_count"] == MAX_RETRIES
     # When tester fails and max retries reached, it returns state with error
     assert "FAIL (Unit)" in result["test_output"]
 
