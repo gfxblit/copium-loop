@@ -5,9 +5,6 @@ from textual.app import App
 from textual.widgets import Footer, Header, Static
 
 # Add the packages directory to sys.path
-sys.path.append(
-    "/Users/billyc/.gemini/tmp/a499af2559971d4c1a2b1a50470dc393bedcc865c437e2e113327bd4c0a93c14/packages"
-)
 
 
 class MonitorApp(App):
