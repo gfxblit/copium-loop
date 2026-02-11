@@ -311,7 +311,7 @@ async def test_pr_creation_failure(mock_instructions):
     result = await wm.run("Feature with PR fail")
 
     # It returns to coder, which fails because no more instructions
-    assert result["review_status"] == "rejected"
+    assert result["review_status"] == "pr_failed"
     assert "GraphQL error" in str(result["messages"])
 
 

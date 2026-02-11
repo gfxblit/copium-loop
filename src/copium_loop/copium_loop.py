@@ -93,7 +93,6 @@ class WorkflowManager:
             response["review_status"] = "pr_failed"
         elif node_name == "coder":
             response["code_status"] = "failed"
-            response["review_status"] = "rejected"
 
         return response
 
