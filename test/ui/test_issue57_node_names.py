@@ -1,11 +1,10 @@
 import json
-import tempfile
 from pathlib import Path
 
 from rich.console import Console
 
 from copium_loop.ui.column import SessionColumn
-from copium_loop.ui.dashboard import Dashboard
+from copium_loop.ui.textual_dashboard import TextualDashboard
 
 
 def test_actual_node_names_in_ui():
@@ -42,14 +41,19 @@ def test_actual_node_names_in_ui():
     assert "JOURNAL" not in output or "JOURNALER" in output
 
 
-def test_dynamic_node_discovery_in_ui():
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_dynamic_node_discovery_in_ui(tmp_path):
     """Verify that new nodes appearing in logs are dynamically added to the UI."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        dashboard = Dashboard()
-        dashboard.log_dir = Path(tmp_dir)
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log_file = log_dir / "test_session.jsonl"
 
-        log_file = dashboard.log_dir / "test_session.jsonl"
+    app = TextualDashboard(log_dir=log_dir)
 
+    async with app.run_test() as pilot:
         # Create an event for a completely new node
         event = {
             "node": "security_scanner",
@@ -62,20 +66,18 @@ def test_dynamic_node_discovery_in_ui():
             f.write(json.dumps(event) + "\n")
 
         # Update from logs
-        dashboard.update_from_logs()
+        app.update_from_logs()
+        await pilot.pause()
 
-        assert "test_session" in dashboard.sessions
-        session = dashboard.sessions["test_session"]
+        assert "test_session" in app.session_widgets
+        widget = app.session_widgets["test_session"]
 
         # Check if the new node was added to pillars
-        assert "security_scanner" in session.pillars
-        assert session.pillars["security_scanner"].name == "security_scanner"
+        assert "security_scanner" in widget.session_column.pillars
+        assert (
+            widget.session_column.pillars["security_scanner"].name == "security_scanner"
+        )
 
-        # Verify it renders
-        layout = session.render(column_width=80)
-        console = Console(width=80)
-        with console.capture() as capture:
-            console.print(layout)
-        output = capture.get().upper()
-
-        assert "SECURITY_SCANNER" in output
+        # Verify it renders in Textual
+        pillar_widget = app.query_one("#pillar-test_session-security_scanner")
+        assert pillar_widget is not None

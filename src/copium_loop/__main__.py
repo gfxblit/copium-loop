@@ -17,7 +17,6 @@ from copium_loop.telemetry import (  # noqa: E402
     find_latest_session,
     get_telemetry,
 )
-from copium_loop.ui import Dashboard  # noqa: E402
 
 
 async def async_main():
@@ -37,11 +36,6 @@ async def async_main():
         "--monitor",
         "-m",
         action="store_true",
-        help="Start the Matrix visualization monitor (Rich)",
-    )
-    parser.add_argument(
-        "--tui",
-        action="store_true",
         help="Start the Textual-based TUI monitor",
     )
     parser.add_argument(
@@ -58,14 +52,6 @@ async def async_main():
     args = parser.parse_args()
 
     if args.monitor:
-        dashboard = Dashboard()
-        try:
-            dashboard.run_monitor(args.session)
-        except KeyboardInterrupt:
-            sys.exit(0)
-        return
-
-    if args.tui:
         from copium_loop.ui import TextualDashboard
 
         app = TextualDashboard()
