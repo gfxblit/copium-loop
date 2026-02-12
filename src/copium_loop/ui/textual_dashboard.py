@@ -332,12 +332,10 @@ class TextualDashboard(App):
             return
 
         current_focus = self.focused
-        # print(f"APP DEBUG: action_next_session current_focus={current_focus!r}")
         if (
             not current_focus
             or not any(isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self)
         ):
-            # print(f"APP DEBUG: Focusing first session {sorted_sids[0]}")
             self.session_widgets[sorted_sids[0]].focus()
             return
 
