@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 
+import pytest
 from rich.console import Console
 
 from copium_loop.ui.column import SessionColumn
@@ -39,9 +39,6 @@ def test_actual_node_names_in_ui():
     # Actually, the issue is that "JOURNAL" was used instead of "JOURNALER".
     # If the old code used "JOURNAL", it would show "JOURNAL"
     assert "JOURNAL" not in output or "JOURNALER" in output
-
-
-import pytest
 
 
 @pytest.mark.asyncio

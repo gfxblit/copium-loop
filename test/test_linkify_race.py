@@ -4,10 +4,10 @@ from linkify_it import LinkifyIt
 
 
 def test_linkify_race_condition():
-    def validate_a(self, text, pos):
+    def validate_a(_self, _text, _pos):
         return 0
 
-    def validate_b(self, text, pos):
+    def validate_b(_self, _text, _pos):
         return 0
 
     errors = []
