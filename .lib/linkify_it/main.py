@@ -302,8 +302,7 @@ class LinkifyIt:
                     compiled["validate"] = val.get("validate")
                 # Add custom handler
                 elif isinstance(val.get("validate"), types.FunctionType):
-                    setattr(LinkifyIt, "func", val.get("validate"))
-                    compiled["validate"] = self.func
+                    compiled["validate"] = types.MethodType(val.get("validate"), self)
                 else:
                     raise SchemaError(name, val)
 
@@ -311,8 +310,7 @@ class LinkifyIt:
                     compiled["normalize"] = val.get("normalize")
                 # Add custom handler
                 elif isinstance(val.get("normalize"), types.FunctionType):
-                    setattr(LinkifyIt, "func", val.get("normalize"))
-                    compiled["normalize"] = self.func
+                    compiled["normalize"] = types.MethodType(val.get("normalize"), self)
                 elif not val.get("normalize"):
                     compiled["normalize"] = self._create_normalizer()
                 else:

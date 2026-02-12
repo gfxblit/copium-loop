@@ -11,9 +11,13 @@ lib_path = str(Path(__file__).parent.parent.parent / ".lib")
 if os.path.exists(lib_path) and lib_path not in sys.path:
     sys.path.insert(0, lib_path)
 
-from copium_loop.copium_loop import WorkflowManager
-from copium_loop.telemetry import Telemetry, find_latest_session, get_telemetry
-from copium_loop.ui import Dashboard
+from copium_loop.copium_loop import WorkflowManager  # noqa: E402
+from copium_loop.telemetry import (  # noqa: E402
+    Telemetry,
+    find_latest_session,
+    get_telemetry,
+)
+from copium_loop.ui import Dashboard  # noqa: E402
 
 
 async def async_main():
