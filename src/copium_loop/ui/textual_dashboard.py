@@ -200,6 +200,8 @@ class TextualDashboard(App):
         Binding("v", "toggle_stats", "Toggle Stats", show=True),
         Binding("tab", "next_session", "Next Session", show=True),
         Binding("shift+tab", "prev_session", "Prev Session", show=True),
+        Binding("right", "next_session", "Next Session", show=False),
+        Binding("left", "prev_session", "Prev Session", show=False),
         Binding("1", "switch_tmux(1)", "Tmux 1", show=False),
         Binding("2", "switch_tmux(2)", "Tmux 2", show=False),
         Binding("3", "switch_tmux(3)", "Tmux 3", show=False),
@@ -234,6 +236,7 @@ class TextualDashboard(App):
         self.set_interval(1.0, self.update_from_logs)
         self.set_interval(2.0, self.update_footer_stats)
         self.update_from_logs()
+        self.run_worker(self.update_footer_stats())
 
     async def update_footer_stats(self) -> None:
         """Updates the stats bar with system/codex stats."""
@@ -264,7 +267,10 @@ class TextualDashboard(App):
             for part in stats_parts:
                 full_stats.append(part)
 
-            self.query_one("#stats-bar", Static).update(full_stats)
+            try:
+                self.query_one("#stats-bar", Static).update(full_stats)
+            except Exception:
+                pass
 
     def get_sorted_session_ids(self) -> list[str]:
         """Returns session IDs sorted by status (running first) and then by time."""
@@ -276,7 +282,7 @@ class TextualDashboard(App):
             s = widget.session_column
             is_running = s.workflow_status == "running"
             if is_running:
-                return (0, s.activated_at, sid)
+                return (0, -s.activated_at, sid)
             else:
                 return (1, -s.completed_at, sid)
 
