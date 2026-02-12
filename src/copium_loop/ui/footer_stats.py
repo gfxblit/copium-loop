@@ -25,7 +25,9 @@ class CodexStatsStrategy(FooterStatsStrategy):
         data = await self.client.get_usage_async()
         return self._format_stats(data)
 
-    def _format_stats(self, data: dict | None) -> list[Text | str | tuple[str, str]] | None:
+    def _format_stats(
+        self, data: dict | None
+    ) -> list[Text | str | tuple[str, str]] | None:
         if data is None:
             return None
 

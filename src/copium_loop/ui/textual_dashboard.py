@@ -338,9 +338,8 @@ class TextualDashboard(App):
             return
 
         current_focus = self.focused
-        if (
-            not current_focus
-            or not any(isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self)
+        if not current_focus or not any(
+            isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self
         ):
             self.session_widgets[sorted_sids[0]].focus()
             return
@@ -365,9 +364,8 @@ class TextualDashboard(App):
             return
 
         current_focus = self.focused
-        if (
-            not current_focus
-            or not any(isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self)
+        if not current_focus or not any(
+            isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self
         ):
             self.session_widgets[sorted_sids[-1]].focus()
             return
