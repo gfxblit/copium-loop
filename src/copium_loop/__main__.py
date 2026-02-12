@@ -55,7 +55,7 @@ async def async_main():
         from copium_loop.ui import TextualDashboard
 
         app = TextualDashboard()
-        app.run()
+        await app.run_async()
         return
 
     if not os.environ.get("NTFY_CHANNEL"):
