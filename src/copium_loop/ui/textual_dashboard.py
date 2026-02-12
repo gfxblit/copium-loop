@@ -229,11 +229,15 @@ class TextualDashboard(App):
         self.set_interval(2.0, self.update_footer_stats)
         self.update_from_logs()
 
-    def update_footer_stats(self) -> None:
+    async def update_footer_stats(self) -> None:
         """Updates the stats bar with system/codex stats."""
         stats_parts = []
         for strategy in self.stats_strategies:
-            stats = strategy.get_stats()
+            if hasattr(strategy, "get_stats_async"):
+                stats = await strategy.get_stats_async()
+            else:
+                stats = strategy.get_stats()
+
             if stats:
                 if isinstance(stats, list):
                     for s in stats:
