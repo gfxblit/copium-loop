@@ -79,3 +79,81 @@ async def test_textual_dashboard_switch_tmux(tmp_path, monkeypatch):
         # Trigger switch action
         await pilot.press("1")
         assert "test-session" in switched_to
+
+
+@pytest.mark.asyncio
+async def test_textual_dashboard_toggle_stats(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "test.jsonl").write_text("{}\n")
+
+    app = TextualDashboard(log_dir=log_dir)
+    async with app.run_test() as pilot:
+        stats_bar = app.query_one("#stats-bar")
+        assert "hidden" not in stats_bar.classes
+
+        # Press 'v' to toggle
+        await pilot.press("v")
+        assert "hidden" in stats_bar.classes
+
+        # Press 'v' again to show
+        await pilot.press("v")
+        assert "hidden" not in stats_bar.classes
+
+
+@pytest.mark.asyncio
+async def test_textual_dashboard_navigation(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    # Create two sessions
+    (log_dir / "session-a.jsonl").write_text("{}\n")
+    (log_dir / "session-b.jsonl").write_text("{}\n")
+
+    app = TextualDashboard(log_dir=log_dir)
+    async with app.run_test() as pilot:
+        app.update_from_logs()
+        await pilot.pause()
+
+        # Initial focus should be on the first session (session-a or session-b depending on sort)
+        sorted_sids = app.get_sorted_session_ids()
+        assert len(sorted_sids) == 2
+
+        # Press tab to focus first session
+        app.action_next_session()
+        await pilot.pause()
+        focused = app.focused
+        if not isinstance(focused, SessionWidget):
+            focused = next(
+                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
+            )
+        assert focused.session_id == sorted_sids[0]
+
+        # Press tab again to focus second session
+        app.action_next_session()
+        await pilot.pause()
+        focused = app.focused
+        if not isinstance(focused, SessionWidget):
+            focused = next(
+                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
+            )
+        assert focused.session_id == sorted_sids[1]
+
+        # Press tab again to wrap around
+        app.action_next_session()
+        await pilot.pause()
+        focused = app.focused
+        if not isinstance(focused, SessionWidget):
+            focused = next(
+                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
+            )
+        assert focused.session_id == sorted_sids[0]
+
+        # Press shift+tab to go back
+        app.action_prev_session()
+        await pilot.pause()
+        focused = app.focused
+        if not isinstance(focused, SessionWidget):
+            focused = next(
+                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
+            )
+        assert focused.session_id == sorted_sids[1]

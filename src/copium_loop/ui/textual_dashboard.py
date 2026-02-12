@@ -62,6 +62,7 @@ class SessionWidget(Vertical):
 
     def __init__(self, session_id: str, **kwargs):
         super().__init__(**kwargs)
+        self.can_focus = True
         self.session_id = session_id
         self.session_column = SessionColumn(session_id)
         self.pillars = {}
@@ -331,19 +332,18 @@ class TextualDashboard(App):
             return
 
         current_focus = self.focused
+        # print(f"APP DEBUG: action_next_session current_focus={current_focus!r}")
         if (
             not current_focus
-            or not isinstance(current_focus, SessionWidget)
-            and not current_focus.ancestors_with_type(SessionWidget)
+            or not any(isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self)
         ):
+            # print(f"APP DEBUG: Focusing first session {sorted_sids[0]}")
             self.session_widgets[sorted_sids[0]].focus()
             return
 
         # Find which session widget is focused
-        current_widget = (
-            current_focus
-            if isinstance(current_focus, SessionWidget)
-            else list(current_focus.ancestors_with_type(SessionWidget))[0]
+        current_widget = next(
+            a for a in current_focus.ancestors_with_self if isinstance(a, SessionWidget)
         )
         current_sid = current_widget.session_id
 
@@ -363,16 +363,13 @@ class TextualDashboard(App):
         current_focus = self.focused
         if (
             not current_focus
-            or not isinstance(current_focus, SessionWidget)
-            and not current_focus.ancestors_with_type(SessionWidget)
+            or not any(isinstance(a, SessionWidget) for a in current_focus.ancestors_with_self)
         ):
             self.session_widgets[sorted_sids[-1]].focus()
             return
 
-        current_widget = (
-            current_focus
-            if isinstance(current_focus, SessionWidget)
-            else list(current_focus.ancestors_with_type(SessionWidget))[0]
+        current_widget = next(
+            a for a in current_focus.ancestors_with_self if isinstance(a, SessionWidget)
         )
         current_sid = current_widget.session_id
 
