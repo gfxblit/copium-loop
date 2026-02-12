@@ -142,7 +142,7 @@ class TextualDashboard(App):
 
     CSS = """
     SessionWidget {
-        width: 45;
+        width: 50;
         height: 100%;
         border: solid yellow;
         margin: 1;
@@ -184,6 +184,10 @@ class TextualDashboard(App):
         padding: 0 1;
     }
 
+    #stats-bar.hidden {
+        display: none;
+    }
+
     Footer {
         height: 1;
     }
@@ -192,6 +196,7 @@ class TextualDashboard(App):
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("v", "toggle_stats", "Toggle Stats", show=True),
         Binding("tab", "next_session", "Next Session", show=True),
         Binding("shift+tab", "prev_session", "Prev Session", show=True),
         Binding("1", "switch_tmux(1)", "Tmux 1", show=False),
@@ -389,3 +394,8 @@ class TextualDashboard(App):
 
     def action_refresh(self) -> None:
         self.update_from_logs()
+
+    def action_toggle_stats(self) -> None:
+        """Toggles the visibility of the stats bar."""
+        stats_bar = self.query_one("#stats-bar")
+        stats_bar.toggle_class("hidden")
