@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 from datetime import datetime
@@ -68,7 +69,11 @@ class SessionWidget(Vertical):
         self.pillars = {}
 
     def compose(self) -> ComposeResult:
-        yield Static(f"Session: {self.session_id}", classes="session-header")
+        yield Static(
+            f"Session: {self.session_id}",
+            classes="session-header",
+            id=f"header-{self.session_id}",
+        )
         yield WorkflowStatusWidget(id=f"workflow-status-{self.session_id}")
         with VerticalScroll(id=f"scroll-{self.session_id}"):
             for node_id in self.session_column.pillars:
@@ -125,6 +130,14 @@ class SessionWidget(Vertical):
                             pillar.add_line(line)
                 elif etype == "status":
                     pillar.set_status(data, event.get("timestamp"))
+
+        # Update session header with time info
+        header = self.query_one(f"#header-{self.session_id}", Static)
+        time_str = ""
+        if self.session_column.activated_at > 0:
+            dt = datetime.fromtimestamp(self.session_column.activated_at)
+            time_str = f" [{dt.strftime('%H:%M:%S')}]"
+        header.update(f"Session: {self.session_id}{time_str}")
 
         # Update workflow status widget
         status_widget = self.query_one(
@@ -216,6 +229,7 @@ class TextualDashboard(App):
     def __init__(self, log_dir: Path | None = None, **kwargs):
         super().__init__(**kwargs)
         self.log_dir = log_dir or (Path.home() / ".copium" / "logs")
+        self.title = f"Copium Loop Monitor - {self.log_dir}"
         self.log_offsets = {}
         self.session_widgets = {}
         self.codexbar_client = CodexbarClient()
@@ -267,10 +281,8 @@ class TextualDashboard(App):
             for part in stats_parts:
                 full_stats.append(part)
 
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one("#stats-bar", Static).update(full_stats)
-            except Exception:
-                pass
 
     def get_sorted_session_ids(self) -> list[str]:
         """Returns session IDs sorted by status (running first) and then by time."""

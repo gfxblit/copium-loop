@@ -2,7 +2,11 @@ import json
 
 import pytest
 
-from copium_loop.ui.textual_dashboard import SessionWidget, TextualDashboard
+from copium_loop.ui.textual_dashboard import (
+    PillarWidget,
+    SessionWidget,
+    TextualDashboard,
+)
 
 
 @pytest.mark.asyncio
@@ -157,3 +161,44 @@ async def test_textual_dashboard_navigation(tmp_path):
                 a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
             )
         assert focused.session_id == sorted_sids[1]
+
+
+@pytest.mark.asyncio
+async def test_textual_dashboard_discovered_pillar(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log_file = log_dir / "test.jsonl"
+    log_file.write_text("{}\n")
+
+    app = TextualDashboard(log_dir=log_dir)
+    async with app.run_test() as pilot:
+        app.update_from_logs()
+        await pilot.pause()
+
+        session_widget = app.query_one(SessionWidget)
+
+        # Initially, 'new-node' should not be in pillars
+        assert "new-node" not in session_widget.pillars
+
+        # Add an event for a new node
+        with open(log_file, "a") as f:
+            f.write(
+                json.dumps(
+                    {
+                        "node": "new-node",
+                        "event_type": "status",
+                        "data": "active",
+                        "timestamp": "2026-02-09T12:00:01",
+                    }
+                )
+                + "\n"
+            )
+
+        app.update_from_logs()
+        await pilot.pause()
+
+        # Now it should be there
+        assert "new-node" in session_widget.pillars
+        new_pillar_widget = app.query_one("#pillar-test-new-node", PillarWidget)
+        assert new_pillar_widget.phase_name == "new-node"
+        assert new_pillar_widget.pillar.status == "active"
