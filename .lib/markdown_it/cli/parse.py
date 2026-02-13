@@ -50,6 +50,7 @@ def interactive() -> None:
     Python REPL style.
     """
     print_heading()
+    md = MarkdownIt()
     contents = []
     more = False
     while True:
@@ -57,7 +58,7 @@ def interactive() -> None:
             prompt, more = ("... ", True) if more else (">>> ", True)
             contents.append(input(prompt) + "\n")
         except EOFError:
-            print("\n" + MarkdownIt().render("\n".join(contents)), end="")
+            print("\n" + md.render("\n".join(contents)), end="")
             more = False
             contents = []
         except KeyboardInterrupt:

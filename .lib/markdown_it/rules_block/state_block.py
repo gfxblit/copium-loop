@@ -171,10 +171,10 @@ class StateBlock(StateBase):
         """Skip character code from given position."""
         while True:
             try:
-                current = self.srcCharCode[pos]
+                current = self.src[pos]
             except IndexError:
                 break
-            if current != code:
+            if ord(current) != code:
                 break
             pos += 1
         return pos
@@ -197,7 +197,7 @@ class StateBlock(StateBase):
             return pos
         while pos > minimum:
             pos -= 1
-            if code != self.srcCharCode[pos]:
+            if code != ord(self.src[pos]):
                 return pos + 1
         return pos
 
