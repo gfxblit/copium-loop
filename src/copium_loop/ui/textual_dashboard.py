@@ -23,10 +23,11 @@ class TextualDashboard(App):
     }
 
     #stats-bar {
-        background: $accent;
+        background: $surface;
         color: white;
-        height: 1;
+        height: 2;
         padding: 0 1;
+        border-top: solid blue;
     }
 
     #stats-bar.hidden {
