@@ -81,7 +81,7 @@ class SessionWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"Session: {self.session_id}",
+            f"{self.session_id}",
             classes="session-header",
             id=f"header-{self.session_id}",
         )
@@ -104,7 +104,7 @@ class SessionWidget(Vertical):
             if self.session_column.activated_at > 0:
                 dt = datetime.fromtimestamp(self.session_column.activated_at)
                 time_str = f" [{dt.strftime('%H:%M:%S')}]"
-            header.update(f"Session: {self.session_id}{time_str}")
+            header.update(f"{self.session_id}{time_str}")
 
             status_widget = self.query_one(
                 f"#workflow-status-{self.session_id}", WorkflowStatusWidget
