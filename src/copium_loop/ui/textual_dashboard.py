@@ -5,7 +5,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Footer, Static
 
 from ..codexbar import CodexbarClient
 from .footer_stats import CodexStatsStrategy, SystemStatsStrategy
@@ -74,7 +74,6 @@ class TextualDashboard(App):
         self.enable_polling = enable_polling
 
     def compose(self) -> ComposeResult:
-        yield Header()
         yield Horizontal(id="sessions-container")
         yield Static(id="stats-bar")
         yield Footer()
