@@ -53,22 +53,23 @@ class SessionWidget(Vertical):
     SessionWidget {
         width: 1fr;
         height: 100%;
-        border: solid yellow;
+        border: solid green;
         margin: 0 1;
         min-width: 40;
     }
 
     SessionWidget:focus-within {
-        border: double yellow;
+        border: double cyan;
     }
 
     .session-header {
-        background: yellow;
-        color: black;
+        background: $surface;
+        color: yellow;
         text-align: center;
         text-style: bold;
         height: 3;
         content-align: center middle;
+        border-bottom: solid yellow;
     }
     """
 
