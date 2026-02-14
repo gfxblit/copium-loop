@@ -1,5 +1,7 @@
+import asyncio
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +14,13 @@ class Telemetry:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        # Use a single worker to ensure log order and thread safety for file appending
+        self._executor = ThreadPoolExecutor(max_workers=1)
+
+    def _write_event(self, event: dict):
+        """Writes the event to the log file (runs in thread)."""
+        with open(self.log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event) + "\n")
 
     def log(self, node: str, event_type: str, data: str | dict):
         """Logs an event to the session's .jsonl file."""
@@ -22,8 +31,13 @@ class Telemetry:
             "event_type": event_type,  # 'status', 'output', 'metric'
             "data": data,
         }
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event) + "\n")
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(self._executor, self._write_event, event)
+        except RuntimeError:
+            # No running event loop, write synchronously
+            self._write_event(event)
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""
