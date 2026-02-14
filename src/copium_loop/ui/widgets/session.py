@@ -67,9 +67,10 @@ class SessionWidget(Vertical):
         color: yellow;
         text-align: center;
         text-style: bold;
-        height: 3;
+        height: 1;
         content-align: center middle;
-        border-bottom: solid yellow;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     """
 
@@ -101,11 +102,7 @@ class SessionWidget(Vertical):
 
         try:
             header = self.query_one(f"#header-{self.session_id}", Static)
-            time_str = ""
-            if self.session_column.activated_at > 0:
-                dt = datetime.fromtimestamp(self.session_column.activated_at)
-                time_str = f" [{dt.strftime('%H:%M:%S')}]"
-            header.update(f"{self.session_id}{time_str}")
+            header.update(f"{self.session_id}")
 
             status_widget = self.query_one(
                 f"#workflow-status-{self.session_id}", WorkflowStatusWidget
