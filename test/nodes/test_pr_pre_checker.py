@@ -73,9 +73,7 @@ class TestPRPreChecker:
 
     @patch.object(pr_pre_checker_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
-    async def test_pr_pre_checker_dirty(
-        self, mock_is_dirty, mock_validate_git
-    ):
+    async def test_pr_pre_checker_dirty(self, mock_is_dirty, mock_validate_git):
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = True
         state: AgentState = {"retry_count": 0}
