@@ -171,6 +171,31 @@ class TestArchitectNode:
             assert "replace" in system_prompt
 
     @pytest.mark.asyncio
+    async def test_architect_prompt_contains_solid_principles(self):
+        """Test that architect prompt contains all five SOLID principles."""
+        with patch.object(
+            architect_module, "invoke_gemini", new_callable=AsyncMock
+        ) as mock_gemini:
+            mock_gemini.return_value = "VERDICT: OK"
+
+            state = {
+                "test_output": "PASS",
+                "retry_count": 0,
+                "initial_commit_hash": "abc",
+            }
+            await architect(state)
+
+            mock_gemini.assert_called_once()
+            args = mock_gemini.call_args[0]
+            system_prompt = args[0]
+
+            assert "Single Responsibility Principle (SRP)" in system_prompt
+            assert "Open/Closed Principle (OCP)" in system_prompt
+            assert "Liskov Substitution Principle (LSP)" in system_prompt
+            assert "Interface Segregation Principle (ISP)" in system_prompt
+            assert "Dependency Inversion Principle (DIP)" in system_prompt
+
+    @pytest.mark.asyncio
     async def test_architect_skips_llm_on_empty_diff(self):
         """Test that architect returns OK immediately if git diff is empty, without invoking LLM."""
         self.mock_get_diff.return_value = ""  # Force empty diff
