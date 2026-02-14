@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langgraph.graph.state import CompiledStateGraph
 
+from copium_loop.copium_loop import WorkflowManager
 from copium_loop.graph import START, create_graph
 
 
@@ -116,6 +117,12 @@ class TestContinueFeature:
 
 class TestEnvironmentVerification:
     """Tests for environment verification."""
+
+    @pytest.fixture(autouse=True)
+    def reset_env_verification(self):
+        WorkflowManager._environment_verified = False
+        yield
+        WorkflowManager._environment_verified = False
 
     @pytest.mark.asyncio
     async def test_verify_environment_success(self, mock_run_command, workflow):

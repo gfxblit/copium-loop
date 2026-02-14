@@ -22,6 +22,8 @@ class WorkflowManager:
     Orchestrates the coding, testing, and review phases.
     """
 
+    _environment_verified = False
+
     def __init__(self, start_node: str | None = None, verbose: bool = False):
         self.graph = None
         self.start_node = start_node
@@ -98,6 +100,9 @@ class WorkflowManager:
 
     async def verify_environment(self) -> bool:
         """Verifies that the necessary CLI tools are installed."""
+        if WorkflowManager._environment_verified:
+            return True
+
         tools = ["git", "gh", "gemini"]
         for tool in tools:
             try:
@@ -108,6 +113,8 @@ class WorkflowManager:
             except Exception:
                 print(f"Error: {tool} is not installed or not in PATH.")
                 return False
+
+        WorkflowManager._environment_verified = True
         return True
 
     async def run(self, input_prompt: str, initial_state: dict | None = None):
