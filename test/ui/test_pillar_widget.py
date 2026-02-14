@@ -1,20 +1,17 @@
 import pytest
-from textual.app import App
+from textual.app import App, ComposeResult
 
-from copium_loop.ui.textual_dashboard import PillarWidget
-
-# Add the packages directory to sys.path
+from copium_loop.ui.pillar import MatrixPillar
+from copium_loop.ui.widgets.pillar import PillarWidget
 
 
 class MockApp(App):
-    def compose(self):
+    def compose(self) -> ComposeResult:
         yield PillarWidget("coder", id="pillar-coder")
 
 
 @pytest.mark.asyncio
 async def test_pillar_widget_updates_content():
-    from copium_loop.ui.pillar import MatrixPillar
-
     app = MockApp()
     async with app.run_test():
         pillar_widget = app.query_one(PillarWidget)
@@ -22,7 +19,6 @@ async def test_pillar_widget_updates_content():
         pillar.add_line("First line")
         pillar_widget.update_from_pillar(pillar)
 
-        # In Textual, we might need to wait for a refresh or check the internal state
         assert "First line" in str(pillar_widget.pillar.buffer)
 
         pillar.set_status("active")

@@ -2,11 +2,9 @@ import json
 
 import pytest
 
-from copium_loop.ui.textual_dashboard import (
-    PillarWidget,
-    SessionWidget,
-    TextualDashboard,
-)
+from copium_loop.ui.textual_dashboard import TextualDashboard
+from copium_loop.ui.widgets.pillar import PillarWidget
+from copium_loop.ui.widgets.session import SessionWidget
 
 
 @pytest.mark.asyncio
@@ -27,10 +25,13 @@ async def test_textual_dashboard_discovery(tmp_path):
         + "\n"
     )
 
-    app = TextualDashboard(log_dir=log_dir)
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
     async with app.run_test() as pilot:
+        # Trigger update
+        await app.update_from_logs()
+        await pilot.pause()
+
         # Check if session widget was created
-        assert "test-session" in app.session_widgets
         session_widget = app.query_one(SessionWidget)
         assert session_widget.session_id == "test-session"
 
@@ -48,11 +49,20 @@ async def test_textual_dashboard_discovery(tmp_path):
                 + "\n"
             )
 
-        # Trigger update (normally happens via interval)
-        app.update_from_logs()
-        await pilot.pause()
+        # Trigger update
+        await app.update_from_logs()
 
-        coder_pillar = app.query_one("#pillar-test-session-coder")
+        # Wait for pillar mount
+        import asyncio
+
+        for _ in range(10):
+            try:
+                app.query_one("#pillar-test-session-coder", PillarWidget)
+                break
+            except Exception:
+                await asyncio.sleep(0.1)
+
+        coder_pillar = app.query_one("#pillar-test-session-coder", PillarWidget)
         assert coder_pillar.pillar.status == "active"
 
 
@@ -61,9 +71,19 @@ async def test_textual_dashboard_switch_tmux(tmp_path, monkeypatch):
     # Create a dummy log file
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
-    (log_dir / "test-session.jsonl").write_text("{}\n")
+    (log_dir / "test-session.jsonl").write_text(
+        json.dumps(
+            {
+                "node": "workflow",
+                "event_type": "workflow_status",
+                "data": "running",
+                "timestamp": "2026-02-09T12:00:00",
+            }
+        )
+        + "\n"
+    )
 
-    app = TextualDashboard(log_dir=log_dir)
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
 
     switched_to = []
 
@@ -75,10 +95,10 @@ async def test_textual_dashboard_switch_tmux(tmp_path, monkeypatch):
 
     async with app.run_test() as pilot:
         # We need to wait for the session to be discovered
-        app.update_from_logs()
+        await app.update_from_logs()
         await pilot.pause()
 
-        assert "test-session" in app.session_widgets
+        assert app.query(SessionWidget)
 
         # Trigger switch action
         await pilot.press("1")
@@ -91,7 +111,7 @@ async def test_textual_dashboard_toggle_stats(tmp_path):
     log_dir.mkdir()
     (log_dir / "test.jsonl").write_text("{}\n")
 
-    app = TextualDashboard(log_dir=log_dir)
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
     async with app.run_test() as pilot:
         stats_bar = app.query_one("#stats-bar")
         assert "hidden" not in stats_bar.classes
@@ -106,61 +126,54 @@ async def test_textual_dashboard_toggle_stats(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_textual_dashboard_navigation(tmp_path):
+async def test_textual_dashboard_pagination(tmp_path):
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
-    # Create two sessions
-    (log_dir / "session-a.jsonl").write_text("{}\n")
-    (log_dir / "session-b.jsonl").write_text("{}\n")
 
-    app = TextualDashboard(log_dir=log_dir)
+    # Create 4 sessions (assuming default page size 3)
+    # Timestamps ensure sorted order: s1, s2, s3, s4
+    for i in range(1, 5):
+        (log_dir / f"s{i}.jsonl").write_text(
+            json.dumps(
+                {
+                    "node": "workflow",
+                    "event_type": "workflow_status",
+                    "data": "running",
+                    "timestamp": f"2026-02-09T12:00:0{i}",
+                }
+            )
+            + "\n"
+        )
+
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
+    # Ensure stable sort
+    app.manager.sessions_per_page = 3
+
     async with app.run_test() as pilot:
-        app.update_from_logs()
+        await app.update_from_logs()
         await pilot.pause()
 
-        # Initial focus should be on the first session (session-a or session-b depending on sort)
-        sorted_sids = app.get_sorted_session_ids()
-        assert len(sorted_sids) == 2
+        # Page 1: s1, s2, s3 (oldest first)
+        widgets = app.query(SessionWidget)
+        assert len(widgets) == 3
+        sids = [w.session_id for w in widgets]
+        assert sids == ["s1", "s2", "s3"]
 
-        # Press tab to focus first session
-        app.action_next_session()
-        await pilot.pause()
-        focused = app.focused
-        if not isinstance(focused, SessionWidget):
-            focused = next(
-                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
-            )
-        assert focused.session_id == sorted_sids[0]
+        # Press Tab to go to next page
+        await app.action_next_page()
 
-        # Press tab again to focus second session
-        app.action_next_session()
-        await pilot.pause()
-        focused = app.focused
-        if not isinstance(focused, SessionWidget):
-            focused = next(
-                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
-            )
-        assert focused.session_id == sorted_sids[1]
+        # Wait for UI update
+        import asyncio
 
-        # Press tab again to wrap around
-        app.action_next_session()
-        await pilot.pause()
-        focused = app.focused
-        if not isinstance(focused, SessionWidget):
-            focused = next(
-                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
-            )
-        assert focused.session_id == sorted_sids[0]
+        for _ in range(10):
+            widgets = app.query(SessionWidget)
+            if len(widgets) == 1 and widgets[0].session_id == "s4":
+                break
+            await asyncio.sleep(0.1)
 
-        # Press shift+tab to go back
-        app.action_prev_session()
-        await pilot.pause()
-        focused = app.focused
-        if not isinstance(focused, SessionWidget):
-            focused = next(
-                a for a in focused.ancestors_with_self if isinstance(a, SessionWidget)
-            )
-        assert focused.session_id == sorted_sids[1]
+        widgets = app.query(SessionWidget)
+        assert len(widgets) == 1
+        assert widgets[0].session_id == "s4"
 
 
 @pytest.mark.asyncio
@@ -170,9 +183,9 @@ async def test_textual_dashboard_discovered_pillar(tmp_path):
     log_file = log_dir / "test.jsonl"
     log_file.write_text("{}\n")
 
-    app = TextualDashboard(log_dir=log_dir)
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
     async with app.run_test() as pilot:
-        app.update_from_logs()
+        await app.update_from_logs()
         await pilot.pause()
 
         session_widget = app.query_one(SessionWidget)
@@ -194,11 +207,20 @@ async def test_textual_dashboard_discovered_pillar(tmp_path):
                 + "\n"
             )
 
-        app.update_from_logs()
-        await pilot.pause()
+        await app.update_from_logs()
+
+        # Wait for pillar mount
+        import asyncio
+
+        for _ in range(10):
+            try:
+                app.query_one("#pillar-test-new-node", PillarWidget)
+                break
+            except Exception:
+                await asyncio.sleep(0.1)
 
         # Now it should be there
         assert "new-node" in session_widget.pillars
         new_pillar_widget = app.query_one("#pillar-test-new-node", PillarWidget)
-        assert new_pillar_widget.phase_name == "new-node"
+        assert new_pillar_widget.node_id == "new-node"
         assert new_pillar_widget.pillar.status == "active"

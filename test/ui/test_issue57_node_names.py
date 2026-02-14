@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -35,9 +36,6 @@ def test_actual_node_names_in_ui():
         )
 
     # Specifically check that "JOURNAL" (the old name) is NOT there as a standalone header
-    # Note: "JOURNAL" might be part of "JOURNALER", so we check for boundary or just ensure "JOURNALER" is there.
-    # Actually, the issue is that "JOURNAL" was used instead of "JOURNALER".
-    # If the old code used "JOURNAL", it would show "JOURNAL"
     assert "JOURNAL" not in output or "JOURNALER" in output
 
 
@@ -48,9 +46,9 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
     log_dir.mkdir()
     log_file = log_dir / "test_session.jsonl"
 
-    app = TextualDashboard(log_dir=log_dir)
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
 
-    async with app.run_test() as pilot:
+    async with app.run_test():
         # Create an event for a completely new node
         event = {
             "node": "security_scanner",
@@ -63,17 +61,22 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
             f.write(json.dumps(event) + "\n")
 
         # Update from logs
-        app.update_from_logs()
-        await pilot.pause()
+        await app.update_from_logs()
 
-        assert "test_session" in app.session_widgets
-        widget = app.session_widgets["test_session"]
+        # Wait for the pillar widget to appear (it's mounted by a background worker)
+        widget = app.query_one("#session-test_session")
+        assert widget is not None
 
-        # Check if the new node was added to pillars
+        # Check if the new node was added to pillars model
         assert "security_scanner" in widget.session_column.pillars
-        assert (
-            widget.session_column.pillars["security_scanner"].name == "security_scanner"
-        )
+
+        # Wait for widget mount
+        for _ in range(10):
+            try:
+                app.query_one("#pillar-test_session-security_scanner")
+                break
+            except Exception:
+                await asyncio.sleep(0.1)
 
         # Verify it renders in Textual
         pillar_widget = app.query_one("#pillar-test_session-security_scanner")
