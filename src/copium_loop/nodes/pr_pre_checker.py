@@ -2,12 +2,11 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop.git import (
     fetch,
-    get_current_branch,
     is_dirty,
-    is_git_repo,
     rebase,
     rebase_abort,
 )
+from copium_loop.nodes.utils import validate_git_context
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -20,26 +19,9 @@ async def pr_pre_checker(state: AgentState) -> dict:
     retry_count = state.get("retry_count", 0)
 
     try:
-        if not await is_git_repo(node="pr_pre_checker"):
-            msg = "Not a git repository. Skipping PR creation.\n"
-            telemetry.log_output("pr_pre_checker", msg)
-            print(msg, end="")
-            telemetry.log_status("pr_pre_checker", "success")
+        # 1. Validate git context
+        if not await validate_git_context("pr_pre_checker"):
             return {"review_status": "pr_skipped"}
-
-        # 1. Check feature branch
-        branch_name = await get_current_branch(node="pr_pre_checker")
-
-        if branch_name in ["main", "master", ""]:
-            msg = "Not on a feature branch. Skipping PR creation.\n"
-            telemetry.log_output("pr_pre_checker", msg)
-            print(msg, end="")
-            telemetry.log_status("pr_pre_checker", "success")
-            return {"review_status": "pr_skipped"}
-
-        msg = f"On feature branch: {branch_name}\n"
-        telemetry.log_output("pr_pre_checker", msg)
-        print(msg, end="")
 
         # 2. Check uncommitted changes
         if await is_dirty(node="pr_pre_checker"):
