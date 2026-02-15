@@ -6,14 +6,14 @@ from copium_loop.engine.jules import JulesEngine
 def engine_factory(engine_type: str | None = None) -> LLMEngine:
     """
     Factory function to create an LLM engine instance.
-    
+
     Args:
         engine_type: The type of engine to create ("gemini" or "jules").
                      Defaults to "gemini" if None or empty.
-                     
+
     Returns:
         An instance of LLMEngine.
-        
+
     Raises:
         ValueError: If the engine_type is unknown.
     """

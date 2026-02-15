@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+from pathlib import Path
 
 from copium_loop.engine.base import LLMEngine
 from copium_loop.shell import run_command, stream_subprocess
@@ -101,6 +102,9 @@ class JulesEngine(LLMEngine):
 
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
+
+        # Ensure JULES_OUTPUT.txt is removed before starting to avoid reading stale results
+        Path(OUTPUT_FILE).unlink(missing_ok=True)
 
         # Instruct Jules to write to JULES_OUTPUT.txt
         prompt_with_instr = (
