@@ -32,50 +32,25 @@ async def test_pagination_key_bindings(tmp_path):
         assert len(app.query(SessionWidget)) == 3
         assert app.manager.current_page == 0
 
+        async def check_pagination(key, expected_page, expected_count):
+            await pilot.press(key)
+            await pilot.pause()
+            assert app.manager.current_page == expected_page
+            assert len(app.query(SessionWidget)) == expected_count
+
+            await app.update_footer_stats()
+            stats_text = str(app.query_one("#stats-bar", Static).render())
+            assert f"Page {expected_page + 1}/2" in stats_text
+
+        # Test initial state
         await app.update_footer_stats()
         stats_text = str(app.query_one("#stats-bar", Static).render())
         assert "Page 1/2" in stats_text
 
-        # Test 'right' key
-        await pilot.press("right")
-        await pilot.pause()
-        assert app.manager.current_page == 1
-        assert len(app.query(SessionWidget)) == 2
-
-        await app.update_footer_stats()
-        stats_text = str(app.query_one("#stats-bar", Static).render())
-        assert "Page 2/2" in stats_text
-
-        # Test 'left' key
-        await pilot.press("left")
-        await pilot.pause()
-        assert app.manager.current_page == 0
-        assert len(app.query(SessionWidget)) == 3
-
-        await app.update_footer_stats()
-        stats_text = str(app.query_one("#stats-bar", Static).render())
-        assert "Page 1/2" in stats_text
-
-        # Test 'n' key
-        await pilot.press("n")
-        await pilot.pause()
-        assert app.manager.current_page == 1
-        assert len(app.query(SessionWidget)) == 2
-
-        # Test 'p' key
-        await pilot.press("p")
-        await pilot.pause()
-        assert app.manager.current_page == 0
-        assert len(app.query(SessionWidget)) == 3
-
-        # Test 'tab' key
-        await pilot.press("tab")
-        await pilot.pause()
-        assert app.manager.current_page == 1
-        assert len(app.query(SessionWidget)) == 2
-
-        # Test 'shift+tab' key
-        await pilot.press("shift+tab")
-        await pilot.pause()
-        assert app.manager.current_page == 0
-        assert len(app.query(SessionWidget)) == 3
+        # Test all keys using the helper
+        await check_pagination("right", 1, 2)
+        await check_pagination("left", 0, 3)
+        await check_pagination("n", 1, 2)
+        await check_pagination("p", 0, 3)
+        await check_pagination("tab", 1, 2)
+        await check_pagination("shift+tab", 0, 3)
