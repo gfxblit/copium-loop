@@ -1,3 +1,5 @@
+import atexit
+import concurrent.futures
 import json
 import time
 from datetime import datetime
@@ -12,6 +14,12 @@ class Telemetry:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        atexit.register(self._executor.shutdown)
+
+    def flush(self):
+        """Waits for all pending log writes to complete."""
+        self._executor.submit(lambda: None).result()
 
     def log(self, node: str, event_type: str, data: str | dict):
         """Logs an event to the session's .jsonl file."""
@@ -22,6 +30,10 @@ class Telemetry:
             "event_type": event_type,  # 'status', 'output', 'metric'
             "data": data,
         }
+        self._executor.submit(self._write_event, event)
+
+    def _write_event(self, event: dict):
+        """Writes an event to disk. Called by the thread executor."""
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
 
@@ -45,6 +57,7 @@ class Telemetry:
 
     def read_log(self) -> list[dict]:
         """Reads all events from the session's log file."""
+        self.flush()
         if not self.log_file.exists():
             return []
 
