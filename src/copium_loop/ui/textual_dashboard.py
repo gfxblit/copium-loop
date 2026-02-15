@@ -40,10 +40,12 @@ class TextualDashboard(App):
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "refresh", "Refresh", show=True),
         Binding("v", "toggle_stats", "Toggle Stats", show=True),
-        Binding("tab", "next_page", "Next Page", show=True),
-        Binding("shift+tab", "prev_page", "Prev Page", show=True),
-        Binding("right", "next_session", "Focus Next", show=False),
-        Binding("left", "prev_session", "Focus Prev", show=False),
+        Binding("tab", "next_page", "Next Page", show=True, priority=True),
+        Binding("shift+tab", "prev_page", "Prev Page", show=True, priority=True),
+        Binding("right", "next_page", "Next Page", show=False),
+        Binding("left", "prev_page", "Prev Page", show=False),
+        Binding("n", "next_page", "Next Page", show=False),
+        Binding("p", "prev_page", "Prev Page", show=False),
         Binding("1", "switch_tmux(1)", "Tmux 1", show=False),
         Binding("2", "switch_tmux(2)", "Tmux 2", show=False),
         Binding("3", "switch_tmux(3)", "Tmux 3", show=False),
@@ -159,12 +161,6 @@ class TextualDashboard(App):
     async def action_prev_page(self) -> None:
         self.manager.prev_page()
         await self.update_ui()
-
-    def action_next_session(self) -> None:
-        self.screen.focus_next()
-
-    def action_prev_session(self) -> None:
-        self.screen.focus_previous()
 
     def action_switch_tmux(self, index: int) -> None:
         """Switches to the tmux session at the given index (1-based)."""
