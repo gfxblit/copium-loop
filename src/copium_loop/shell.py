@@ -121,6 +121,11 @@ class ProcessMonitor:
                     )
 
 
+# Pre-compile regexes for performance
+ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-9;]*[a-zA-Z]")
+CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
+
 def _clean_chunk(chunk: str | bytes) -> str:
     """
     Cleans a chunk of output by removing null bytes, non-printable control
@@ -136,10 +141,10 @@ def _clean_chunk(chunk: str | bytes) -> str:
         return str(chunk)
 
     # Remove ANSI escape codes
-    without_ansi = re.sub(r"\x1B\[[0-9;]*[a-zA-Z]", "", chunk)
+    without_ansi = ANSI_ESCAPE_RE.sub("", chunk)
 
     # Remove disruptive control characters (excluding TAB, LF, CR)
-    return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
+    return CONTROL_CHAR_RE.sub("", without_ansi)
 
 
 async def stream_subprocess(
@@ -162,7 +167,8 @@ async def stream_subprocess(
         command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env
     )
 
-    full_output = ""
+    full_output_chunks = []
+    current_output_len = 0
     logger = StreamLogger(node)
     start_time = time.monotonic()
 
@@ -176,10 +182,11 @@ async def stream_subprocess(
     )
 
     async def read_stream(stream, is_stderr):
-        nonlocal full_output
+        nonlocal current_output_len
         while True:
             try:
-                chunk = await stream.read(1024)
+                # Increased buffer size for better I/O performance
+                chunk = await stream.read(8192)
             except (asyncio.CancelledError, Exception):
                 break
             if not chunk:
@@ -191,13 +198,17 @@ async def stream_subprocess(
                 if not is_stderr:
                     logger.process_chunk(decoded)
 
-                if len(full_output) < MAX_OUTPUT_SIZE:
-                    full_output += decoded
-                    if len(full_output) >= MAX_OUTPUT_SIZE:
-                        full_output = (
-                            full_output[:MAX_OUTPUT_SIZE]
-                            + "\n[... Output Truncated ...]"
-                        )
+                if current_output_len < MAX_OUTPUT_SIZE:
+                    decoded_len = len(decoded)
+                    if current_output_len + decoded_len > MAX_OUTPUT_SIZE:
+                        remaining = MAX_OUTPUT_SIZE - current_output_len
+                        decoded = decoded[:remaining]
+                        full_output_chunks.append(decoded)
+                        full_output_chunks.append("\n[... Output Truncated ...]")
+                        current_output_len = MAX_OUTPUT_SIZE
+                    else:
+                        full_output_chunks.append(decoded)
+                        current_output_len += decoded_len
 
     read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
     read_stderr_task = None
@@ -253,6 +264,7 @@ async def stream_subprocess(
     else:
         exit_code = process.returncode if process.returncode is not None else 0
 
+    full_output = "".join(full_output_chunks)
     return full_output, exit_code, monitor.timed_out, monitor.timeout_message
 
 
