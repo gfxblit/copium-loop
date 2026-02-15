@@ -17,6 +17,7 @@ async def test_system_stats_strategy_removed_from_dashboard(tmp_path):
     assert len(strategies) == 1
     assert strategies[0] == CodexStatsStrategy
 
+
 @pytest.mark.asyncio
 async def test_footer_does_not_contain_cpu_mem(tmp_path):
     log_dir = tmp_path / "logs"
