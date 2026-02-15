@@ -69,6 +69,7 @@ class TextualDashboard(App):
             CodexStatsStrategy(self.codexbar_client),
         ]
         self._updating = False
+        self._ui_lock = asyncio.Lock()
         self.enable_polling = enable_polling
 
     def compose(self) -> ComposeResult:
@@ -140,32 +141,35 @@ class TextualDashboard(App):
 
     async def update_ui(self) -> None:
         """Syncs the UI with the session manager's state."""
-        container = self.query_one("#sessions-container", Horizontal)
-        visible_sessions, _, _ = self.manager.get_visible_sessions()
-        visible_sids = [s.session_id for s in visible_sessions]
+        async with self._ui_lock:
+            container = self.query_one("#sessions-container", Horizontal)
+            visible_sessions, _, _ = self.manager.get_visible_sessions()
+            visible_sids = [s.session_id for s in visible_sessions]
 
-        current_sids = [w.session_id for w in container.query(SessionWidget)]
+            current_widgets = list(container.query(SessionWidget))
+            current_sids = [w.session_id for w in current_widgets]
 
-        if current_sids == visible_sids:
-            # Just refresh existing
-            existing_widgets = {w.session_id: w for w in container.query(SessionWidget)}
-            for session in visible_sessions:
-                await existing_widgets[session.session_id].refresh_ui()
-        else:
-            # Rebuild
-            await container.remove_children()
-            for session in visible_sessions:
-                w = SessionWidget(session, id=f"session-{session.session_id}")
-                await container.mount(w)
-                # w.refresh_ui() is called in w.on_mount(), which runs after mount
+            if current_sids == visible_sids:
+                # Just refresh existing
+                for widget in current_widgets:
+                    await widget.refresh_ui()
+            else:
+                # Rebuild
+                await container.remove_children()
+                for session in visible_sessions:
+                    w = SessionWidget(session, id=f"session-{session.session_id}")
+                    await container.mount(w)
+                    await w.refresh_ui()
 
     async def action_next_page(self) -> None:
         self.manager.next_page()
         await self.update_ui()
+        await self.update_footer_stats()
 
     async def action_prev_page(self) -> None:
         self.manager.prev_page()
         await self.update_ui()
+        await self.update_footer_stats()
 
     def action_switch_tmux(self, index: int) -> None:
         """Switches to the tmux session at the given index (1-based)."""

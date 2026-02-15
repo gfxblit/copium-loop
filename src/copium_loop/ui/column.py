@@ -1,5 +1,3 @@
-import time
-
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.text import Text
@@ -32,10 +30,6 @@ class SessionColumn:
 
     @workflow_status.setter
     def workflow_status(self, value: str):
-        if value == "running" and self._workflow_status != "running":
-            self.activated_at = time.time()
-        elif value in ["success", "failed"] and self._workflow_status == "running":
-            self.completed_at = time.time()
         self._workflow_status = value
 
     @property

@@ -98,7 +98,7 @@ class SessionWidget(Vertical):
             pass
 
     def on_mount(self) -> None:
-        self.run_worker(self.refresh_ui())
+        pass
 
     async def refresh_ui(self):
         """Updates the session UI based on the underlying SessionColumn state."""
