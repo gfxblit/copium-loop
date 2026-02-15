@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from copium_loop.ui.footer_stats import CodexStatsStrategy
 
