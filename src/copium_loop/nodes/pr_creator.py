@@ -5,11 +5,10 @@ from langchain_core.messages import SystemMessage
 from copium_loop.git import (
     add,
     commit,
-    get_current_branch,
     is_dirty,
-    is_git_repo,
     push,
 )
+from copium_loop.nodes.utils import validate_git_context
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -24,26 +23,10 @@ async def pr_creator(state: AgentState) -> dict:
     issue_url = state.get("issue_url", "")
 
     try:
-        if not await is_git_repo(node="pr_creator"):
-            msg = "Not a git repository. Skipping PR creation.\n"
-            telemetry.log_output("pr_creator", msg)
-            print(msg, end="")
-            telemetry.log_status("pr_creator", "success")
+        # 1. Validate git context
+        branch_name = await validate_git_context("pr_creator")
+        if not branch_name:
             return {"review_status": "pr_skipped"}
-
-        # 1. Check feature branch
-        branch_name = await get_current_branch(node="pr_creator")
-
-        if branch_name in ["main", "master", ""]:
-            msg = "Not on a feature branch. Skipping PR creation.\n"
-            telemetry.log_output("pr_creator", msg)
-            print(msg, end="")
-            telemetry.log_status("pr_creator", "success")
-            return {"review_status": "pr_skipped"}
-
-        msg = f"On feature branch: {branch_name}\n"
-        telemetry.log_output("pr_creator", msg)
-        print(msg, end="")
 
         # 2. Check uncommitted changes (expected from journaler)
         if await is_dirty(node="pr_creator"):

@@ -13,8 +13,7 @@ class TestPrCreatorNode:
     """Tests for the PR creator node."""
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
@@ -27,13 +26,10 @@ class TestPrCreatorNode:
         mock_commit,
         mock_add,
         mock_is_dirty,
-        mock_branch,
-        mock_is_git,
+        mock_validate_git,
     ):
         """Test that PR creator creates a PR successfully."""
-        mock_is_git.return_value = True
-
-        mock_branch.return_value = "feature-branch"
+        mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 0}
         mock_run.return_value = {
@@ -53,8 +49,7 @@ class TestPrCreatorNode:
         mock_commit.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
@@ -67,13 +62,10 @@ class TestPrCreatorNode:
         mock_commit,
         mock_add,
         mock_is_dirty,
-        mock_branch,
-        mock_is_git,
+        mock_validate_git,
     ):
         """Test that PR creator commits dirty files (from journaler)."""
-        mock_is_git.return_value = True
-
-        mock_branch.return_value = "feature-branch"
+        mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = True
         mock_add.return_value = {"exit_code": 0}
         mock_commit.return_value = {"exit_code": 0}
@@ -94,8 +86,7 @@ class TestPrCreatorNode:
         mock_push.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
@@ -104,13 +95,10 @@ class TestPrCreatorNode:
         mock_run,
         mock_push,
         mock_is_dirty,
-        mock_branch,
-        mock_is_git,
+        mock_validate_git,
     ):
         """Test that PR creator handles existing PR."""
-        mock_is_git.return_value = True
-
-        mock_branch.return_value = "feature-branch"
+        mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 0}
         mock_run.return_value = {
@@ -125,13 +113,10 @@ class TestPrCreatorNode:
         assert "already exists" in result["messages"][0].content
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
-    async def test_pr_creator_skips_on_main_branch(self, mock_branch, mock_is_git):
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
+    async def test_pr_creator_skips_on_main_branch(self, mock_validate_git):
         """Test that PR creator skips on main branch."""
-        mock_is_git.return_value = True
-
-        mock_branch.return_value = "main"
+        mock_validate_git.return_value = None
 
         state = {"retry_count": 0}
         result = await pr_creator(state)
@@ -139,29 +124,25 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    async def test_pr_creator_no_git(self, mock_is_git):
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
+    async def test_pr_creator_no_git(self, mock_validate_git):
         """Test that PR creator skips if not a git repository."""
-        mock_is_git.return_value = False
+        mock_validate_git.return_value = None
         result = await pr_creator({"retry_count": 0})
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     async def test_pr_creator_push_failure(
         self,
         mock_push,
         mock_is_dirty,
-        mock_branch,
-        mock_is_git,
+        mock_validate_git,
     ):
         """Test that PR creator handles push failure."""
-        mock_is_git.return_value = True
-
-        mock_branch.return_value = "feature-branch"
+        mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 1, "output": "push failed"}
 
