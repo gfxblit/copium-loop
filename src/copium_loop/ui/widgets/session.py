@@ -53,7 +53,7 @@ class SessionWidget(Vertical):
         height: 100%;
         border: solid green;
         margin: 0 1;
-        min-width: 40;
+        min-width: 8;
     }
 
     SessionWidget:focus-within {
