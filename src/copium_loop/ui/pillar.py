@@ -41,7 +41,7 @@ class MatrixPillar:
         self.name = name
         self.buffer = []
         self.status = "idle"
-        self.max_buffer = 10
+        self.max_buffer = 20
         self.last_update = time.time()
         self.start_time = None
         self.duration = None

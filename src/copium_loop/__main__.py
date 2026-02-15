@@ -5,10 +5,6 @@ import asyncio
 import os
 import sys
 
-from copium_loop.copium_loop import WorkflowManager
-from copium_loop.telemetry import Telemetry, find_latest_session, get_telemetry
-from copium_loop.ui import Dashboard
-
 
 async def async_main():
     """Main async function."""
@@ -27,7 +23,7 @@ async def async_main():
         "--monitor",
         "-m",
         action="store_true",
-        help="Start the Matrix visualization monitor",
+        help="Start the Textual-based TUI monitor",
     )
     parser.add_argument(
         "--session", type=str, help="Specific session ID to monitor or continue"
@@ -43,12 +39,18 @@ async def async_main():
     args = parser.parse_args()
 
     if args.monitor:
-        dashboard = Dashboard()
-        try:
-            dashboard.run_monitor(args.session)
-        except KeyboardInterrupt:
-            sys.exit(0)
+        from copium_loop.ui import TextualDashboard
+
+        app = TextualDashboard()
+        await app.run_async()
         return
+
+    from copium_loop.copium_loop import WorkflowManager
+    from copium_loop.telemetry import (
+        Telemetry,
+        find_latest_session,
+        get_telemetry,
+    )
 
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")

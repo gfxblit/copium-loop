@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 # Add src to sys.path to ensure local package is used during tests
-src_path = str(Path(__file__).parent.parent / "src")
+root_path = Path(__file__).parent.parent
+src_path = str(root_path / "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 

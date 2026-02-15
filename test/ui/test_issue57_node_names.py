@@ -1,11 +1,11 @@
+import asyncio
 import json
-import tempfile
-from pathlib import Path
 
+import pytest
 from rich.console import Console
 
 from copium_loop.ui.column import SessionColumn
-from copium_loop.ui.dashboard import Dashboard
+from copium_loop.ui.textual_dashboard import TextualDashboard
 
 
 def test_actual_node_names_in_ui():
@@ -36,20 +36,19 @@ def test_actual_node_names_in_ui():
         )
 
     # Specifically check that "JOURNAL" (the old name) is NOT there as a standalone header
-    # Note: "JOURNAL" might be part of "JOURNALER", so we check for boundary or just ensure "JOURNALER" is there.
-    # Actually, the issue is that "JOURNAL" was used instead of "JOURNALER".
-    # If the old code used "JOURNAL", it would show "JOURNAL"
     assert "JOURNAL" not in output or "JOURNALER" in output
 
 
-def test_dynamic_node_discovery_in_ui():
+@pytest.mark.asyncio
+async def test_dynamic_node_discovery_in_ui(tmp_path):
     """Verify that new nodes appearing in logs are dynamically added to the UI."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        dashboard = Dashboard()
-        dashboard.log_dir = Path(tmp_dir)
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log_file = log_dir / "test_session.jsonl"
 
-        log_file = dashboard.log_dir / "test_session.jsonl"
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
 
+    async with app.run_test() as pilot:
         # Create an event for a completely new node
         event = {
             "node": "security_scanner",
@@ -62,20 +61,24 @@ def test_dynamic_node_discovery_in_ui():
             f.write(json.dumps(event) + "\n")
 
         # Update from logs
-        dashboard.update_from_logs()
+        await app.update_from_logs()
+        await pilot.pause()
 
-        assert "test_session" in dashboard.sessions
-        session = dashboard.sessions["test_session"]
+        # Wait for the pillar widget to appear (it's mounted by a background worker)
+        widget = app.query_one("#session-test_session")
+        assert widget is not None
 
-        # Check if the new node was added to pillars
-        assert "security_scanner" in session.pillars
-        assert session.pillars["security_scanner"].name == "security_scanner"
+        # Check if the new node was added to pillars model
+        assert "security_scanner" in widget.session_column.pillars
 
-        # Verify it renders
-        layout = session.render(column_width=80)
-        console = Console(width=80)
-        with console.capture() as capture:
-            console.print(layout)
-        output = capture.get().upper()
+        # Wait for widget mount
+        for _ in range(10):
+            try:
+                app.query_one("#pillar-test_session-security_scanner")
+                break
+            except Exception:
+                await asyncio.sleep(0.1)
 
-        assert "SECURITY_SCANNER" in output
+        # Verify it renders in Textual
+        pillar_widget = app.query_one("#pillar-test_session-security_scanner")
+        assert pillar_widget is not None

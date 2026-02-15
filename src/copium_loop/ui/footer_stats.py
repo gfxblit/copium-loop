@@ -19,6 +19,15 @@ class CodexStatsStrategy(FooterStatsStrategy):
 
     def get_stats(self) -> list[Text | str | tuple[str, str]] | None:
         data = self.client.get_usage()
+        return self._format_stats(data)
+
+    async def get_stats_async(self) -> list[Text | str | tuple[str, str]] | None:
+        data = await self.client.get_usage_async()
+        return self._format_stats(data)
+
+    def _format_stats(
+        self, data: dict | None
+    ) -> list[Text | str | tuple[str, str]] | None:
         if data is None:
             return None
 
@@ -50,7 +59,7 @@ class CodexStatsStrategy(FooterStatsStrategy):
 
 class SystemStatsStrategy(FooterStatsStrategy):
     def get_stats(self) -> list[Text | str | tuple[str, str]] | None:
-        cpu = psutil.cpu_percent()
+        cpu = psutil.cpu_percent(interval=None)
         mem = psutil.virtual_memory().percent
 
         return [
