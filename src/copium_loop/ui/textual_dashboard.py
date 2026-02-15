@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 from pathlib import Path
 
@@ -126,7 +127,7 @@ class TextualDashboard(App):
             return
         self._updating = True
         try:
-            self.manager.update_from_logs()
+            await asyncio.to_thread(self.manager.update_from_logs)
             await self.update_ui()
         finally:
             self._updating = False

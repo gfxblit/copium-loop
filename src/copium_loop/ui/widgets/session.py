@@ -79,6 +79,7 @@ class SessionWidget(Vertical):
         self.can_focus = True
         self.session_column = session_column
         self.session_id = session_column.session_id
+        # We don't pre-populate self.pillars here because they need to be mounted in compose or refresh_ui
         self.pillars: dict[str, PillarWidget] = {}
 
     def compose(self) -> ComposeResult:

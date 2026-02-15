@@ -39,14 +39,31 @@ class SessionManager:
 
         for target_file in log_files:
             sid = target_file.stem
+            
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
+
+            # Optimization: If this is the first time we're reading this file,
+            # and it's large (> 1MB), seek to 1MB from the end to avoid parsing everything.
+            is_initial_read = sid not in self.log_offsets
+            if is_initial_read:
+                file_size = target_file.stat().st_size
+                if file_size > 1024 * 1024:
+                    self.log_offsets[sid] = file_size - (1024 * 1024)
+                else:
+                    self.log_offsets[sid] = 0
 
             offset = self.log_offsets.get(sid, 0)
             events = []
             try:
                 with open(target_file) as f:
-                    f.seek(offset)
+                    if offset > 0:
+                        f.seek(offset)
+                        # If we seeked into the middle of a file (initial read of a large file), 
+                        # skip the first (likely partial) line.
+                        if is_initial_read:
+                            f.readline()
+
                     for line in f:
                         try:
                             event = json.loads(line)

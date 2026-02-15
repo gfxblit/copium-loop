@@ -5,13 +5,6 @@ import asyncio
 import os
 import sys
 
-from copium_loop.copium_loop import WorkflowManager  # noqa: E402
-from copium_loop.telemetry import (  # noqa: E402
-    Telemetry,
-    find_latest_session,
-    get_telemetry,
-)
-
 
 async def async_main():
     """Main async function."""
@@ -51,6 +44,13 @@ async def async_main():
         app = TextualDashboard()
         await app.run_async()
         return
+
+    from copium_loop.copium_loop import WorkflowManager
+    from copium_loop.telemetry import (
+        Telemetry,
+        find_latest_session,
+        get_telemetry,
+    )
 
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")

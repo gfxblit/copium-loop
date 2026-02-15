@@ -59,7 +59,7 @@ class CodexStatsStrategy(FooterStatsStrategy):
 
 class SystemStatsStrategy(FooterStatsStrategy):
     def get_stats(self) -> list[Text | str | tuple[str, str]] | None:
-        cpu = psutil.cpu_percent()
+        cpu = psutil.cpu_percent(interval=None)
         mem = psutil.virtual_memory().percent
 
         return [

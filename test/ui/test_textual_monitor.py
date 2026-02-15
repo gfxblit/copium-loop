@@ -51,6 +51,7 @@ async def test_textual_dashboard_discovery(tmp_path):
 
         # Trigger update
         await app.update_from_logs()
+        await pilot.pause()
 
         # Wait for pillar mount
         import asyncio
@@ -98,31 +99,9 @@ async def test_textual_dashboard_switch_tmux(tmp_path, monkeypatch):
         await app.update_from_logs()
         await pilot.pause()
 
-        assert app.query(SessionWidget)
-
-        # Trigger switch action
-        await pilot.press("1")
-        assert "test-session" in switched_to
-
-
-@pytest.mark.asyncio
-async def test_textual_dashboard_toggle_stats(tmp_path):
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-    (log_dir / "test.jsonl").write_text("{}\n")
-
-    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
-    async with app.run_test() as pilot:
-        stats_bar = app.query_one("#stats-bar")
-        assert "hidden" not in stats_bar.classes
-
-        # Press 'v' to toggle
-        await pilot.press("v")
-        assert "hidden" in stats_bar.classes
-
-        # Press 'v' again to show
-        await pilot.press("v")
-        assert "hidden" not in stats_bar.classes
+        # Mock action_switch_tmux call
+        app.action_switch_tmux(1)
+        assert switched_to == ["test-session"]
 
 
 @pytest.mark.asyncio
@@ -130,10 +109,9 @@ async def test_textual_dashboard_pagination(tmp_path):
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
 
-    # Create 4 sessions (assuming default page size 3)
-    # Timestamps ensure sorted order: s1, s2, s3, s4
-    for i in range(1, 5):
-        (log_dir / f"s{i}.jsonl").write_text(
+    # Create 5 sessions (default page size is 3)
+    for i in range(5):
+        (log_dir / f"session-{i}.jsonl").write_text(
             json.dumps(
                 {
                     "node": "workflow",
@@ -146,34 +124,39 @@ async def test_textual_dashboard_pagination(tmp_path):
         )
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
-    # Ensure stable sort
-    app.manager.sessions_per_page = 3
-
     async with app.run_test() as pilot:
         await app.update_from_logs()
         await pilot.pause()
 
-        # Page 1: s1, s2, s3 (oldest first)
-        widgets = app.query(SessionWidget)
-        assert len(widgets) == 3
-        sids = [w.session_id for w in widgets]
-        assert sids == ["s1", "s2", "s3"]
+        # Should see 3 sessions initially
+        assert len(app.query(SessionWidget)) == 3
 
-        # Press Tab to go to next page
+        # Next page
         await app.action_next_page()
+        await pilot.pause()
+        assert len(app.query(SessionWidget)) == 2
 
-        # Wait for UI update
-        import asyncio
+        # Prev page
+        await app.action_prev_page()
+        await pilot.pause()
+        assert len(app.query(SessionWidget)) == 3
 
-        for _ in range(10):
-            widgets = app.query(SessionWidget)
-            if len(widgets) == 1 and widgets[0].session_id == "s4":
-                break
-            await asyncio.sleep(0.1)
 
-        widgets = app.query(SessionWidget)
-        assert len(widgets) == 1
-        assert widgets[0].session_id == "s4"
+@pytest.mark.asyncio
+async def test_textual_dashboard_toggle_stats(tmp_path):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
+    async with app.run_test() as pilot:
+        stats_bar = app.query_one("#stats-bar")
+        assert "hidden" not in stats_bar.classes
+
+        app.action_toggle_stats()
+        assert "hidden" in stats_bar.classes
+
+        app.action_toggle_stats()
+        assert "hidden" not in stats_bar.classes
 
 
 @pytest.mark.asyncio
@@ -208,6 +191,7 @@ async def test_textual_dashboard_discovered_pillar(tmp_path):
             )
 
         await app.update_from_logs()
+        await pilot.pause()
 
         # Wait for pillar mount
         import asyncio

@@ -48,7 +48,7 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
 
-    async with app.run_test():
+    async with app.run_test() as pilot:
         # Create an event for a completely new node
         event = {
             "node": "security_scanner",
@@ -62,6 +62,7 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
 
         # Update from logs
         await app.update_from_logs()
+        await pilot.pause()
 
         # Wait for the pillar widget to appear (it's mounted by a background worker)
         widget = app.query_one("#session-test_session")
