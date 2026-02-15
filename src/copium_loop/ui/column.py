@@ -23,7 +23,6 @@ class SessionColumn:
             "architect": MatrixPillar("architect"),
             "reviewer": MatrixPillar("reviewer"),
             "pr_pre_checker": MatrixPillar("pr_pre_checker"),
-            "journaler": MatrixPillar("journaler"),
             "pr_creator": MatrixPillar("pr_creator"),
         }
 
