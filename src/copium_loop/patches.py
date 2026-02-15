@@ -1,8 +1,7 @@
-import types
 import threading
+
 import mdit_py_plugins.dollarmath.index as dollarmath
 from linkify_it import LinkifyIt
-import linkify_it.main as linkify_main
 
 
 def patch_all():
@@ -14,7 +13,7 @@ def patch_all():
 def _patch_dollarmath_is_escaped():
     """Fix wrap-around bug in mdit_py_plugins.dollarmath.index.is_escaped."""
 
-    def patched_is_escaped(state, back_pos, mod=0):
+    def patched_is_escaped(state, back_pos, _mod=0):
         # count how many \ are before the current position
         backslashes = 0
         while back_pos > 0:  # Fix: use > 0 instead of >= 0
@@ -45,11 +44,11 @@ def _patch_linkify_it_race_condition():
             # Save existing attribute if any
             had_func = hasattr(LinkifyIt, "func")
             old_func = getattr(LinkifyIt, "func", None)
-            
+
             try:
                 # This will set LinkifyIt.func
                 result = original_compile(self)
-                
+
                 # If it was set, move it to the instance
                 if hasattr(LinkifyIt, "func"):
                     # The library might have set it. We want it on the instance.
@@ -57,7 +56,7 @@ def _patch_linkify_it_race_condition():
                     # but we want to make sure it's clean for other threads.
                     self.func = LinkifyIt.func
                     delattr(LinkifyIt, "func")
-                
+
                 return result
             finally:
                 # Restore old attribute if it existed

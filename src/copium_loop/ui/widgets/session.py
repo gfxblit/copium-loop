@@ -70,6 +70,11 @@ class SessionWidget(Vertical):
         overflow: hidden;
         text-overflow: ellipsis;
     }
+
+    .pillars-container {
+        height: 1fr;
+        overflow-y: auto;
+    }
     """
 
     def __init__(self, session_column: SessionColumn, **kwargs):
@@ -87,7 +92,9 @@ class SessionWidget(Vertical):
             id=f"header-{self.session_id}",
         )
         yield WorkflowStatusWidget(id=f"workflow-status-{self.session_id}")
-        with Vertical(id=f"pillars-container-{self.session_id}"):
+        with Vertical(
+            id=f"pillars-container-{self.session_id}", classes="pillars-container"
+        ):
             pass
 
     def on_mount(self) -> None:
@@ -123,12 +130,16 @@ class SessionWidget(Vertical):
                 widget = self.pillars[node_id]
                 widget.update_from_pillar(pillar_data)
 
-                # Weighting logic
+                # Weighting logic:
+                # Active nodes should be very prominent.
+                # Nodes with history get some space but less than active.
+                # Idle nodes without history get minimal space.
                 count = len(pillar_data.buffer)
-                weight = count + 2
                 if pillar_data.status == "active":
-                    weight += 20
-                elif pillar_data.status == "idle" and count == 0:
+                    weight = 50 + (count * 2)
+                elif count > 0:
+                    weight = 5 + count
+                else:
                     weight = 1
 
                 widget.styles.height = f"{weight}fr"
