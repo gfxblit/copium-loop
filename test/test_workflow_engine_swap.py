@@ -19,7 +19,9 @@ async def test_engine_hot_swap_on_continue():
         patch("copium_loop.copium_loop.is_git_repo", return_value=True),
         patch("copium_loop.copium_loop.get_head", return_value="hash123"),
         patch("copium_loop.copium_loop.get_test_command", return_value=("pytest", [])),
-        patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run_cmd,
+        patch(
+            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+        ) as mock_run_cmd,
         patch("copium_loop.copium_loop.create_graph") as mock_create_graph,
     ):
         mock_run_cmd.return_value = {"exit_code": 0, "output": "success"}
@@ -41,12 +43,15 @@ async def test_engine_hot_swap_on_continue():
 
         # We need to mock verify_environment as well or provide what it needs
         with patch.object(manager, "verify_environment", return_value=True):
-            await manager.run("test prompt", initial_state=reconstructed_state, engine=new_engine)
+            await manager.run(
+                "test prompt", initial_state=reconstructed_state, engine=new_engine
+            )
 
             # Verify that ainvoke was called with the NEW engine
             called_state = mock_graph.ainvoke.call_args[0][0]
             assert isinstance(called_state["engine"], JulesEngine)
             assert called_state["retry_count"] == 1
+
 
 @pytest.mark.asyncio
 async def test_engine_persists_on_continue_if_not_overridden():
@@ -59,7 +64,9 @@ async def test_engine_persists_on_continue_if_not_overridden():
         patch("copium_loop.copium_loop.is_git_repo", return_value=True),
         patch("copium_loop.copium_loop.get_head", return_value="hash123"),
         patch("copium_loop.copium_loop.get_test_command", return_value=("pytest", [])),
-        patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run_cmd,
+        patch(
+            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+        ) as mock_run_cmd,
         patch("copium_loop.copium_loop.create_graph") as mock_create_graph,
     ):
         mock_run_cmd.return_value = {"exit_code": 0, "output": "success"}
@@ -78,7 +85,9 @@ async def test_engine_persists_on_continue_if_not_overridden():
 
         with patch.object(manager, "verify_environment", return_value=True):
             # No engine provided on CLI
-            await manager.run("test prompt", initial_state=reconstructed_state, engine=None)
+            await manager.run(
+                "test prompt", initial_state=reconstructed_state, engine=None
+            )
 
             # Verify that ainvoke was called with the engine from state (JulesEngine)
             called_state = mock_graph.ainvoke.call_args[0][0]
