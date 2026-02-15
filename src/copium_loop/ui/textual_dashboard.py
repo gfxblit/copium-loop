@@ -26,7 +26,7 @@ class TextualDashboard(App):
     #stats-bar {
         background: $surface;
         color: white;
-        height: 2;
+        height: auto;
         padding: 0 1;
         border-top: solid blue;
     }
