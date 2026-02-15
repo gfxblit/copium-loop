@@ -261,6 +261,7 @@ async def run_command(
     args: list[str] | None = None,
     node: str | None = None,
     command_timeout: int | None = None,
+    capture_stderr: bool = True,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -300,7 +301,7 @@ async def run_command(
         node,
         command_timeout,
         inactivity_timeout=INACTIVITY_TIMEOUT,
-        capture_stderr=True,
+        capture_stderr=capture_stderr,
         on_timeout_callback=on_timeout,
     )
 
