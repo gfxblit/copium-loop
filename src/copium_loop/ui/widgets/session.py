@@ -14,7 +14,7 @@ class WorkflowStatusWidget(Static):
     DEFAULT_CSS = """
     WorkflowStatusWidget {
         height: 3;
-        margin: 0 1;
+        margin: 0;
         display: none;
     }
 
@@ -52,7 +52,7 @@ class SessionWidget(Vertical):
         width: 1fr;
         height: 100%;
         border: solid green;
-        margin: 0 1;
+        margin: 0;
         min-width: 8;
     }
 
