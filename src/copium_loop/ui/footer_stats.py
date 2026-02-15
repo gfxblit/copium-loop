@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-import psutil
 from rich.text import Text
 
 from ..codexbar import CodexbarClient
@@ -55,15 +54,3 @@ class CodexStatsStrategy(FooterStatsStrategy):
             stats.append((f"FLASH RESET: {reset_flash}", "bright_yellow"))
 
         return stats
-
-
-class SystemStatsStrategy(FooterStatsStrategy):
-    def get_stats(self) -> list[Text | str | tuple[str, str]] | None:
-        cpu = psutil.cpu_percent(interval=None)
-        mem = psutil.virtual_memory().percent
-
-        return [
-            (f"CPU: {cpu}%", "bright_green"),
-            "  ",
-            (f"MEM: {mem}%", "bright_cyan"),
-        ]

@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from copium_loop.ui.footer_stats import CodexStatsStrategy, SystemStatsStrategy
+from copium_loop.ui.footer_stats import CodexStatsStrategy
 
 
 class TestCodexStatsStrategy:
@@ -148,22 +148,3 @@ class TestCodexStatsStrategy:
         assert stats[0][0] == "PRO LEFT: 100.0%"
         assert stats[2][0] == "FLASH LEFT: 100.0%"
         assert stats[4][0] == "RESET: ?"
-
-
-class TestSystemStatsStrategy:
-    @patch("psutil.cpu_percent")
-    @patch("psutil.virtual_memory")
-    def test_get_stats(self, mock_virtual_memory, mock_cpu_percent):
-        mock_cpu_percent.return_value = 15.5
-        mock_mem = MagicMock()
-        mock_mem.percent = 62.3
-        mock_virtual_memory.return_value = mock_mem
-
-        strategy = SystemStatsStrategy()
-        stats = strategy.get_stats()
-
-        assert stats is not None
-        assert len(stats) == 3
-        assert stats[0] == ("CPU: 15.5%", "bright_green")
-        assert stats[1] == "  "
-        assert stats[2] == ("MEM: 62.3%", "bright_cyan")

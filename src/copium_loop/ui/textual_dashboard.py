@@ -9,7 +9,7 @@ from textual.containers import Horizontal
 from textual.widgets import Static
 
 from ..codexbar import CodexbarClient
-from .footer_stats import CodexStatsStrategy, SystemStatsStrategy
+from .footer_stats import CodexStatsStrategy
 from .manager import SessionManager
 from .widgets.session import SessionWidget
 
@@ -65,7 +65,6 @@ class TextualDashboard(App):
         self.codexbar_client = CodexbarClient()
         self.stats_strategies = [
             CodexStatsStrategy(self.codexbar_client),
-            SystemStatsStrategy(),
         ]
         self._updating = False
         self.enable_polling = enable_polling
