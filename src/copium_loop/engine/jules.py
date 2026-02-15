@@ -73,8 +73,8 @@ class JulesEngine(LLMEngine):
     async def invoke(
         self,
         prompt: str,
-        _args: list[str] | None = None,
-        _models: list[str | None] | None = None,
+        args: list[str] | None = None,
+        models: list[str | None] | None = None,  # noqa: ARG002
         verbose: bool = False,
         label: str | None = None,
         node: str | None = None,
@@ -123,9 +123,13 @@ class JulesEngine(LLMEngine):
         # Prevent interactive prompts
         env.update({"GH_PROMPT_DISABLED": "1"})
 
+        cmd_args = ["remote", "new", "--repo", repo, "--session", prompt_with_instr]
+        if args:
+            cmd_args.extend(args)
+
         output, exit_code, timed_out, timeout_message = await stream_subprocess(
             "jules",
-            ["remote", "new", "--repo", repo, "-p", prompt_with_instr],
+            cmd_args,
             env,
             node,
             timeout,

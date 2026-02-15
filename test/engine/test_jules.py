@@ -345,7 +345,7 @@ async def test_jules_engine_invoke_sanitizes_prompt():
 
         # Check that the prompt passed to 'jules remote new' was sanitized
         args = mock_stream.call_args_list[0][0][1]
-        prompt_arg = args[args.index("-p") + 1]
+        prompt_arg = args[args.index("--session") + 1]
         assert "[user_request]" in prompt_arg
         assert "[/user_request]" in prompt_arg
         assert "<user_request>" not in prompt_arg
