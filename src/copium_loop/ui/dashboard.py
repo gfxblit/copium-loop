@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 import termios
 import time
@@ -28,6 +27,7 @@ class Dashboard:
         self.sessions = {}  # session_id -> SessionColumn
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_offsets = {}
+        self.file_stats = {}  # session_id -> (mtime, size)
         self.current_page = 0
         self.sessions_per_page = 3
         self.codexbar_client = codexbar_client or CodexbarClient()
@@ -129,22 +129,33 @@ class Dashboard:
 
     def update_from_logs(self):
         """Reads .jsonl files and updates session states."""
-        log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
-        active_sids = {f.stem for f in log_files}
+        active_sids = set()
 
-        # Remove stale sessions
-        stale_sids = [sid for sid in self.sessions if sid not in active_sids]
-        for sid in stale_sids:
-            del self.sessions[sid]
-            if sid in self.log_offsets:
-                del self.log_offsets[sid]
-
-        for target_file in log_files:
+        for target_file in self.log_dir.glob("*.jsonl"):
             sid = target_file.stem
+            active_sids.add(sid)
+
+            try:
+                stat = target_file.stat()
+            except OSError:
+                continue
+
+            # Check for changes
+            current_stat = (stat.st_mtime, stat.st_size)
+            if self.file_stats.get(sid) == current_stat:
+                continue
+
+            self.file_stats[sid] = current_stat
+
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
 
             offset = self.log_offsets.get(sid, 0)
+
+            # Handle truncation
+            if stat.st_size < offset:
+                offset = 0
+
             try:
                 with open(target_file) as f:
                     f.seek(offset)
@@ -198,6 +209,15 @@ class Dashboard:
                     self.log_offsets[sid] = f.tell()
             except Exception as e:
                 print(f"Error processing log file {target_file}: {e}", file=sys.stderr)
+
+        # Remove stale sessions
+        stale_sids = [sid for sid in self.sessions if sid not in active_sids]
+        for sid in stale_sids:
+            del self.sessions[sid]
+            if sid in self.log_offsets:
+                del self.log_offsets[sid]
+            if sid in self.file_stats:
+                del self.file_stats[sid]
 
     def run_monitor(self, _session_id: str | None = None):
         """Runs the live dashboard."""
