@@ -139,6 +139,19 @@ async def test_jules_engine_get_repo_name_other_remote():
 
 
 @pytest.mark.asyncio
+async def test_jules_engine_get_repo_name_no_remote():
+    engine = JulesEngine()
+    with patch(
+        "copium_loop.engine.jules.run_command", new_callable=AsyncMock
+    ) as mock_run:
+        mock_run.side_effect = [
+            {"exit_code": 0, "output": ""},  # git remote returns nothing
+        ]
+        with pytest.raises(JulesRepoError, match="Could not determine git remote URL"):
+            await engine._get_repo_name()
+
+
+@pytest.mark.asyncio
 async def test_jules_engine_invoke_creation_failure():
     engine = JulesEngine()
     with (
