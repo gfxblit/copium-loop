@@ -53,5 +53,5 @@ async def test_pillar_weighting_many_nodes(tmp_path):
         node_5_pillar = app.query_one("#pillar-test-session-node-5", PillarWidget)
         node_0_pillar = app.query_one("#pillar-test-session-node-0", PillarWidget)
 
-        assert node_5_pillar.styles.height.value == 12.0
+        assert node_5_pillar.styles.height.value == 22.0
         assert node_0_pillar.styles.height.value == 1.0

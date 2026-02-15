@@ -62,7 +62,7 @@ class SessionColumn:
             count = len(pillar.buffer)
             weight = count + 2
             if pillar.status == "active":
-                weight += 10  # Ensure active node has enough space
+                weight += 20  # Ensure active node has enough space
             elif pillar.status == "idle" and count == 0:
                 weight = 1  # Keep empty idle nodes very small
 

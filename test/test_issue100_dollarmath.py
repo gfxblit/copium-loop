@@ -1,3 +1,4 @@
+import copium_loop
 from mdit_py_plugins.dollarmath.index import is_escaped
 
 

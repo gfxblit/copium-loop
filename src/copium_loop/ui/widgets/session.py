@@ -127,7 +127,7 @@ class SessionWidget(Vertical):
                 count = len(pillar_data.buffer)
                 weight = count + 2
                 if pillar_data.status == "active":
-                    weight += 10
+                    weight += 20
                 elif pillar_data.status == "idle" and count == 0:
                     weight = 1
 

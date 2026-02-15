@@ -46,8 +46,8 @@ async def test_pillar_weighting_active_node(tmp_path):
         assert coder_height.unit == Unit.FRACTION
         assert tester_height.unit == Unit.FRACTION
 
-        # tester is active, should have weight 12 (2 base + 10 bonus)
+        # tester is active, should have weight 22 (2 base + 20 bonus)
         # coder is idle with 0 buffer, should have weight 1
-        assert tester_height.value == 12.0
+        assert tester_height.value == 22.0
         assert coder_height.value == 1.0
         assert tester_height.value > coder_height.value
