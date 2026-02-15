@@ -229,3 +229,11 @@ class JulesEngine(LLMEngine):
             safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
 
         return safe_text
+
+    async def verify(self) -> bool:
+        """Verifies that the Jules CLI is installed and working."""
+        try:
+            res = await run_command("jules", ["--version"])
+            return res["exit_code"] == 0
+        except Exception:
+            return False

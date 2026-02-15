@@ -23,3 +23,8 @@ class LLMEngine(ABC):
     def sanitize_for_prompt(self, text: str, max_length: int = 12000) -> str:
         """Sanitizes text for inclusion in a prompt."""
         pass
+
+    @abstractmethod
+    async def verify(self) -> bool:
+        """Verifies that the engine is correctly configured and usable."""
+        pass

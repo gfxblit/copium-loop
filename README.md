@@ -38,13 +38,14 @@ copium-loop --continue
 - `--monitor`, `-m`: Start the Matrix visualization monitor (Dashboard).
 - `--continue`, `-c`: Continue from the last incomplete workflow session.
 - `--session`: Specific session ID to monitor or continue.
+- `--engine`: The LLM engine to use (`gemini` or `jules`, default: `gemini`).
 - `--verbose`, `-v`: Enable verbose output (default: True).
 
 ## How It Works
 
-1. **Coder** → Implements using Gemini.
+1. **Coder** → Implements using the selected LLM engine (Gemini or Jules).
 2. **Test Runner** → Runs `npm test`, `pnpm test`, or `pytest`. Automatically detects the project type and package manager.
-3. **Reviewer** → Reviews commits/diffs using Gemini Pro.
+3. **Reviewer** → Reviews commits/diffs using the selected LLM engine.
 4. **PR Creator** → Pushes to a feature branch & creates a Pull Request via `gh` CLI. If a GitHub issue URL is found in the prompt, it automatically links the PR to that issue.
 
 Loops on failures (max 10 retries total).

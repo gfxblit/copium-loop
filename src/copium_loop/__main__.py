@@ -35,6 +35,12 @@ async def async_main():
         action="store_true",
         help="Continue from the last incomplete workflow session",
     )
+    parser.add_argument(
+        "--engine",
+        choices=["gemini", "jules"],
+        default="gemini",
+        help="The LLM engine to use (default: gemini)",
+    )
 
     args = parser.parse_args()
 
@@ -46,6 +52,7 @@ async def async_main():
         return
 
     from copium_loop.copium_loop import WorkflowManager
+    from copium_loop.engine.factory import engine_factory
     from copium_loop.telemetry import (
         Telemetry,
         find_latest_session,
@@ -54,6 +61,9 @@ async def async_main():
 
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")
+
+    # Instantiate engine
+    engine = engine_factory(args.engine)
 
     # Handle --continue flag
     start_node = args.start
@@ -112,7 +122,9 @@ async def async_main():
     workflow = WorkflowManager(start_node=start_node, verbose=args.verbose)
 
     try:
-        result = await workflow.run(prompt, initial_state=reconstructed_state)
+        result = await workflow.run(
+            prompt, initial_state=reconstructed_state, engine=engine
+        )
 
         status = result.get("review_status")
         test_out = result.get("test_output", "")
