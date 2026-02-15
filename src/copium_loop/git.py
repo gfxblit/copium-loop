@@ -3,13 +3,17 @@ from copium_loop.shell import run_command
 
 async def is_git_repo(node: str | None = None) -> bool:
     """Returns True if the current directory is inside a git repository."""
-    res = await run_command("git", ["rev-parse", "--is-inside-work-tree"], node=node)
+    res = await run_command(
+        "git", ["rev-parse", "--is-inside-work-tree"], node=node, capture_stderr=False
+    )
     return res["exit_code"] == 0
 
 
 async def get_current_branch(node: str | None = None) -> str:
     """Returns the current git branch name."""
-    res = await run_command("git", ["branch", "--show-current"], node=node)
+    res = await run_command(
+        "git", ["branch", "--show-current"], node=node, capture_stderr=False
+    )
     return res["output"].strip()
 
 
@@ -32,13 +36,17 @@ async def is_dirty(node: str | None = None) -> bool:
 
 async def get_head(node: str | None = None) -> str:
     """Returns the current HEAD commit hash."""
-    res = await run_command("git", ["rev-parse", "HEAD"], node=node)
+    res = await run_command(
+        "git", ["rev-parse", "HEAD"], node=node, capture_stderr=False
+    )
     return res["output"].strip()
 
 
 async def resolve_ref(ref: str, node: str | None = None) -> str | None:
     """Resolves a git ref to a commit hash. Returns None if ref doesn't exist."""
-    res = await run_command("git", ["rev-parse", "--verify", ref], node=node)
+    res = await run_command(
+        "git", ["rev-parse", "--verify", ref], node=node, capture_stderr=False
+    )
     if res["exit_code"] == 0:
         return res["output"].strip()
     return None

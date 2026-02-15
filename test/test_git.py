@@ -12,7 +12,9 @@ async def test_get_current_branch():
         mock_run.return_value = {"output": "main\n", "exit_code": 0}
         branch = await git.get_current_branch()
         assert branch == "main"
-        mock_run.assert_called_with("git", ["branch", "--show-current"], node=None)
+        mock_run.assert_called_with(
+            "git", ["branch", "--show-current"], node=None, capture_stderr=False
+        )
 
 
 @pytest.mark.asyncio
@@ -41,7 +43,9 @@ async def test_get_head():
         mock_run.return_value = {"output": "abc123\n", "exit_code": 0}
         head = await git.get_head()
         assert head == "abc123"
-        mock_run.assert_called_with("git", ["rev-parse", "HEAD"], node=None)
+        mock_run.assert_called_with(
+            "git", ["rev-parse", "HEAD"], node=None, capture_stderr=False
+        )
 
 
 @pytest.mark.asyncio
