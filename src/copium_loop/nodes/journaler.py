@@ -1,5 +1,4 @@
 from copium_loop.constants import MODELS
-from copium_loop.gemini import invoke_gemini
 from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -10,6 +9,7 @@ async def journaler(state: AgentState) -> dict:
     telemetry.log_status("journaler", "active")
     telemetry.log_output("journaler", "--- Journaling Node ---\n")
     print("--- Journaling Node ---")
+    engine = state["engine"]
 
     try:
         memory_manager = MemoryManager()
@@ -69,7 +69,7 @@ async def journaler(state: AgentState) -> dict:
     Output ONLY the project lesson or "NO_LESSON"."""
 
         models = [None] + MODELS
-        lesson = await invoke_gemini(
+        lesson = await engine.invoke(
             prompt,
             ["--yolo"],
             models=models,

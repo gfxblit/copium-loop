@@ -3,7 +3,6 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
-from copium_loop.gemini import invoke_gemini, sanitize_for_prompt
 from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -26,6 +25,7 @@ async def reviewer(state: AgentState) -> dict:
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
     initial_commit_hash = state.get("initial_commit_hash", "")
+    engine = state["engine"]
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
@@ -61,7 +61,7 @@ async def reviewer(state: AgentState) -> dict:
             "retry_count": retry_count + 1,
         }
 
-    safe_git_diff = sanitize_for_prompt(git_diff)
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     if not safe_git_diff.strip():
         msg = "\nReview decision: Approved (no changes to review)\n"
@@ -106,7 +106,7 @@ async def reviewer(state: AgentState) -> dict:
     determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
 
     try:
-        review_content = await invoke_gemini(
+        review_content = await engine.invoke(
             system_prompt,
             ["--yolo"],
             models=MODELS,

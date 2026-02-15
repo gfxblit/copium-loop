@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -9,6 +9,14 @@ from copium_loop.nodes import coder
 
 # Get the module object explicitly to avoid shadowing issues
 coder_module = sys.modules["copium_loop.nodes.coder"]
+
+
+@pytest.fixture
+def mock_engine():
+    engine = MagicMock()
+    engine.invoke = AsyncMock(return_value="Retrying after failure...")
+    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
+    return engine
 
 
 class TestIssue98CoderFailure:
@@ -40,7 +48,7 @@ class TestIssue98CoderFailure:
 
     @pytest.mark.asyncio
     async def test_coder_node_handles_failed_status_with_unexpected_failure_prompt(
-        self,
+        self, mock_engine
     ):
         """
 
@@ -48,36 +56,32 @@ class TestIssue98CoderFailure:
 
         """
 
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Retrying after failure..."
+        state = {
+            "messages": [
+                HumanMessage(content="Original request"),
+                SystemMessage(content="All models exhausted"),
+            ],
+            "code_status": "failed",
+            "retry_count": 1,
+            "engine": mock_engine,
+        }
 
-            state = {
-                "messages": [
-                    HumanMessage(content="Original request"),
-                    SystemMessage(content="All models exhausted"),
-                ],
-                "code_status": "failed",
-                "retry_count": 1,
-            }
+        await coder(state)
 
-            await coder(state)
+        # Check that the prompt contains the "unexpected failure" message
 
-            # Check that the prompt contains the "unexpected failure" message
+        call_args = mock_engine.invoke.call_args[0]
 
-            call_args = mock_gemini.call_args[0]
+        prompt = call_args[0]
 
-            prompt = call_args[0]
+        # This is what we WANT
 
-            # This is what we WANT
+        assert "coder encountered an unexpected failure" in prompt.lower()
 
-            assert "coder encountered an unexpected failure" in prompt.lower()
+        assert "unexpected failure" in prompt.lower()
 
-            assert "unexpected failure" in prompt.lower()
+        assert "All models exhausted" in prompt
 
-            assert "All models exhausted" in prompt
+        # This is what we DON'T want
 
-            # This is what we DON'T want
-
-            assert "rejected by the reviewer" not in prompt
+        assert "rejected by the reviewer" not in prompt
