@@ -130,12 +130,22 @@ def sanitize_for_prompt(text: str, max_length: int = 12000) -> str:
         return ""
 
     # Escape common XML-like tags to prevent prompt injection breakouts
+    # We replace <tag> with [tag] and </tag> with [/tag]
     replacements = {
+        # Closing tags
         "</test_output>": "[/test_output]",
         "</reviewer_feedback>": "[/reviewer_feedback]",
         "</architect_feedback>": "[/architect_feedback]",
         "</git_diff>": "[/git_diff]",
         "</error>": "[/error]",
+        "</user_request>": "[/user_request]",
+        # Opening tags
+        "<test_output>": "[test_output]",
+        "<reviewer_feedback>": "[reviewer_feedback]",
+        "<architect_feedback>": "[architect_feedback]",
+        "<git_diff>": "[git_diff]",
+        "<error>": "[error]",
+        "<user_request>": "[user_request]",
     }
 
     safe_text = str(text)
