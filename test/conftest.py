@@ -20,10 +20,13 @@ def mock_telemetry_environment(monkeypatch, tmp_path):
     from copium_loop import telemetry
 
     def mock_init(self, session_id):
+        from concurrent.futures import ThreadPoolExecutor
+
         self.session_id = session_id
         self.log_dir = tmp_path / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        self._executor = ThreadPoolExecutor(max_workers=1)
 
     monkeypatch.setattr(telemetry.Telemetry, "__init__", mock_init)
     monkeypatch.setattr(telemetry, "_telemetry_instance", None)
