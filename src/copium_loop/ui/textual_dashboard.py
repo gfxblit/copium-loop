@@ -105,22 +105,27 @@ class TextualDashboard(App):
             except Exception:
                 pass
 
-        if stats_parts:
+        if stats_parts and stats_parts[-1].plain == " | ":
             # Remove trailing pipe
-            if stats_parts[-1].plain == " | ":
-                stats_parts.pop()
+            stats_parts.pop()
 
-            full_stats = Text()
-            for part in stats_parts:
-                full_stats.append(part)
+        full_stats = Text()
+        for part in stats_parts:
+            full_stats.append(part)
 
-            # Add pagination info
-            _, page, total = self.manager.get_visible_sessions()
-            if total > 1:
-                full_stats.append(Text(f" | Page {page}/{total}", style="bold yellow"))
+        # Add pagination info
+        _, page, total = self.manager.get_visible_sessions()
+        if total > 1:
+            if stats_parts:
+                full_stats.append(Text(" | "))
+            full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
 
+        if full_stats:
             with contextlib.suppress(Exception):
                 self.query_one("#stats-bar", Static).update(full_stats)
+        else:
+            with contextlib.suppress(Exception):
+                self.query_one("#stats-bar", Static).update("")
 
     async def update_from_logs(self) -> None:
         """Reads logs and updates the UI."""
