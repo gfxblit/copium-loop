@@ -3,7 +3,6 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
-from copium_loop.gemini import invoke_gemini, sanitize_for_prompt
 from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -25,6 +24,7 @@ async def architect(state: AgentState) -> dict:
     print("--- Architect Node ---")
     retry_count = state.get("retry_count", 0)
     initial_commit_hash = state.get("initial_commit_hash", "")
+    engine = state["engine"]
 
     git_diff = ""
     if initial_commit_hash and await is_git_repo(node="architect"):
@@ -52,7 +52,7 @@ async def architect(state: AgentState) -> dict:
             "retry_count": retry_count + 1,
         }
 
-    safe_git_diff = sanitize_for_prompt(git_diff)
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     if not safe_git_diff.strip():
         msg = "\nArchitectural decision: OK (no changes to review)\n"
@@ -95,7 +95,7 @@ async def architect(state: AgentState) -> dict:
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
     try:
-        architect_content = await invoke_gemini(
+        architect_content = await engine.invoke(
             system_prompt,
             ["--yolo"],
             models=MODELS,

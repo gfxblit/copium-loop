@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,152 +10,146 @@ from copium_loop.nodes import coder
 coder_module = sys.modules["copium_loop.nodes.coder"]
 
 
+@pytest.fixture
+def mock_engine():
+    engine = MagicMock()
+    engine.invoke = AsyncMock(return_value="Mocked Code Response")
+    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
+    return engine
+
+
 class TestCoderNode:
     """Tests for the coder node."""
 
     @pytest.mark.asyncio
-    async def test_coder_returns_coded_status(self):
+    async def test_coder_returns_coded_status(self, mock_engine):
         """Test that coder node returns coded status."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Mocked Code Response"
+        state = {
+            "messages": [HumanMessage(content="Build a login form")],
+            "engine": mock_engine,
+        }
+        result = await coder(state)
 
-            state = {"messages": [HumanMessage(content="Build a login form")]}
-            result = await coder(state)
-
-            assert result["code_status"] == "coded"
-            assert "Mocked Code Response" in result["messages"][0].content
+        assert result["code_status"] == "coded"
+        assert "Mocked Code Response" in result["messages"][0].content
+        assert mock_engine.invoke.called
 
     @pytest.mark.asyncio
-    async def test_coder_includes_test_failure_in_prompt(self):
+    async def test_coder_includes_test_failure_in_prompt(self, mock_engine):
         """Test that coder includes test failure in prompt."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Fixing..."
+        mock_engine.invoke.return_value = "Fixing..."
 
-            state = {
-                "messages": [HumanMessage(content="Fix bug")],
-                "test_output": "FAIL: Expected 1 to be 2",
-            }
-            await coder(state)
+        state = {
+            "messages": [HumanMessage(content="Fix bug")],
+            "test_output": "FAIL: Expected 1 to be 2",
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            # Check that the prompt contains the test failure
-            call_args = mock_gemini.call_args[0]
-            prompt = call_args[0]
-            assert "Your previous implementation failed tests." in prompt
-            assert "FAIL: Expected 1 to be 2" in prompt
+        # Check that the prompt contains the test failure
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "Your previous implementation failed tests." in prompt
+        assert "FAIL: Expected 1 to be 2" in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_logs_prompt_when_verbose(self):
+    async def test_coder_logs_prompt_when_verbose(self, mock_engine):
         """Test that coder logs system prompt when verbose is True."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Response"
+        state = {
+            "messages": [HumanMessage(content="Test prompt")],
+            "verbose": True,
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            state = {"messages": [HumanMessage(content="Test prompt")], "verbose": True}
-            await coder(state)
-
-            # Check that invoke_gemini was called with verbose=True and label="Coder System"
-            _, kwargs = mock_gemini.call_args
-            assert kwargs["verbose"] is True
-            assert kwargs["label"] == "Coder System"
+        # Check that engine.invoke was called with verbose=True and label="Coder System"
+        _, kwargs = mock_engine.invoke.call_args
+        assert kwargs["verbose"] is True
+        assert kwargs["label"] == "Coder System"
 
     @pytest.mark.asyncio
-    async def test_coder_handles_pr_failure(self):
+    async def test_coder_handles_pr_failure(self, mock_engine):
         """Test that coder node handles PR creation failure."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Retrying PR..."
+        mock_engine.invoke.return_value = "Retrying PR..."
 
-            state = {
-                "messages": [
-                    HumanMessage(content="Original request"),
-                    SystemMessage(
-                        content="Failed to create PR: Git push failed (exit 1): error: failed to push some refs"
-                    ),
-                ],
-                "review_status": "pr_failed",
-            }
-            await coder(state)
+        state = {
+            "messages": [
+                HumanMessage(content="Original request"),
+                SystemMessage(
+                    content="Failed to create PR: Git push failed (exit 1): error: failed to push some refs"
+                ),
+            ],
+            "review_status": "pr_failed",
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            # Check that the prompt contains the PR failure message
-            call_args = mock_gemini.call_args[0]
-            prompt = call_args[0]
-            assert "Your previous attempt to create a PR failed." in prompt
-            assert "Failed to create PR: Git push failed" in prompt
+        # Check that the prompt contains the PR failure message
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "Your previous attempt to create a PR failed." in prompt
+        assert "Failed to create PR: Git push failed" in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_handles_needs_commit(self):
+    async def test_coder_handles_needs_commit(self, mock_engine):
         """Test that coder node handles needs_commit status."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Committing..."
+        mock_engine.invoke.return_value = "Committing..."
 
-            state = {
-                "messages": [HumanMessage(content="Original request")],
-                "review_status": "needs_commit",
-            }
-            await coder(state)
+        state = {
+            "messages": [HumanMessage(content="Original request")],
+            "review_status": "needs_commit",
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            # Check that the prompt contains the needs_commit message
-            call_args = mock_gemini.call_args[0]
-            prompt = call_args[0]
-            assert "You have uncommitted changes that prevent PR creation." in prompt
+        # Check that the prompt contains the needs_commit message
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "You have uncommitted changes that prevent PR creation." in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_handles_rejected_status(self):
+    async def test_coder_handles_rejected_status(self, mock_engine):
         """Test that coder node handles rejected status from reviewer."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Fixing rejected code..."
+        mock_engine.invoke.return_value = "Fixing rejected code..."
 
-            state = {
-                "messages": [
-                    HumanMessage(content="Original request"),
-                    SystemMessage(content="Code is too complex."),
-                ],
-                "review_status": "rejected",
-            }
-            await coder(state)
+        state = {
+            "messages": [
+                HumanMessage(content="Original request"),
+                SystemMessage(content="Code is too complex."),
+            ],
+            "review_status": "rejected",
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            # Check that the prompt contains the rejection message
-            call_args = mock_gemini.call_args[0]
-            prompt = call_args[0]
-            assert (
-                "Your previous implementation was rejected by the reviewer." in prompt
-            )
-            assert "Code is too complex." in prompt
+        # Check that the prompt contains the rejection message
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "Your previous implementation was rejected by the reviewer." in prompt
+        assert "Code is too complex." in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_handles_architect_refactor(self):
+    async def test_coder_handles_architect_refactor(self, mock_engine):
         """Test that coder node handles refactor status from architect."""
-        with patch.object(
-            coder_module, "invoke_gemini", new_callable=AsyncMock
-        ) as mock_gemini:
-            mock_gemini.return_value = "Refactoring code..."
+        mock_engine.invoke.return_value = "Refactoring code..."
 
-            state = {
-                "messages": [
-                    HumanMessage(content="Original request"),
-                    SystemMessage(
-                        content="Architecture needs improvement: file too large."
-                    ),
-                ],
-                "architect_status": "refactor",
-            }
-            await coder(state)
+        state = {
+            "messages": [
+                HumanMessage(content="Original request"),
+                SystemMessage(
+                    content="Architecture needs improvement: file too large."
+                ),
+            ],
+            "architect_status": "refactor",
+            "engine": mock_engine,
+        }
+        await coder(state)
 
-            # Check that the prompt contains the architect feedback
-            call_args = mock_gemini.call_args[0]
-            prompt = call_args[0]
-            assert (
-                "Your previous implementation was flagged for architectural improvement by the architect."
-                in prompt
-            )
-            assert "Architecture needs improvement: file too large." in prompt
+        # Check that the prompt contains the architect feedback
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert (
+            "Your previous implementation was flagged for architectural improvement by the architect."
+            in prompt
+        )
+        assert "Architecture needs improvement: file too large." in prompt
