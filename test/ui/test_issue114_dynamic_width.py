@@ -13,7 +13,15 @@ async def test_sessions_expand_and_fit_narrow_screen(tmp_path):
 
     # Case 1: One session fills the width
     (log_dir / "session-0.jsonl").write_text(
-        json.dumps({"node": "workflow", "event_type": "workflow_status", "data": "running", "timestamp": "2026-02-15T12:00:00"}) + "\n"
+        json.dumps(
+            {
+                "node": "workflow",
+                "event_type": "workflow_status",
+                "data": "running",
+                "timestamp": "2026-02-15T12:00:00",
+            }
+        )
+        + "\n"
     )
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
@@ -30,7 +38,15 @@ async def test_sessions_expand_and_fit_narrow_screen(tmp_path):
     # Case 2: Three sessions fit on a narrow screen (40 wide)
     for i in range(1, 3):
         (log_dir / f"session-{i}.jsonl").write_text(
-            json.dumps({"node": "workflow", "event_type": "workflow_status", "data": "running", "timestamp": f"2026-02-15T12:00:0{i}"}) + "\n"
+            json.dumps(
+                {
+                    "node": "workflow",
+                    "event_type": "workflow_status",
+                    "data": "running",
+                    "timestamp": f"2026-02-15T12:00:0{i}",
+                }
+            )
+            + "\n"
         )
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
