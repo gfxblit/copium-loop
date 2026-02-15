@@ -19,7 +19,7 @@ def mock_engine():
 
 
 @pytest.mark.asyncio
-async def test_journaler_handles_invoke_gemini_exception_gracefully(mock_engine):
+async def test_journaler_handles_engine_invoke_exception_gracefully(mock_engine):
     state: AgentState = {
         "messages": [],
         "code_status": "coded",

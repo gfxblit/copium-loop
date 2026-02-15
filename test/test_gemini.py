@@ -95,7 +95,7 @@ class TestInvokeGemini:
     """Tests for Gemini CLI invocation with fallback."""
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_success_first_model(self):
+    async def test_invoke_success_first_model(self):
         """Test successful invocation with first model."""
         engine = GeminiEngine()
         with patch.object(
@@ -109,7 +109,7 @@ class TestInvokeGemini:
             assert mock_exec.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_quota_fallback(self):
+    async def test_invoke_quota_fallback(self):
         """Test fallback to next model on quota error."""
         engine = GeminiEngine()
         with patch.object(
@@ -127,7 +127,7 @@ class TestInvokeGemini:
             assert mock_exec.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_any_error_triggers_fallback(self):
+    async def test_invoke_any_error_triggers_fallback(self):
         """Test that any error triggers fallback to next model."""
         engine = GeminiEngine()
         with patch.object(
@@ -145,7 +145,7 @@ class TestInvokeGemini:
             assert mock_exec.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_auto_fallback_on_any_error(self):
+    async def test_invoke_auto_fallback_on_any_error(self):
         """Test fallback on any error if model is None (auto)."""
         engine = GeminiEngine()
         with patch.object(
@@ -169,8 +169,8 @@ class TestInvokeGemini:
             assert mock_exec.call_args_list[1][0][1] == "backup-model"
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_verbose_output(self, capsys):
-        """Test that invoke_gemini prints prompt when verbose is True."""
+    async def test_invoke_verbose_output(self, capsys):
+        """Test that invoke prints prompt when verbose is True."""
         engine = GeminiEngine()
         with patch.object(
             engine, "_execute_gemini", new_callable=AsyncMock
@@ -187,8 +187,8 @@ class TestInvokeGemini:
             assert "Using model: test-model" in captured.out
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_no_verbose_output(self, capsys):
-        """Test that invoke_gemini does NOT print when verbose is False."""
+    async def test_invoke_no_verbose_output(self, capsys):
+        """Test that invoke does NOT print when verbose is False."""
         engine = GeminiEngine()
         with patch.object(
             engine, "_execute_gemini", new_callable=AsyncMock
@@ -204,8 +204,8 @@ class TestInvokeGemini:
             assert "Using model" not in captured.out
 
     @pytest.mark.asyncio
-    async def test_invoke_gemini_logs_prompt(self):
-        """Test that invoke_gemini logs the prompt to telemetry when node is provided."""
+    async def test_invoke_logs_prompt(self):
+        """Test that invoke logs the prompt to telemetry when node is provided."""
         with patch("copium_loop.engine.gemini.get_telemetry") as mock_get_telemetry:
             mock_telemetry_instance = MagicMock()
             mock_get_telemetry.return_value = mock_telemetry_instance
@@ -224,9 +224,9 @@ class TestInvokeGemini:
 
     @pytest.mark.asyncio
     @patch("asyncio.create_subprocess_exec")
-    async def test_invoke_gemini_total_timeout(self, mock_create_subprocess_exec):
+    async def test_invoke_total_timeout(self, mock_create_subprocess_exec):
         """
-        Test that invoke_gemini kills the underlying Gemini CLI process if total_timeout is exceeded.
+        Test that invoke kills the underlying Gemini CLI process if total_timeout is exceeded.
         """
         # Use an event to signal process completion or kill
         killed_event = asyncio.Event()
