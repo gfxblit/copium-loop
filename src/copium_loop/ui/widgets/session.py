@@ -136,11 +136,14 @@ class SessionWidget(Vertical):
                 # Idle nodes without history get minimal space.
                 count = len(pillar_data.buffer)
                 if pillar_data.status == "active":
-                    weight = 50 + (count * 2)
+                    weight = 100 + (count * 2)
+                    widget.styles.min_height = 3
                 elif count > 0:
-                    weight = 5 + count
+                    weight = 10 + count
+                    widget.styles.min_height = 3
                 else:
                     weight = 1
+                    widget.styles.min_height = 1
 
                 widget.styles.height = f"{weight}fr"
         except Exception:

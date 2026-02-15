@@ -128,7 +128,7 @@ class MatrixPillar:
             border_style = "grey37"
         else:
             header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
-            border_style = "grey37"
+            return header_text
 
         return Panel(
             TailRenderable(self.buffer, self.status),
