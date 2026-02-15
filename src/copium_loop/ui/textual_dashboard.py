@@ -40,10 +40,12 @@ class TextualDashboard(App):
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "refresh", "Refresh", show=True),
         Binding("v", "toggle_stats", "Toggle Stats", show=True),
-        Binding("tab", "next_page", "Next Page", show=True),
-        Binding("shift+tab", "prev_page", "Prev Page", show=True),
-        Binding("right", "next_session", "Focus Next", show=False),
-        Binding("left", "prev_session", "Focus Prev", show=False),
+        Binding("tab", "next_page", "Next Page", show=True, priority=True),
+        Binding("shift+tab", "prev_page", "Prev Page", show=True, priority=True),
+        Binding("right", "next_page", "Next Page", show=False),
+        Binding("left", "prev_page", "Prev Page", show=False),
+        Binding("n", "next_page", "Next Page", show=False),
+        Binding("p", "prev_page", "Prev Page", show=False),
         Binding("1", "switch_tmux(1)", "Tmux 1", show=False),
         Binding("2", "switch_tmux(2)", "Tmux 2", show=False),
         Binding("3", "switch_tmux(3)", "Tmux 3", show=False),
@@ -67,6 +69,7 @@ class TextualDashboard(App):
             CodexStatsStrategy(self.codexbar_client),
         ]
         self._updating = False
+        self._ui_lock = asyncio.Lock()
         self.enable_polling = enable_polling
 
     def compose(self) -> ComposeResult:
@@ -103,22 +106,27 @@ class TextualDashboard(App):
             except Exception:
                 pass
 
-        if stats_parts:
+        if stats_parts and stats_parts[-1].plain == " | ":
             # Remove trailing pipe
-            if stats_parts[-1].plain == " | ":
-                stats_parts.pop()
+            stats_parts.pop()
 
-            full_stats = Text()
-            for part in stats_parts:
-                full_stats.append(part)
+        full_stats = Text()
+        for part in stats_parts:
+            full_stats.append(part)
 
-            # Add pagination info
-            _, page, total = self.manager.get_visible_sessions()
-            if total > 1:
-                full_stats.append(Text(f" | Page {page}/{total}", style="bold yellow"))
+        # Add pagination info
+        _, page, total = self.manager.get_visible_sessions()
+        if total > 1:
+            if stats_parts:
+                full_stats.append(Text(" | "))
+            full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
 
+        if full_stats:
             with contextlib.suppress(Exception):
                 self.query_one("#stats-bar", Static).update(full_stats)
+        else:
+            with contextlib.suppress(Exception):
+                self.query_one("#stats-bar", Static).update("")
 
     async def update_from_logs(self) -> None:
         """Reads logs and updates the UI."""
@@ -133,38 +141,35 @@ class TextualDashboard(App):
 
     async def update_ui(self) -> None:
         """Syncs the UI with the session manager's state."""
-        container = self.query_one("#sessions-container", Horizontal)
-        visible_sessions, _, _ = self.manager.get_visible_sessions()
-        visible_sids = [s.session_id for s in visible_sessions]
+        async with self._ui_lock:
+            container = self.query_one("#sessions-container", Horizontal)
+            visible_sessions, _, _ = self.manager.get_visible_sessions()
+            visible_sids = [s.session_id for s in visible_sessions]
 
-        current_sids = [w.session_id for w in container.query(SessionWidget)]
+            current_widgets = list(container.query(SessionWidget))
+            current_sids = [w.session_id for w in current_widgets]
 
-        if current_sids == visible_sids:
-            # Just refresh existing
-            existing_widgets = {w.session_id: w for w in container.query(SessionWidget)}
-            for session in visible_sessions:
-                await existing_widgets[session.session_id].refresh_ui()
-        else:
-            # Rebuild
-            await container.remove_children()
-            for session in visible_sessions:
-                w = SessionWidget(session, id=f"session-{session.session_id}")
-                await container.mount(w)
-                # w.refresh_ui() is called in w.on_mount(), which runs after mount
+            if current_sids == visible_sids:
+                # Just refresh existing
+                for widget in current_widgets:
+                    await widget.refresh_ui()
+            else:
+                # Rebuild
+                await container.remove_children()
+                for session in visible_sessions:
+                    w = SessionWidget(session, id=f"session-{session.session_id}")
+                    await container.mount(w)
+                    await w.refresh_ui()
 
     async def action_next_page(self) -> None:
         self.manager.next_page()
         await self.update_ui()
+        await self.update_footer_stats()
 
     async def action_prev_page(self) -> None:
         self.manager.prev_page()
         await self.update_ui()
-
-    def action_next_session(self) -> None:
-        self.screen.focus_next()
-
-    def action_prev_session(self) -> None:
-        self.screen.focus_previous()
+        await self.update_footer_stats()
 
     def action_switch_tmux(self, index: int) -> None:
         """Switches to the tmux session at the given index (1-based)."""

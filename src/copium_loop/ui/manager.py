@@ -131,24 +131,22 @@ class SessionManager:
 
         return sorted(self.sessions.values(), key=sort_key)
 
+    @property
+    def total_pages(self) -> int:
+        """Returns the total number of pages based on current sessions."""
+        num_sessions = len(self.sessions)
+        if num_sessions == 0:
+            return 1
+        return (num_sessions + self.sessions_per_page - 1) // self.sessions_per_page
+
     def get_visible_sessions(self) -> tuple[list[SessionColumn], int, int]:
         """
         Returns the list of sessions for the current page, current page index, and total pages.
         """
         sorted_sessions = self.get_sorted_sessions()
-        num_sessions = len(sorted_sessions)
+        num_pages = self.total_pages
 
-        if self.sessions_per_page <= 0:
-            # Should not happen, but safe default
-            return sorted_sessions, 1, 1
-
-        num_pages = (
-            num_sessions + self.sessions_per_page - 1
-        ) // self.sessions_per_page
-        if num_pages == 0:
-            num_pages = 1
-
-        # Clamp current page
+        # Clamp current_page based on actual number of pages
         self.current_page = max(0, min(self.current_page, num_pages - 1))
 
         start_idx = self.current_page * self.sessions_per_page
@@ -158,9 +156,11 @@ class SessionManager:
         return visible, self.current_page + 1, num_pages
 
     def next_page(self):
-        _, _, num_pages = self.get_visible_sessions()
+        """Moves to the next page, wrapping around."""
+        num_pages = self.total_pages
         self.current_page = (self.current_page + 1) % num_pages
 
     def prev_page(self):
-        _, _, num_pages = self.get_visible_sessions()
+        """Moves to the previous page, wrapping around."""
+        num_pages = self.total_pages
         self.current_page = (self.current_page - 1) % num_pages
