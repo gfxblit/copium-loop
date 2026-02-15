@@ -7,20 +7,67 @@ from copium_loop.shell import run_command, stream_subprocess
 from copium_loop.telemetry import get_telemetry
 
 
+class JulesError(Exception):
+    """Base exception for JulesEngine."""
+
+
+class JulesSessionError(JulesError):
+    """Raised when a Jules session fails or cannot be created."""
+
+
+class JulesTimeoutError(JulesError):
+    """Raised when a Jules operation times out."""
+
+
+class JulesRepoError(JulesError):
+    """Raised when the git repository name cannot be detected."""
+
+
+# Constants for Jules CLI interactions
+DEFAULT_COMMAND_TIMEOUT = 3600
+POLLING_INTERVAL = 10
+OUTPUT_FILE = "JULES_OUTPUT.txt"
+MAX_PROMPT_LENGTH = 12000
+
+
 class JulesEngine(LLMEngine):
     """Concrete implementation of LLMEngine using Jules CLI."""
 
     async def _get_repo_name(self, node: str | None = None) -> str:
         """Extracts owner/repo from git remotes."""
-        res = await run_command(
-            "git", ["remote", "get-url", "origin"], node=node, capture_stderr=False
-        )
-        url = res["output"].strip()
+        # Try origin first, then any available remote
+        remotes_to_try = ["origin"]
+        res = await run_command("git", ["remote"], node=node, capture_stderr=False)
+        all_remotes = res["output"].strip().splitlines()
+        for r in all_remotes:
+            if r != "origin":
+                remotes_to_try.append(r)
+
+        url = None
+        for remote in remotes_to_try:
+            try:
+                res = await run_command(
+                    "git",
+                    ["remote", "get-url", remote],
+                    node=node,
+                    capture_stderr=True,
+                )
+                if res["exit_code"] == 0:
+                    url = res["output"].strip()
+                    break
+            except Exception:
+                continue
+
+        if not url:
+            raise JulesRepoError("Could not determine git remote URL.")
+
         # Regex to match github.com/owner/repo or git@github.com:owner/repo
-        match = re.search(r"[:/]([^/:]+/[^/:]+)(\.git)?$", url)
+        # Improved to handle trailing slashes and multiple segments (for GitLab etc)
+        match = re.search(r"[:/]([^/:]+/[^/:]+?)(?:\.git)?/?$", url)
         if match:
-            return match.group(1).replace(".git", "")
-        raise Exception(f"Could not parse repo name from remote URL: {url}")
+            return match.group(1)
+
+        raise JulesRepoError(f"Could not parse repo name from remote URL: {url}")
 
     async def invoke(
         self,
@@ -52,16 +99,21 @@ class JulesEngine(LLMEngine):
 
         repo = await self._get_repo_name(node=node)
 
+        # Sanitize prompt to prevent injection
+        safe_prompt = self.sanitize_for_prompt(prompt)
+
         # Instruct Jules to write to JULES_OUTPUT.txt
         prompt_with_instr = (
-            f"{prompt}\n\n"
-            "IMPORTANT: Write your final summary or verdict to JULES_OUTPUT.txt "
+            f"{safe_prompt}\n\n"
+            f"IMPORTANT: Write your final summary or verdict to {OUTPUT_FILE} "
             "before finishing."
         )
 
         # 1. Create session
         # Use a longer timeout for Jules session creation/upload if needed
-        timeout = command_timeout if command_timeout is not None else 3600
+        timeout = (
+            command_timeout if command_timeout is not None else DEFAULT_COMMAND_TIMEOUT
+        )
 
         env = os.environ.copy()
         # Prevent interactive prompts
@@ -78,15 +130,19 @@ class JulesEngine(LLMEngine):
         )
 
         if timed_out:
-            raise Exception(f"Jules session creation timed out: {timeout_message}")
+            raise JulesTimeoutError(
+                f"Jules session creation timed out: {timeout_message}"
+            )
         if exit_code != 0:
-            raise Exception(
+            raise JulesSessionError(
                 f"Jules session creation failed with code {exit_code}: {output}"
             )
 
         match = re.search(r"Session ID: (\S+)", output)
         if not match:
-            raise Exception(f"Failed to parse Session ID from Jules output: {output}")
+            raise JulesSessionError(
+                f"Failed to parse Session ID from Jules output: {output}"
+            )
         session_id = match.group(1)
 
         if verbose:
@@ -103,14 +159,16 @@ class JulesEngine(LLMEngine):
                 capture_stderr=True,
             )
             if timed_out:
-                raise Exception(f"Polling Jules session timed out: {timeout_message}")
+                raise JulesTimeoutError(
+                    f"Polling Jules session timed out: {timeout_message}"
+                )
 
             if "Status: Completed" in output:
                 break
             elif "Status: Failed" in output:
-                raise Exception(f"Jules session {session_id} failed.")
+                raise JulesSessionError(f"Jules session {session_id} failed.")
 
-            await asyncio.sleep(10)
+            await asyncio.sleep(POLLING_INTERVAL)
 
         # 3. Pull results
         output, exit_code, timed_out, timeout_message = await stream_subprocess(
@@ -122,19 +180,22 @@ class JulesEngine(LLMEngine):
             capture_stderr=True,
         )
         if timed_out:
-            raise Exception(f"Pulling Jules results timed out: {timeout_message}")
+            raise JulesTimeoutError(
+                f"Pulling Jules results timed out: {timeout_message}"
+            )
         if exit_code != 0:
-            raise Exception(f"Failed to pull Jules results: {output}")
+            raise JulesSessionError(f"Failed to pull Jules results: {output}")
 
         # 4. Read JULES_OUTPUT.txt
-        output_path = "JULES_OUTPUT.txt"
-        if not os.path.exists(output_path):
-            return "Jules task completed, but JULES_OUTPUT.txt was not found."
+        try:
+            with open(OUTPUT_FILE) as f:
+                return f.read()
+        except FileNotFoundError:
+            return f"Jules task completed, but {OUTPUT_FILE} was not found."
 
-        with open(output_path) as f:
-            return f.read()
-
-    def sanitize_for_prompt(self, text: str, max_length: int = 12000) -> str:
+    def sanitize_for_prompt(
+        self, text: str, max_length: int = MAX_PROMPT_LENGTH
+    ) -> str:
         """
         Sanitizes untrusted text for inclusion in a prompt to prevent injection.
         Escapes common delimiters and truncates excessively long input.
