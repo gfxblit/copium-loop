@@ -19,7 +19,6 @@ def test_actual_node_names_in_ui():
         "architect",
         "reviewer",
         "pr_pre_checker",
-        "journaler",
         "pr_creator",
     ]
 
@@ -35,8 +34,9 @@ def test_actual_node_names_in_ui():
             f"Node name {node.upper()} not found in UI output"
         )
 
-    # Specifically check that "JOURNAL" (the old name) is NOT there as a standalone header
-    assert "JOURNAL" not in output or "JOURNALER" in output
+    # Specifically check that "JOURNALER" is NOT there as a standalone header
+    assert "JOURNALER" not in output
+    assert "JOURNAL" not in output
 
 
 @pytest.mark.asyncio
@@ -70,6 +70,23 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
 
         # Check if the new node was added to pillars model
         assert "security_scanner" in widget.session_column.pillars
+
+        # Create an event for the journaler node (which is hidden by default)
+        journaler_event = {
+            "node": "journaler",
+            "event_type": "status",
+            "data": "active",
+            "timestamp": "2026-02-03T12:05:00",
+        }
+        with open(log_file, "a") as f:
+            f.write(json.dumps(journaler_event) + "\n")
+
+        # Update from logs again
+        await app.update_from_logs()
+        await pilot.pause()
+
+        # Check if journaler was added
+        assert "journaler" in widget.session_column.pillars
 
         # Wait for widget mount
         for _ in range(10):

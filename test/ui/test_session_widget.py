@@ -28,7 +28,7 @@ async def test_session_widget_contains_pillars():
         pillars = session_widget.query(PillarWidget)
         assert (
             len(pillars) >= 6
-        )  # coder, tester, architect, reviewer, pr_pre_checker, journaler
+        )  # coder, tester, architect, reviewer, pr_pre_checker, pr_creator
 
         coder_pillar = session_widget.query_one(
             "#pillar-test-session-coder", PillarWidget
