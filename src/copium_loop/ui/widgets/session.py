@@ -143,7 +143,7 @@ class SessionWidget(Vertical):
                     widget.styles.min_height = 3
                 else:
                     weight = 1
-                    widget.styles.min_height = 1
+                    widget.styles.min_height = 3
 
                 widget.styles.height = f"{weight}fr"
         except Exception:
