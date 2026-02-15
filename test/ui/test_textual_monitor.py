@@ -148,7 +148,7 @@ async def test_textual_dashboard_toggle_stats(tmp_path):
     log_dir.mkdir()
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
-    async with app.run_test() as pilot:
+    async with app.run_test():
         stats_bar = app.query_one("#stats-bar")
         assert "hidden" not in stats_bar.classes
 

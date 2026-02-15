@@ -1,9 +1,7 @@
-from datetime import datetime
-
 from rich.panel import Panel
 from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.widgets import Static
 
 from ..column import SessionColumn
@@ -89,7 +87,7 @@ class SessionWidget(Vertical):
             id=f"header-{self.session_id}",
         )
         yield WorkflowStatusWidget(id=f"workflow-status-{self.session_id}")
-        with VerticalScroll(id=f"scroll-{self.session_id}"):
+        with Vertical(id=f"pillars-container-{self.session_id}"):
             pass
 
     def on_mount(self) -> None:
@@ -110,7 +108,9 @@ class SessionWidget(Vertical):
             )
             status_widget.update_status(self.session_column.workflow_status)
 
-            scroll = self.query_one(f"#scroll-{self.session_id}", VerticalScroll)
+            container = self.query_one(
+                f"#pillars-container-{self.session_id}", Vertical
+            )
 
             for node_id, pillar_data in self.session_column.pillars.items():
                 if node_id not in self.pillars:
@@ -118,8 +118,19 @@ class SessionWidget(Vertical):
                         node_id, id=f"pillar-{self.session_id}-{node_id}"
                     )
                     self.pillars[node_id] = widget
-                    await scroll.mount(widget)
+                    await container.mount(widget)
 
-                self.pillars[node_id].update_from_pillar(pillar_data)
+                widget = self.pillars[node_id]
+                widget.update_from_pillar(pillar_data)
+
+                # Weighting logic
+                count = len(pillar_data.buffer)
+                weight = count + 2
+                if pillar_data.status == "active":
+                    weight += 10
+                elif pillar_data.status == "idle" and count == 0:
+                    weight = 1
+
+                widget.styles.height = f"{weight}fr"
         except Exception:
             pass

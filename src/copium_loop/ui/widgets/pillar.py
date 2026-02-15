@@ -8,7 +8,7 @@ class PillarWidget(Static):
 
     DEFAULT_CSS = """
     PillarWidget {
-        height: auto;
+        height: 1fr;
         min-height: 3;
         margin: 0;
         padding: 0;

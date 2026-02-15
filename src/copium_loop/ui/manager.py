@@ -39,7 +39,7 @@ class SessionManager:
 
         for target_file in log_files:
             sid = target_file.stem
-            
+
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
 
@@ -59,7 +59,7 @@ class SessionManager:
                 with open(target_file) as f:
                     if offset > 0:
                         f.seek(offset)
-                        # If we seeked into the middle of a file (initial read of a large file), 
+                        # If we seeked into the middle of a file (initial read of a large file),
                         # skip the first (likely partial) line.
                         if is_initial_read:
                             f.readline()
