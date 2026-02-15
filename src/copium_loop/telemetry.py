@@ -14,6 +14,7 @@ class Telemetry:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        atexit.register(self._executor.shutdown)
 
     def flush(self):
         """Waits for all pending log writes to complete."""
