@@ -70,16 +70,8 @@ class MatrixPillar:
             except (ValueError, TypeError):
                 pass
 
-    def render(self) -> Panel:
-        # Visual Semantics:
-        # active -> bright white header, pulsing
-        # success/approved -> cyan checkmark
-        # error/rejected/failed -> red X
-        # idle with content -> grey checkmark (passed history)
-        # idle without content -> dim grey (never run)
-
-        has_content = len(self.buffer) > 0
-
+    def get_header_text(self) -> Text:
+        """Returns the header text for the pillar."""
         # Calculate display time if applicable - human readable (e.g. 1m 5s)
         time_suffix = ""
         duration_val = (
@@ -110,29 +102,47 @@ class MatrixPillar:
             time_suffix += f" @ {completion_str}"
 
         if self.status == "active":
-            header_text = Text(
+            return Text(
                 f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41"
             )
-            border_style = "#00FF41"
         elif self.status in self.SUCCESS_STATUSES:
-            header_text = Text(
+            return Text(
                 f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan"
             )
-            border_style = "cyan"
         elif self.status in self.FAILURE_STATUSES:
-            header_text = Text(
+            return Text(
                 f"✘ {self.name.upper()}{time_suffix}", style="bold white on red"
             )
-            border_style = "red"
-        elif has_content:
-            header_text = Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
-            border_style = "grey37"
+        elif len(self.buffer) > 0:
+            return Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
         else:
-            header_text = Text(f"○ {self.name.upper()}", style="dim grey50")
-            border_style = "grey37"
+            return Text(f"○ {self.name.upper()}", style="dim grey50")
+
+    def get_content_renderable(self) -> TailRenderable:
+        """Returns the content renderable for the pillar."""
+        return TailRenderable(self.buffer, self.status)
+
+    def render(self) -> Panel:
+        # Visual Semantics:
+        # active -> bright white header, pulsing
+        # success/approved -> cyan checkmark
+        # error/rejected/failed -> red X
+        # idle with content -> grey checkmark (passed history)
+        # idle without content -> dim grey (never run)
+
+        header_text = self.get_header_text()
+
+        if self.status == "active":
+            border_style = "#00FF41"
+        elif self.status in self.SUCCESS_STATUSES:
+            border_style = "cyan"
+        elif self.status in self.FAILURE_STATUSES:
+            border_style = "red"
+        else:
+            border_style = "#666666"
 
         return Panel(
-            TailRenderable(self.buffer, self.status),
+            self.get_content_renderable(),
             title=header_text,
             border_style=border_style,
             expand=True,

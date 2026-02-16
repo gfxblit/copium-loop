@@ -73,4 +73,4 @@ def test_pillar_render_idle_empty():
     p.status = "idle"
     panel = p.render()
     assert "○" in str(panel.title)
-    assert panel.border_style == "grey37"
+    assert panel.border_style == "#666666"
