@@ -1,6 +1,7 @@
 import json
+
 import pytest
-from textual.widgets import Footer, Label
+from textual.widgets import Footer
 
 from copium_loop.ui.textual_dashboard import TextualDashboard
 from copium_loop.ui.widgets.session import SessionWidget
@@ -26,7 +27,9 @@ async def test_dashboard_ux_enhancements(tmp_path):
         assert app.query(Footer), "Footer widget (key bindings) should be present"
 
         # 2. Check for Empty State Message via ID
-        assert app.query("#empty-state-label"), "Empty state label should be present initially"
+        assert app.query("#empty-state-label"), (
+            "Empty state label should be present initially"
+        )
 
         # 3. Add a session and check label removal
         log_file = log_dir / "test-session.jsonl"
@@ -46,10 +49,14 @@ async def test_dashboard_ux_enhancements(tmp_path):
         await pilot.pause()
 
         # Check that session widget is present
-        assert app.query(SessionWidget), "SessionWidget should be present after log update"
+        assert app.query(SessionWidget), (
+            "SessionWidget should be present after log update"
+        )
 
         # Check that empty state label is GONE
-        assert not app.query("#empty-state-label"), "Empty state label should be gone when sessions exist"
+        assert not app.query("#empty-state-label"), (
+            "Empty state label should be gone when sessions exist"
+        )
 
         # 4. Remove session and check label return
         log_file.unlink()
@@ -58,7 +65,11 @@ async def test_dashboard_ux_enhancements(tmp_path):
         await pilot.pause()
 
         # Check that session widget is GONE
-        assert not app.query(SessionWidget), "SessionWidget should be gone after log removal"
+        assert not app.query(SessionWidget), (
+            "SessionWidget should be gone after log removal"
+        )
 
         # Check that empty state label is BACK
-        assert app.query("#empty-state-label"), "Empty state label should return when all sessions are gone"
+        assert app.query("#empty-state-label"), (
+            "Empty state label should return when all sessions are gone"
+        )
