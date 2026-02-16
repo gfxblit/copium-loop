@@ -191,6 +191,9 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Jules output
+JULES_OUTPUT.txt
+
 # PyPI configuration file
 .pypirc
 

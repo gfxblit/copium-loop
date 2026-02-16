@@ -162,3 +162,13 @@ class GeminiEngine(LLMEngine):
             safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
 
         return safe_text
+
+    async def verify(self) -> bool:
+        """Verifies that the Gemini CLI is installed and working."""
+        try:
+            from copium_loop.shell import run_command
+
+            res = await run_command("gemini", ["--version"])
+            return res["exit_code"] == 0
+        except Exception:
+            return False

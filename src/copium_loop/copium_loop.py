@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
+from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.gemini import GeminiEngine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
@@ -99,12 +100,12 @@ class WorkflowManager:
 
         return response
 
-    async def verify_environment(self) -> bool:
+    async def verify_environment(self, engine: LLMEngine | None = None) -> bool:
         """Verifies that the necessary CLI tools are installed."""
         if WorkflowManager._environment_verified:
             return True
 
-        tools = ["git", "gh", "gemini"]
+        tools = ["git", "gh"]
         for tool in tools:
             try:
                 res = await run_command(tool, ["--version"])
@@ -115,17 +116,38 @@ class WorkflowManager:
                 print(f"Error: {tool} is not installed or not in PATH.")
                 return False
 
+        if engine:
+            if not await engine.verify():
+                # Engine-specific error message should be handled by the engine or here
+                print(f"Error: Engine {engine.__class__.__name__} verification failed.")
+                return False
+        else:
+            # Fallback for when engine is not yet provided (should not happen in run())
+            try:
+                res = await run_command("gemini", ["--version"])
+                if res["exit_code"] != 0:
+                    print("Error: gemini is not working correctly.")
+                    return False
+            except Exception:
+                print("Error: gemini is not installed or not in PATH.")
+                return False
+
         WorkflowManager._environment_verified = True
         return True
 
-    async def run(self, input_prompt: str, initial_state: dict | None = None):
+    async def run(
+        self,
+        input_prompt: str,
+        initial_state: dict | None = None,
+        engine: LLMEngine | None = None,
+    ):
         """Run the workflow with the given prompt."""
         if self.start_node and self.start_node not in VALID_NODES:
             raise ValueError(
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
-        if not await self.verify_environment():
+        if not await self.verify_environment(engine=engine):
             return {"error": "Environment verification failed."}
 
         telemetry = get_telemetry()
@@ -213,7 +235,7 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "engine": GeminiEngine(),
+            "engine": engine if engine is not None else GeminiEngine(),
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
@@ -237,5 +259,9 @@ class WorkflowManager:
             for key, value in initial_state.items():
                 if key != "prompt":
                     default_state[key] = value
+
+            # Explicitly override engine if provided on the CLI, even for resumed sessions
+            if engine is not None:
+                default_state["engine"] = engine
 
         return await self.graph.ainvoke(default_state)

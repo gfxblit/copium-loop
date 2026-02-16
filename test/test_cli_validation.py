@@ -22,8 +22,31 @@ def test_cli_invalid_start_node():
     )
 
     # Check stderr for error message
-    # Note: The exact error message might change during implementation, but it should contain "invalid start node"
     assert (
         "Invalid start node" in result.stdout or "Invalid start node" in result.stderr
     )
     assert "Valid nodes are:" in result.stdout or "Valid nodes are:" in result.stderr
+
+
+def test_cli_invalid_engine():
+    """
+    Test that the CLI fails with a non-zero exit code when an invalid engine is provided.
+    """
+    env = {"PYTHONPATH": "src"}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "copium_loop",
+            "--engine",
+            "invalid_engine",
+            "test prompt",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    # argparse will handle invalid choices and exit with code 2
+    assert result.returncode != 0
+    assert "invalid choice: 'invalid_engine'" in result.stderr

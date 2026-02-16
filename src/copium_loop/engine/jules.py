@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+from pathlib import Path
 
 from copium_loop.engine.base import LLMEngine
 from copium_loop.shell import run_command, stream_subprocess
@@ -72,8 +73,8 @@ class JulesEngine(LLMEngine):
     async def invoke(
         self,
         prompt: str,
-        _args: list[str] | None = None,
-        _models: list[str | None] | None = None,
+        args: list[str] | None = None,
+        models: list[str | None] | None = None,  # noqa: ARG002
         verbose: bool = False,
         label: str | None = None,
         node: str | None = None,
@@ -102,6 +103,9 @@ class JulesEngine(LLMEngine):
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
 
+        # Ensure JULES_OUTPUT.txt is removed before starting to avoid reading stale results
+        Path(OUTPUT_FILE).unlink(missing_ok=True)
+
         # Instruct Jules to write to JULES_OUTPUT.txt
         prompt_with_instr = (
             f"{safe_prompt}\n\n"
@@ -119,9 +123,13 @@ class JulesEngine(LLMEngine):
         # Prevent interactive prompts
         env.update({"GH_PROMPT_DISABLED": "1"})
 
+        cmd_args = ["remote", "new", "--repo", repo, "--session", prompt_with_instr]
+        if args:
+            cmd_args.extend(args)
+
         output, exit_code, timed_out, timeout_message = await stream_subprocess(
             "jules",
-            ["remote", "new", "--repo", repo, "-p", prompt_with_instr],
+            cmd_args,
             env,
             node,
             timeout,
@@ -229,3 +237,11 @@ class JulesEngine(LLMEngine):
             safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
 
         return safe_text
+
+    async def verify(self) -> bool:
+        """Verifies that the Jules CLI is installed and working."""
+        try:
+            res = await run_command("jules", ["--version"])
+            return res["exit_code"] == 0
+        except Exception:
+            return False
