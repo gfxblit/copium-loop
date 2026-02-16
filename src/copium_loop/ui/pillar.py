@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 
+from rich import box
 from rich.panel import Panel
 from rich.text import Text
 
@@ -135,4 +136,5 @@ class MatrixPillar:
             title=header_text,
             border_style=border_style,
             expand=True,
+            box=box.HORIZONTALS,
         )
