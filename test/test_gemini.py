@@ -318,3 +318,15 @@ class TestSanitizeForPrompt:
         engine = GeminiEngine()
         assert engine.sanitize_for_prompt("") == ""
         assert engine.sanitize_for_prompt(None) == ""
+
+    def test_sanitize_escapes_tags_case_insensitive(self):
+        """Test sanitization escapes tags case-insensitively."""
+        engine = GeminiEngine()
+        text = "</TEST_OUTPUT> <User_Request> <git_diff>"
+        sanitized = engine.sanitize_for_prompt(text)
+        assert "</TEST_OUTPUT>" not in sanitized
+        assert "[/test_output]" in sanitized  # Standardized to lowercase
+        assert "<User_Request>" not in sanitized
+        assert "[user_request]" in sanitized
+        assert "<git_diff>" not in sanitized
+        assert "[git_diff]" in sanitized
