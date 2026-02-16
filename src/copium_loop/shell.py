@@ -163,6 +163,9 @@ async def stream_subprocess(
     )
 
     full_output = ""
+    output_chunks = []
+    current_output_size = 0
+    truncated = False
     logger = StreamLogger(node)
     start_time = time.monotonic()
 
@@ -176,7 +179,7 @@ async def stream_subprocess(
     )
 
     async def read_stream(stream, is_stderr):
-        nonlocal full_output
+        nonlocal current_output_size, truncated
         while True:
             try:
                 chunk = await stream.read(1024)
@@ -191,13 +194,15 @@ async def stream_subprocess(
                 if not is_stderr:
                     logger.process_chunk(decoded)
 
-                if len(full_output) < MAX_OUTPUT_SIZE:
-                    full_output += decoded
-                    if len(full_output) >= MAX_OUTPUT_SIZE:
-                        full_output = (
-                            full_output[:MAX_OUTPUT_SIZE]
-                            + "\n[... Output Truncated ...]"
-                        )
+                if not truncated and current_output_size < MAX_OUTPUT_SIZE:
+                    output_chunks.append(decoded)
+                    current_output_size += len(decoded)
+                    if current_output_size >= MAX_OUTPUT_SIZE:
+                        full_output_temp = "".join(output_chunks)
+                        output_chunks.clear()
+                        output_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
+                        output_chunks.append("\n[... Output Truncated ...]")
+                        truncated = True
 
     read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
     read_stderr_task = None
@@ -247,6 +252,8 @@ async def stream_subprocess(
                     await task
 
         logger.flush()
+
+    full_output = "".join(output_chunks)
 
     if monitor.timed_out:
         exit_code = -1
