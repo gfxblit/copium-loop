@@ -6,16 +6,30 @@ MODELS = [
     "gemini-3-flash-preview",
 ]
 
+# Node Names
+NODE_CODER = "coder"
+NODE_TESTER = "tester"
+NODE_ARCHITECT = "architect"
+NODE_REVIEWER = "reviewer"
+NODE_PR_PRE_CHECKER = "pr_pre_checker"
+NODE_PR_CREATOR = "pr_creator"
+NODE_JOURNALER = "journaler"
+
 # Valid workflow nodes
 VALID_NODES = [
-    "coder",
-    "tester",
-    "architect",
-    "reviewer",
-    "pr_pre_checker",
-    "pr_creator",
-    "journaler",
+    NODE_CODER,
+    NODE_TESTER,
+    NODE_ARCHITECT,
+    NODE_REVIEWER,
+    NODE_PR_PRE_CHECKER,
+    NODE_PR_CREATOR,
+    NODE_JOURNALER,
 ]
+
+# Node Statuses
+STATUS_ACTIVE = "active"
+STATUS_SUCCESS = "success"
+STATUS_FAILED = "failed"
 
 # Max retries for the workflow
 MAX_RETRIES = 10
