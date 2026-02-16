@@ -70,6 +70,17 @@ class MatrixPillar:
             except (ValueError, TypeError):
                 pass
 
+    def get_status_color(self) -> str:
+        """Returns the base color hex or name for the current status."""
+        if self.status == "active":
+            return "#00FF41"
+        elif self.status in self.SUCCESS_STATUSES:
+            return "cyan"
+        elif self.status in self.FAILURE_STATUSES:
+            return "red"
+        else:
+            return "#666666"
+
     def get_header_text(self) -> Text:
         """Returns the header text for the pillar."""
         # Calculate display time if applicable - human readable (e.g. 1m 5s)
@@ -101,17 +112,21 @@ class MatrixPillar:
             completion_str = completion_dt.strftime("%H:%M:%S")
             time_suffix += f" @ {completion_str}"
 
+        status_color = self.get_status_color()
         if self.status == "active":
             return Text(
-                f"▶ {self.name.upper()}{time_suffix}", style="bold black on #00FF41"
+                f"▶ {self.name.upper()}{time_suffix}",
+                style=f"bold black on {status_color}",
             )
         elif self.status in self.SUCCESS_STATUSES:
             return Text(
-                f"✔ {self.name.upper()}{time_suffix}", style="bold black on cyan"
+                f"✔ {self.name.upper()}{time_suffix}",
+                style=f"bold black on {status_color}",
             )
         elif self.status in self.FAILURE_STATUSES:
             return Text(
-                f"✘ {self.name.upper()}{time_suffix}", style="bold white on red"
+                f"✘ {self.name.upper()}{time_suffix}",
+                style=f"bold white on {status_color}",
             )
         elif len(self.buffer) > 0:
             return Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
@@ -131,15 +146,7 @@ class MatrixPillar:
         # idle without content -> dim grey (never run)
 
         header_text = self.get_header_text()
-
-        if self.status == "active":
-            border_style = "#00FF41"
-        elif self.status in self.SUCCESS_STATUSES:
-            border_style = "cyan"
-        elif self.status in self.FAILURE_STATUSES:
-            border_style = "red"
-        else:
-            border_style = "#666666"
+        border_style = self.get_status_color()
 
         return Panel(
             self.get_content_renderable(),

@@ -25,15 +25,5 @@ class PillarWidget(Static):
         """Updates the widget content from the pillar state."""
         self.pillar = pillar
         self.border_title = pillar.get_header_text()
-
-        if pillar.status == "active":
-            border_style = "#00FF41"
-        elif pillar.status in pillar.SUCCESS_STATUSES:
-            border_style = "cyan"
-        elif pillar.status in pillar.FAILURE_STATUSES:
-            border_style = "red"
-        else:
-            border_style = "#666666"
-
-        self.styles.border = ("round", border_style)
+        self.styles.border = ("round", pillar.get_status_color())
         self.update(pillar.get_content_renderable())
