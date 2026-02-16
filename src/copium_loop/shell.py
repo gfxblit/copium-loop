@@ -194,16 +194,15 @@ async def stream_subprocess(
                 if not is_stderr:
                     logger.process_chunk(decoded)
 
-                if not truncated:
-                    if current_output_size < MAX_OUTPUT_SIZE:
-                        output_chunks.append(decoded)
-                        current_output_size += len(decoded)
-                        if current_output_size >= MAX_OUTPUT_SIZE:
-                            full_output_temp = "".join(output_chunks)
-                            output_chunks.clear()
-                            output_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
-                            output_chunks.append("\n[... Output Truncated ...]")
-                            truncated = True
+                if not truncated and current_output_size < MAX_OUTPUT_SIZE:
+                    output_chunks.append(decoded)
+                    current_output_size += len(decoded)
+                    if current_output_size >= MAX_OUTPUT_SIZE:
+                        full_output_temp = "".join(output_chunks)
+                        output_chunks.clear()
+                        output_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
+                        output_chunks.append("\n[... Output Truncated ...]")
+                        truncated = True
 
     read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
     read_stderr_task = None
