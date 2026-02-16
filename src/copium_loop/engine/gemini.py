@@ -1,4 +1,5 @@
 import os
+import re
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT, MODELS
 from copium_loop.engine.base import LLMEngine
@@ -137,26 +138,27 @@ class GeminiEngine(LLMEngine):
 
         # Escape common XML-like tags to prevent prompt injection breakouts
         # We replace <tag> with [tag] and </tag> with [/tag]
+        # We use case-insensitive replacement to prevent bypasses like </USER_REQUEST>
         replacements = {
             # Closing tags
-            "</test_output>": "[/test_output]",
-            "</reviewer_feedback>": "[/reviewer_feedback]",
-            "</architect_feedback>": "[/architect_feedback]",
-            "</git_diff>": "[/git_diff]",
-            "</error>": "[/error]",
-            "</user_request>": "[/user_request]",
+            r"</test_output>": "[/test_output]",
+            r"</reviewer_feedback>": "[/reviewer_feedback]",
+            r"</architect_feedback>": "[/architect_feedback]",
+            r"</git_diff>": "[/git_diff]",
+            r"</error>": "[/error]",
+            r"</user_request>": "[/user_request]",
             # Opening tags
-            "<test_output>": "[test_output]",
-            "<reviewer_feedback>": "[reviewer_feedback]",
-            "<architect_feedback>": "[architect_feedback]",
-            "<git_diff>": "[git_diff]",
-            "<error>": "[error]",
-            "<user_request>": "[user_request]",
+            r"<test_output>": "[test_output]",
+            r"<reviewer_feedback>": "[reviewer_feedback]",
+            r"<architect_feedback>": "[architect_feedback]",
+            r"<git_diff>": "[git_diff]",
+            r"<error>": "[error]",
+            r"<user_request>": "[user_request]",
         }
 
         safe_text = str(text)
-        for tag, replacement in replacements.items():
-            safe_text = safe_text.replace(tag, replacement)
+        for pattern, replacement in replacements.items():
+            safe_text = re.sub(pattern, replacement, safe_text, flags=re.IGNORECASE)
 
         if len(safe_text) > max_length:
             safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
