@@ -173,10 +173,10 @@ class TextualDashboard(App):
 
     def action_switch_tmux(self, index: int) -> None:
         """Switches to the tmux session at the given index (1-based)."""
-        # Get all sorted sessions to map index to session ID, regardless of page
-        sorted_sessions = self.manager.get_sorted_sessions()
-        if 0 < index <= len(sorted_sessions):
-            sid = sorted_sessions[index - 1].session_id
+        # Get visible sessions to map index to session ID on the current page
+        visible_sessions, _, _ = self.manager.get_visible_sessions()
+        if 0 < index <= len(visible_sessions):
+            sid = visible_sessions[index - 1].session_id
             from .tmux import switch_to_tmux_session
 
             switch_to_tmux_session(sid)
