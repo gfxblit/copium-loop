@@ -6,7 +6,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Static
+from textual.widgets import Footer, Label, Static
 
 from ..codexbar import CodexbarClient
 from .footer_stats import CodexStatsStrategy
@@ -75,6 +75,7 @@ class TextualDashboard(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(id="sessions-container")
         yield Static(id="stats-bar")
+        yield Footer()
 
     def on_mount(self) -> None:
         if self.enable_polling:
@@ -146,20 +147,33 @@ class TextualDashboard(App):
             visible_sessions, _, _ = self.manager.get_visible_sessions()
             visible_sids = [s.session_id for s in visible_sessions]
 
-            current_widgets = list(container.query(SessionWidget))
-            current_sids = [w.session_id for w in current_widgets]
+            current_session_widgets = list(container.query(SessionWidget))
+            current_sids = [w.session_id for w in current_session_widgets]
 
-            if current_sids == visible_sids:
-                # Just refresh existing
-                for widget in current_widgets:
+            # If we have visible sessions and they match current widgets, just refresh
+            if visible_sessions and current_sids == visible_sids:
+                for widget in current_session_widgets:
                     await widget.refresh_ui()
-            else:
-                # Rebuild
-                await container.remove_children()
-                for session in visible_sessions:
-                    w = SessionWidget(session, id=f"session-{session.session_id}")
-                    await container.mount(w)
-                    await w.refresh_ui()
+                return
+
+            # Otherwise rebuild
+            await container.remove_children()
+
+            if not visible_sessions:
+                label = Label(
+                    "No active sessions.\nRun 'copium new <prompt>' to start.",
+                    id="empty-state-label",
+                )
+                label.styles.text_align = "center"
+                label.styles.color = "yellow"
+                label.styles.width = "100%"
+                await container.mount(label)
+                return
+
+            for session in visible_sessions:
+                w = SessionWidget(session, id=f"session-{session.session_id}")
+                await container.mount(w)
+                await w.refresh_ui()
 
     async def action_next_page(self) -> None:
         self.manager.next_page()
