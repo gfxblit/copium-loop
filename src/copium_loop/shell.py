@@ -13,6 +13,10 @@ from copium_loop.constants import (
 )
 from copium_loop.telemetry import get_telemetry
 
+# Pre-compile regexes for performance
+ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-9;]*[a-zA-Z]")
+CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
 
 class StreamLogger:
     """Helper to buffer output for line-based logging while streaming to stdout."""
@@ -136,10 +140,10 @@ def _clean_chunk(chunk: str | bytes) -> str:
         return str(chunk)
 
     # Remove ANSI escape codes
-    without_ansi = re.sub(r"\x1B\[[0-9;]*[a-zA-Z]", "", chunk)
+    without_ansi = ANSI_ESCAPE_RE.sub("", chunk)
 
     # Remove disruptive control characters (excluding TAB, LF, CR)
-    return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
+    return CONTROL_CHAR_RE.sub("", without_ansi)
 
 
 async def stream_subprocess(
