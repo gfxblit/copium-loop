@@ -156,8 +156,11 @@ class TextualDashboard(App):
             else:
                 # Rebuild
                 await container.remove_children()
-                for session in visible_sessions:
-                    w = SessionWidget(session, id=f"session-{session.session_id}")
+                for i, session in enumerate(visible_sessions):
+                    # Pass index (1-based) to match key bindings
+                    w = SessionWidget(
+                        session, index=i + 1, id=f"session-{session.session_id}"
+                    )
                     await container.mount(w)
                     await w.refresh_ui()
 

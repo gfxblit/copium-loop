@@ -60,3 +60,24 @@ async def test_session_widget_status_merging():
         header = session_widget.query_one("#header-test-session", Static)
         assert "⚠" in str(header.render())
         assert "test-session" in str(header.render())
+
+
+@pytest.mark.asyncio
+async def test_session_widget_displays_index():
+    class IndexApp(App):
+        def compose(self) -> ComposeResult:
+            column = SessionColumn("test-session-index")
+            widget = SessionWidget(column, index=5)
+            yield widget
+
+    app = IndexApp()
+    async with app.run_test() as pilot:
+        session_widget = app.query_one(SessionWidget)
+        await session_widget.refresh_ui()
+        await pilot.pause()
+
+        header = session_widget.query_one(f"#header-{session_widget.session_id}", Static)
+        header_text = str(header.render())
+
+        assert "[5]" in header_text
+        assert "test-session-index" in header_text
