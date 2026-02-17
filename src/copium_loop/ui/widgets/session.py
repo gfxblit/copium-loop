@@ -73,7 +73,7 @@ class SessionWidget(Vertical):
             header = self.query_one(f"#header-{self.session_id}", Static)
             header.styles.border_title_align = "center"
             header.styles.border_subtitle_align = "center"
-            header.border_title = Text(f"{self.session_id}", style="bold", justify="center")
+            header.border_title = ""
 
             if self.session_column.workflow_status == "success":
                 header.border_subtitle = Text("✓ SUCCESS", style="bold", justify="center")
@@ -87,7 +87,8 @@ class SessionWidget(Vertical):
                 header.border_subtitle = Text("", justify="center")
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
-            header.update("")
+            
+            header.update(f"{self.session_id}")
 
             container = self.query_one(
                 f"#pillars-container-{self.session_id}", Vertical
