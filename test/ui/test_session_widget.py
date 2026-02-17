@@ -76,7 +76,9 @@ async def test_session_widget_displays_index():
         await session_widget.refresh_ui()
         await pilot.pause()
 
-        header = session_widget.query_one(f"#header-{session_widget.session_id}", Static)
+        header = session_widget.query_one(
+            f"#header-{session_widget.session_id}", Static
+        )
         header_text = str(header.render())
 
         assert "[5]" in header_text
