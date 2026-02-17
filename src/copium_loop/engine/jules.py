@@ -51,11 +51,16 @@ class JulesEngine(LLMEngine):
         self, client: httpx.AsyncClient, prompt: str, repo: str, branch: str
     ) -> str:
         """Creates a new Jules session and returns its name."""
+        # Map repo "owner/repo" to "sources/github/owner/repo"
+        source_name = f"sources/github/{repo}"
+
         payload = {
             "prompt": prompt,
             "sourceContext": {
-                "repository": repo,
-                "branch": branch,
+                "source": source_name,
+                "githubRepoContext": {
+                    "startingBranch": branch,
+                },
             },
         }
 
@@ -68,7 +73,7 @@ class JulesEngine(LLMEngine):
         except httpx.HTTPError as e:
             raise JulesSessionError(f"Network error creating Jules session: {e}") from e
 
-        if resp.status_code != 201:
+        if resp.status_code not in (200, 201):
             raise JulesSessionError(
                 f"Jules session creation failed with status {resp.status_code}: {resp.text}"
             )
@@ -81,17 +86,67 @@ class JulesEngine(LLMEngine):
         client: httpx.AsyncClient,
         session_name: str,
         timeout: int,
+        node: str | None = None,
         verbose: bool = False,
     ) -> dict:
         """Polls the Jules session until completion or timeout."""
         start_time = asyncio.get_running_loop().time()
+        seen_activities = set()
+        telemetry = get_telemetry()
+        last_summary = ""
 
         while True:
             if asyncio.get_running_loop().time() - start_time > timeout:
                 raise JulesTimeoutError("Jules operation timed out.")
 
-            await asyncio.sleep(POLLING_INTERVAL)
+            # 1. Fetch activities to show progress
+            try:
+                act_resp = await client.get(
+                    f"{self.api_base_url}/{session_name}/activities",
+                    headers=self._get_headers(),
+                )
+                if act_resp.status_code == 200:
+                    activities = act_resp.json().get("activities", [])
+                    for activity in activities:
+                        act_id = activity.get("id")
+                        if act_id and act_id not in seen_activities:
+                            seen_activities.add(act_id)
+                            
+                            # Extract progress information
+                            title = ""
+                            desc = ""
+                            if "progressUpdated" in activity:
+                                title = activity["progressUpdated"].get("title", "")
+                                desc = activity["progressUpdated"].get("description", "")
+                            elif "planGenerated" in activity:
+                                title = "Plan generated"
+                            elif "sessionCompleted" in activity:
+                                title = "Session completed"
+                            elif "sessionFailed" in activity:
+                                title = "Session failed"
+                                desc = activity["sessionFailed"].get("reason", "")
+                            
+                            if not title:
+                                title = activity.get("description", "Activity update")
 
+                            msg = f"[{session_name}] {title}"
+                            if desc:
+                                msg += f": {desc}"
+                            
+                            if verbose:
+                                print(msg)
+                            if node:
+                                telemetry.log_output(node, msg + "\n")
+                            
+                            # Update last_summary with any textual description we find
+                            if title or desc:
+                                last_summary = desc or title
+
+            except Exception as e:
+                if verbose:
+                    print(f"Warning: Failed to fetch activities: {e}")
+
+            # 2. Check session state
             try:
                 resp = await client.get(
                     f"{self.api_base_url}/{session_name}",
@@ -111,25 +166,38 @@ class JulesEngine(LLMEngine):
             state = status_data.get("state")
 
             if state == "COMPLETED":
+                # Inject the last seen summary into status_data for _extract_summary
+                if last_summary and "activities" not in status_data:
+                    status_data["activities"] = [{"description": last_summary}]
                 return status_data
             if state == "FAILED":
                 raise JulesSessionError(f"Jules session {session_name} failed.")
 
-            if verbose:
-                print(f"Jules session {session_name} is {state}...")
+            await asyncio.sleep(POLLING_INTERVAL)
 
     def _extract_summary(self, status_data: dict) -> str:
         """Extracts the summary and PR URL from the completed session data."""
-        outputs = status_data.get("outputs", {})
-        summary = outputs.get("summary")
-        pr_url = outputs.get("pr_url")
+        outputs = status_data.get("outputs", [])
+        summary = ""
+        pr_url = ""
 
+        # Extract pull request info from outputs array
+        for output in outputs:
+            if isinstance(output, dict) and "pullRequest" in output:
+                pr = output["pullRequest"]
+                pr_url = pr.get("url", "")
+                title = pr.get("title", "")
+                if not summary and title:
+                    summary = title
+
+        # Fallback to activities for textual summary if not already found
+        activities = status_data.get("activities", [])
         if not summary:
-            # Fallback to activities if summary is not in outputs
-            activities = status_data.get("activities", [])
             for activity in reversed(activities):
-                if "text" in activity:
-                    summary = activity["text"]
+                # Check for description or other textual fields in activity
+                text = activity.get("description") or activity.get("text")
+                if text:
+                    summary = text
                     break
 
         if pr_url:
@@ -192,7 +260,7 @@ class JulesEngine(LLMEngine):
 
             # 2. Poll for completion
             status_data = await self._poll_session(
-                client, session_name, timeout, verbose
+                client, session_name, timeout, node, verbose
             )
 
             # 3. Extract results
