@@ -87,7 +87,7 @@ class SessionWidget(Vertical):
                 header.border_subtitle = Text("", justify="center")
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
-            
+
             header.update(f"{self.session_id}")
 
             container = self.query_one(
