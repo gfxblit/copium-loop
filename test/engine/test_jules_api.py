@@ -390,7 +390,7 @@ async def test_jules_api_poll_session_logs():
             httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
         ]
 
-        await engine._poll_session(client, "sessions/sess_123", timeout=10, node="test_node", verbose=True)
+        await engine._poll_session(client, "sessions/sess_123", timeout=10, inactivity_timeout=5, node="test_node", verbose=True)
 
         # Verify telemetry calls
         assert mock_telemetry.log_output.call_count == 2

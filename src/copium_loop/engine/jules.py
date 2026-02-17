@@ -3,6 +3,7 @@ import os
 
 import httpx
 
+from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
 from copium_loop.engine.base import LLMEngine
 from copium_loop.git import get_current_branch, get_repo_name, pull
 from copium_loop.telemetry import get_telemetry
@@ -86,18 +87,28 @@ class JulesEngine(LLMEngine):
         client: httpx.AsyncClient,
         session_name: str,
         timeout: int,
+        inactivity_timeout: int,
         node: str | None = None,
         verbose: bool = False,
     ) -> dict:
         """Polls the Jules session until completion or timeout."""
         start_time = asyncio.get_running_loop().time()
+        last_activity_time = start_time
         seen_activities = set()
         telemetry = get_telemetry()
         last_summary = ""
 
         while True:
-            if asyncio.get_running_loop().time() - start_time > timeout:
-                raise JulesTimeoutError("Jules operation timed out.")
+            current_time = asyncio.get_running_loop().time()
+            if current_time - start_time > timeout:
+                raise JulesTimeoutError(
+                    f"Jules operation timed out (total timeout: {timeout}s)."
+                )
+
+            if current_time - last_activity_time > inactivity_timeout:
+                raise JulesTimeoutError(
+                    f"Jules operation timed out (inactivity timeout: {inactivity_timeout}s)."
+                )
 
             # 1. Fetch activities to show progress
             try:
@@ -107,17 +118,21 @@ class JulesEngine(LLMEngine):
                 )
                 if act_resp.status_code == 200:
                     activities = act_resp.json().get("activities", [])
+                    new_activity_found = False
                     for activity in activities:
                         act_id = activity.get("id")
                         if act_id and act_id not in seen_activities:
                             seen_activities.add(act_id)
-                            
+                            new_activity_found = True
+
                             # Extract progress information
                             title = ""
                             desc = ""
                             if "progressUpdated" in activity:
                                 title = activity["progressUpdated"].get("title", "")
-                                desc = activity["progressUpdated"].get("description", "")
+                                desc = activity["progressUpdated"].get(
+                                    "description", ""
+                                )
                             elif "planGenerated" in activity:
                                 title = "Plan generated"
                             elif "sessionCompleted" in activity:
@@ -125,22 +140,25 @@ class JulesEngine(LLMEngine):
                             elif "sessionFailed" in activity:
                                 title = "Session failed"
                                 desc = activity["sessionFailed"].get("reason", "")
-                            
+
                             if not title:
                                 title = activity.get("description", "Activity update")
 
                             msg = f"[{session_name}] {title}"
                             if desc:
                                 msg += f": {desc}"
-                            
+
                             if verbose:
                                 print(msg)
                             if node:
                                 telemetry.log_output(node, msg + "\n")
-                            
+
                             # Update last_summary with any textual description we find
                             if title or desc:
                                 last_summary = desc or title
+                    
+                    if new_activity_found:
+                        last_activity_time = current_time
 
             except Exception as e:
                 if verbose:
@@ -218,7 +236,7 @@ class JulesEngine(LLMEngine):
         label: str | None = None,
         node: str | None = None,
         command_timeout: int | None = None,
-        inactivity_timeout: int | None = None,  # noqa: ARG002
+        inactivity_timeout: int | None = None,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -248,8 +266,11 @@ class JulesEngine(LLMEngine):
         safe_prompt = self.sanitize_for_prompt(prompt)
 
         timeout = (
-            command_timeout if command_timeout is not None else 300
-        )  # Default 5 minutes
+            command_timeout if command_timeout is not None else COMMAND_TIMEOUT
+        )
+        inactivity = (
+            inactivity_timeout if inactivity_timeout is not None else INACTIVITY_TIMEOUT
+        )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 1. Create session
@@ -260,7 +281,7 @@ class JulesEngine(LLMEngine):
 
             # 2. Poll for completion
             status_data = await self._poll_session(
-                client, session_name, timeout, node, verbose
+                client, session_name, timeout, inactivity, node, verbose
             )
 
             # 3. Extract results
