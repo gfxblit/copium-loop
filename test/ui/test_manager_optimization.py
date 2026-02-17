@@ -1,47 +1,7 @@
-import sys
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-
-# Mock dependencies to avoid import errors
-# We need to mock these BEFORE importing SessionManager
-sys.modules["rich"] = MagicMock()
-sys.modules["rich.text"] = MagicMock()
-sys.modules["rich.panel"] = MagicMock()
-sys.modules["rich.layout"] = MagicMock()
-sys.modules["rich.box"] = MagicMock()
-sys.modules["rich.style"] = MagicMock()
-
-# Mock mdit_py_plugins to avoid ImportError in __init__.py
-sys.modules["mdit_py_plugins"] = MagicMock()
-sys.modules["mdit_py_plugins.dollarmath"] = MagicMock()
-sys.modules["mdit_py_plugins.dollarmath.index"] = MagicMock()
-
-# Mock SessionColumn
-mock_column_module = MagicMock()
-sys.modules["src.copium_loop.ui.column"] = mock_column_module
-sys.modules["copium_loop.ui.column"] = mock_column_module
-
-# We also need to mock copium_loop.patches if it's imported in __init__
-sys.modules["copium_loop.patches"] = MagicMock()
-
-# Mock langchain and other heavy deps
-sys.modules["langchain_core"] = MagicMock()
-sys.modules["langchain_core.messages"] = MagicMock()
-sys.modules["langgraph"] = MagicMock()
-sys.modules["langgraph.graph"] = MagicMock()
-sys.modules["langgraph.graph.message"] = MagicMock()
-sys.modules["langgraph.prebuilt"] = MagicMock()
-
-# Mock textual
-sys.modules["textual"] = MagicMock()
-sys.modules["textual.app"] = MagicMock()
-sys.modules["textual.binding"] = MagicMock()
-sys.modules["textual.containers"] = MagicMock()
-sys.modules["textual.widgets"] = MagicMock()
-
-# Now we can import
-from src.copium_loop.ui.manager import SessionManager  # noqa: E402
+from src.copium_loop.ui.manager import SessionManager
 
 
 @pytest.fixture
