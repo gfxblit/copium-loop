@@ -36,13 +36,13 @@ class JulesEngine(LLMEngine):
     async def invoke(
         self,
         prompt: str,
-        _args: list[str] | None = None,
-        _models: list[str | None] | None = None,
+        args: list[str] | None = None,  # noqa: ARG002
+        models: list[str | None] | None = None,  # noqa: ARG002
         verbose: bool = False,
         label: str | None = None,
         node: str | None = None,
         command_timeout: int | None = None,
-        _inactivity_timeout: int | None = None,
+        inactivity_timeout: int | None = None,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
