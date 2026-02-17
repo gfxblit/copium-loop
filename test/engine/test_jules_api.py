@@ -153,7 +153,7 @@ async def test_jules_api_polling_retries():
             httpx.Response(200, json={"activities": [{"id": "done", "description": "Done"}]}),
             httpx.Response(
                 200, json={
-                    "state": "COMPLETED", 
+                    "state": "COMPLETED",
                     "outputs": [],
                 }
             ),

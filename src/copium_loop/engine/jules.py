@@ -156,7 +156,7 @@ class JulesEngine(LLMEngine):
                             # Update last_summary with any textual description we find
                             if title or desc:
                                 last_summary = desc or title
-                    
+
                     if new_activity_found:
                         last_activity_time = current_time
 

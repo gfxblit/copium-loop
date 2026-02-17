@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -8,6 +7,7 @@ from copium_loop.engine.jules import (
     JulesEngine,
     JulesTimeoutError,
 )
+
 
 @pytest.mark.asyncio
 async def test_jules_api_inactivity_timeout_reset():
