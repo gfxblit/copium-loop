@@ -25,6 +25,7 @@ def test_matrix_pillar_title_and_subtitle():
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
     assert title.plain == "✔ CODER"
+    assert "SUCCESS" in subtitle.plain
     assert "@" in subtitle.plain  # Should have completion time
 
 

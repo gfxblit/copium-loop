@@ -91,7 +91,8 @@ class SessionColumn:
 
         col_layout["header"].update(
             Panel(
-                Text(header_text, justify="center", style=f"bold {header_style}"),
+                "",
+                title=Text(header_text, style=f"bold {header_style}"),
                 subtitle=header_subtitle,
                 title_align="center",
                 subtitle_align="center",

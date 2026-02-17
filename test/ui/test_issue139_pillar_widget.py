@@ -10,5 +10,5 @@ def test_pillar_widget_updates_from_pillar():
     widget.update_from_pillar(pillar)
 
     assert "▶ CODER" in str(widget.border_title)
-    assert widget.border_title_align == "center"
-    assert widget.border_subtitle_align == "center"
+    assert widget.styles.border_title_align == "center"
+    assert widget.styles.border_subtitle_align == "center"

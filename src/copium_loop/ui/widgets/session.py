@@ -1,3 +1,4 @@
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Static
@@ -54,7 +55,7 @@ class SessionWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"{self.session_id}",
+            "",
             classes="session-header",
             id=f"header-{self.session_id}",
         )
@@ -74,20 +75,23 @@ class SessionWidget(Vertical):
 
         try:
             header = self.query_one(f"#header-{self.session_id}", Static)
-            header.update(f"{self.session_id}")
+            header.styles.border_title_align = "center"
+            header.styles.border_subtitle_align = "center"
+            header.border_title = Text(f"{self.session_id}", style="bold", justify="center")
 
             if self.session_column.workflow_status == "success":
-                header.border_subtitle = "✓ SUCCESS"
+                header.border_subtitle = Text("✓ SUCCESS", style="bold", justify="center")
                 header.styles.border = ("round", "green")
                 header.styles.color = "green"
             elif self.session_column.workflow_status == "failed":
-                header.border_subtitle = "⚠ FAILED"
+                header.border_subtitle = Text("⚠ FAILED", style="bold", justify="center")
                 header.styles.border = ("round", "red")
                 header.styles.color = "red"
             else:
-                header.border_subtitle = ""
+                header.border_subtitle = Text("", justify="center")
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
+            header.update("")
 
             container = self.query_one(
                 f"#pillars-container-{self.session_id}", Vertical
