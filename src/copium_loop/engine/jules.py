@@ -90,6 +90,8 @@ class JulesEngine(LLMEngine):
             if asyncio.get_running_loop().time() - start_time > timeout:
                 raise JulesTimeoutError("Jules operation timed out.")
 
+            await asyncio.sleep(POLLING_INTERVAL)
+
             try:
                 resp = await client.get(
                     f"{self.api_base_url}/{session_name}",
@@ -115,8 +117,6 @@ class JulesEngine(LLMEngine):
 
             if verbose:
                 print(f"Jules session {session_name} is {state}...")
-
-            await asyncio.sleep(POLLING_INTERVAL)
 
     def _extract_summary(self, status_data: dict) -> str:
         """Extracts the summary and PR URL from the completed session data."""
