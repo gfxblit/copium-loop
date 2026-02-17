@@ -1,4 +1,3 @@
-from rich.panel import Panel
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -30,7 +29,9 @@ class WorkflowStatusWidget(Static):
                 style="bold white on red",
                 justify="center",
             )
-            self.update(Panel(status_text, border_style="red"))
+            self.border_title = status_text
+            self.styles.border = ("round", "red")
+            self.update("")
             self.add_class("visible")
         elif status == "success":
             status_text = Text(
@@ -38,7 +39,9 @@ class WorkflowStatusWidget(Static):
                 style="bold black on green",
                 justify="center",
             )
-            self.update(Panel(status_text, border_style="green"))
+            self.border_title = status_text
+            self.styles.border = ("round", "green")
+            self.update("")
             self.add_class("visible")
         else:
             self.remove_class("visible")
@@ -51,13 +54,15 @@ class SessionWidget(Vertical):
     SessionWidget {
         width: 1fr;
         height: 100%;
-        border: solid green;
+        border-top: solid green;
+        border-bottom: solid green;
         margin: 0;
         min-width: 8;
     }
 
     SessionWidget:focus-within {
-        border: double cyan;
+        border-top: double cyan;
+        border-bottom: double cyan;
     }
 
     .session-header {
@@ -65,10 +70,11 @@ class SessionWidget(Vertical):
         color: yellow;
         text-align: center;
         text-style: bold;
-        height: 1;
+        height: 3;
         content-align: center middle;
         overflow: hidden;
         text-overflow: ellipsis;
+        border: round yellow;
     }
 
     .pillars-container {

@@ -12,6 +12,7 @@ class PillarWidget(Static):
         min-height: 1;
         margin: 0;
         padding: 0;
+        border: round;
     }
     """
 
@@ -23,4 +24,6 @@ class PillarWidget(Static):
     def update_from_pillar(self, pillar: MatrixPillar) -> None:
         """Updates the widget content from the pillar state."""
         self.pillar = pillar
-        self.update(self.pillar.render())
+        self.border_title = pillar.get_header_text()
+        self.styles.border = ("round", pillar.get_status_color())
+        self.update(pillar.get_content_renderable())
