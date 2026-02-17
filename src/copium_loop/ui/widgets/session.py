@@ -1,50 +1,9 @@
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Static
 
 from ..column import SessionColumn
 from .pillar import PillarWidget
-
-
-class WorkflowStatusWidget(Static):
-    """A widget for displaying the overall workflow status."""
-
-    DEFAULT_CSS = """
-    WorkflowStatusWidget {
-        height: 3;
-        margin: 0;
-        display: none;
-    }
-
-    WorkflowStatusWidget.visible {
-        display: block;
-    }
-    """
-
-    def update_status(self, status: str):
-        if status == "failed":
-            status_text = Text(
-                "⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED",
-                style="bold white on red",
-                justify="center",
-            )
-            self.border_title = status_text
-            self.styles.border = ("round", "red")
-            self.update("")
-            self.add_class("visible")
-        elif status == "success":
-            status_text = Text(
-                "✓ WORKFLOW COMPLETED SUCCESSFULLY",
-                style="bold black on green",
-                justify="center",
-            )
-            self.border_title = status_text
-            self.styles.border = ("round", "green")
-            self.update("")
-            self.add_class("visible")
-        else:
-            self.remove_class("visible")
 
 
 class SessionWidget(Vertical):
@@ -54,15 +13,11 @@ class SessionWidget(Vertical):
     SessionWidget {
         width: 1fr;
         height: 100%;
-        border-top: solid green;
-        border-bottom: solid green;
         margin: 0;
         min-width: 8;
     }
 
     SessionWidget:focus-within {
-        border-top: double cyan;
-        border-bottom: double cyan;
     }
 
     .session-header {
@@ -75,6 +30,8 @@ class SessionWidget(Vertical):
         overflow: hidden;
         text-overflow: ellipsis;
         border: round yellow;
+        border-title-align: center;
+        border-subtitle-align: center;
     }
 
     .pillars-container {
@@ -93,11 +50,10 @@ class SessionWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"{self.session_id}",
+            "",
             classes="session-header",
             id=f"header-{self.session_id}",
         )
-        yield WorkflowStatusWidget(id=f"workflow-status-{self.session_id}")
         with Vertical(
             id=f"pillars-container-{self.session_id}", classes="pillars-container"
         ):
@@ -114,12 +70,25 @@ class SessionWidget(Vertical):
 
         try:
             header = self.query_one(f"#header-{self.session_id}", Static)
-            header.update(f"{self.session_id}")
+            header.styles.border_title_align = "center"
+            header.styles.border_subtitle_align = "center"
+            header.border_title = ""
 
-            status_widget = self.query_one(
-                f"#workflow-status-{self.session_id}", WorkflowStatusWidget
-            )
-            status_widget.update_status(self.session_column.workflow_status)
+            status_suffix = ""
+            if self.session_column.workflow_status == "success":
+                status_suffix = " ✓ SUCCESS"
+                header.styles.border = ("round", "green")
+                header.styles.color = "green"
+            elif self.session_column.workflow_status == "failed":
+                status_suffix = " ⚠ FAILED"
+                header.styles.border = ("round", "red")
+                header.styles.color = "red"
+            else:
+                header.styles.border = ("round", "yellow")
+                header.styles.color = "yellow"
+
+            header.update(f"{self.session_id}{status_suffix}")
+            header.border_subtitle = ""
 
             container = self.query_one(
                 f"#pillars-container-{self.session_id}", Vertical

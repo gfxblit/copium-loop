@@ -1,5 +1,6 @@
 import pytest
 from textual.app import App, ComposeResult
+from textual.widgets import Static
 
 from copium_loop.ui.column import SessionColumn
 from copium_loop.ui.widgets.pillar import PillarWidget
@@ -34,3 +35,28 @@ async def test_session_widget_contains_pillars():
             "#pillar-test-session-coder", PillarWidget
         )
         assert coder_pillar.node_id == "coder"
+
+
+@pytest.mark.asyncio
+async def test_session_widget_status_merging():
+    app = MockApp()
+    async with app.run_test() as pilot:
+        session_widget = app.query_one(SessionWidget)
+
+        # Success status
+        session_widget.session_column.workflow_status = "success"
+        await session_widget.refresh_ui()
+        await pilot.pause()
+
+        header = session_widget.query_one("#header-test-session", Static)
+        assert "✓" in str(header.render())
+        assert "test-session" in str(header.render())
+
+        # Failed status
+        session_widget.session_column.workflow_status = "failed"
+        await session_widget.refresh_ui()
+        await pilot.pause()
+
+        header = session_widget.query_one("#header-test-session", Static)
+        assert "⚠" in str(header.render())
+        assert "test-session" in str(header.render())

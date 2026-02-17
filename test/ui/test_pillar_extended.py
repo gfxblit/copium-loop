@@ -18,7 +18,7 @@ def test_pillar_render_duration_seconds():
     p.status = "active"
     panel = p.render()
     # Should show [30s] (or slightly more/less depending on execution time, so we check for 's]')
-    assert "s]" in str(panel.title)
+    assert "s]" in str(panel.subtitle)
 
 
 def test_pillar_render_duration_minutes_exact():
@@ -28,7 +28,7 @@ def test_pillar_render_duration_minutes_exact():
     p.status = "active"
     panel = p.render()
     # Should show [2m]
-    assert "[2m]" in str(panel.title)
+    assert "[2m]" in str(panel.subtitle)
 
 
 def test_pillar_render_error_status():

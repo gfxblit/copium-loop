@@ -65,34 +65,10 @@ class SessionColumn:
         # Build the column layout dynamically
         layout_elements = [Layout(name="header", size=3)]
 
-        if self.workflow_status in ["success", "failed"]:
-            layout_elements.append(Layout(name="workflow_status", size=3))
-
         for node in self.pillars:
             layout_elements.append(Layout(name=node, ratio=ratios[node]))
 
         col_layout.split_column(*layout_elements)
-
-        # Render workflow status banner if needed
-        if self.workflow_status in ["success", "failed"]:
-            if self.workflow_status == "failed":
-                status_text = Text(
-                    "⚠ WORKFLOW FAILED - MAX RETRIES EXCEEDED",
-                    style="bold white on red",
-                    justify="center",
-                )
-                col_layout["workflow_status"].update(
-                    Panel(status_text, border_style="red", box=box.ROUNDED)
-                )
-            else:  # success
-                status_text = Text(
-                    "✓ WORKFLOW COMPLETED SUCCESSFULLY",
-                    style="bold black on green",
-                    justify="center",
-                )
-                col_layout["workflow_status"].update(
-                    Panel(status_text, border_style="green", box=box.ROUNDED)
-                )
 
         # Dynamically truncate session_id based on available column width
         display_name = self.session_id
@@ -104,10 +80,27 @@ class SessionColumn:
         else:
             header_text = display_name
 
+        header_style = "yellow"
+        status_suffix = ""
+        if self.workflow_status == "success":
+            status_suffix = " ✓ SUCCESS"
+            header_style = "green"
+        elif self.workflow_status == "failed":
+            status_suffix = " ⚠ FAILED"
+            header_style = "red"
+
+        full_header_text = Text(
+            f"{header_text}{status_suffix}",
+            justify="center",
+            style=f"bold {header_style}",
+        )
+
         col_layout["header"].update(
             Panel(
-                Text(header_text, justify="center", style="bold yellow"),
-                border_style="yellow",
+                full_header_text,
+                title_align="center",
+                subtitle_align="center",
+                border_style=header_style,
                 box=box.ROUNDED,
             )
         )

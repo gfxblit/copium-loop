@@ -81,10 +81,34 @@ class MatrixPillar:
         else:
             return "#666666"
 
-    def get_header_text(self) -> Text:
-        """Returns the header text for the pillar."""
-        # Calculate display time if applicable - human readable (e.g. 1m 5s)
-        time_suffix = ""
+    def get_title_text(self) -> Text:
+        """Returns the title text for the pillar (icon + name)."""
+        status_color = self.get_status_color()
+        if self.status == "active":
+            return Text(
+                f"▶ {self.name.upper()}",
+                style=f"bold black on {status_color}",
+                justify="center",
+            )
+        elif self.status in self.SUCCESS_STATUSES:
+            return Text(
+                f"✔ {self.name.upper()}",
+                style=f"bold black on {status_color}",
+                justify="center",
+            )
+        elif self.status in self.FAILURE_STATUSES:
+            return Text(
+                f"✘ {self.name.upper()}",
+                style=f"bold white on {status_color}",
+                justify="center",
+            )
+        elif len(self.buffer) > 0:
+            return Text(f"✔ {self.name.upper()}", style="dim cyan", justify="center")
+        else:
+            return Text(f"○ {self.name.upper()}", style="dim grey50", justify="center")
+
+    def get_subtitle_text(self) -> Text:
+        """Returns the subtitle text for the pillar (status + duration + completion time)."""
         duration_val = (
             self.duration
             if self.duration is not None
@@ -95,43 +119,48 @@ class MatrixPillar:
             )
         )
 
+        time_parts = []
         if duration_val is not None:
             secs = int(duration_val)
             if secs >= 60:
                 mins = secs // 60
                 rem_secs = secs % 60
-                time_suffix = (
-                    f" [{mins}m {rem_secs}s]" if rem_secs > 0 else f" [{mins}m]"
+                time_parts.append(
+                    f"[{mins}m {rem_secs}s]" if rem_secs > 0 else f"[{mins}m]"
                 )
             else:
-                time_suffix = f" [{secs}s]"
+                time_parts.append(f"[{secs}s]")
 
-        # Add completion time for completed steps
         if self.completion_time is not None and self.status in self.COMPLETION_STATUSES:
             completion_dt = datetime.fromtimestamp(self.completion_time)
-            completion_str = completion_dt.strftime("%H:%M:%S")
-            time_suffix += f" @ {completion_str}"
+            time_parts.append(f"@{completion_dt.strftime('%H:%M:%S')}")
 
-        status_color = self.get_status_color()
+        status_desc = ""
         if self.status == "active":
-            return Text(
-                f"▶ {self.name.upper()}{time_suffix}",
-                style=f"bold black on {status_color}",
-            )
+            status_desc = "RUNNING"
         elif self.status in self.SUCCESS_STATUSES:
-            return Text(
-                f"✔ {self.name.upper()}{time_suffix}",
-                style=f"bold black on {status_color}",
-            )
+            status_desc = "SUCCESS"
         elif self.status in self.FAILURE_STATUSES:
-            return Text(
-                f"✘ {self.name.upper()}{time_suffix}",
-                style=f"bold white on {status_color}",
-            )
-        elif len(self.buffer) > 0:
-            return Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
-        else:
-            return Text(f"○ {self.name.upper()}", style="dim grey50")
+            status_desc = "FAILED"
+
+        res = Text(justify="center")
+        if status_desc:
+            res.append(status_desc, style=f"bold {self.get_status_color()}")
+            if time_parts:
+                res.append(" ")
+
+        if time_parts:
+            res.append(" ".join(time_parts), style="dim")
+
+        return res
+
+    def get_header_text(self) -> Text:
+        """Returns the combined header text for the pillar (legacy support)."""
+        title = self.get_title_text()
+        subtitle = self.get_subtitle_text()
+        if subtitle.plain:
+            return Text.assemble(title, " ", subtitle)
+        return title
 
     def get_content_renderable(self) -> TailRenderable:
         """Returns the content renderable for the pillar."""
@@ -145,12 +174,16 @@ class MatrixPillar:
         # idle with content -> grey checkmark (passed history)
         # idle without content -> dim grey (never run)
 
-        header_text = self.get_header_text()
+        title_text = self.get_title_text()
+        subtitle_text = self.get_subtitle_text()
         border_style = self.get_status_color()
 
         return Panel(
             self.get_content_renderable(),
-            title=header_text,
+            title=title_text,
+            subtitle=subtitle_text,
+            title_align="center",
+            subtitle_align="center",
             border_style=border_style,
             expand=True,
             box=box.ROUNDED,
