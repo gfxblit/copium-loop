@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
-from copium_loop.engine.gemini import GeminiEngine
+from copium_loop.engine.factory import get_engine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
@@ -25,10 +25,16 @@ class WorkflowManager:
 
     _environment_verified = False
 
-    def __init__(self, start_node: str | None = None, verbose: bool = False):
+    def __init__(
+        self,
+        start_node: str | None = None,
+        verbose: bool = False,
+        engine_name: str | None = None,
+    ):
         self.graph = None
         self.start_node = start_node
         self.verbose = verbose
+        self.engine_name = engine_name
 
     async def notify(self, title: str, message: str, priority: int = 3):
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
@@ -213,7 +219,7 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "engine": GeminiEngine(),
+            "engine": get_engine(self.engine_name),
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""

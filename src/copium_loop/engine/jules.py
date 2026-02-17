@@ -1,9 +1,10 @@
 import asyncio
 import os
-import re
+
+import httpx
 
 from copium_loop.engine.base import LLMEngine
-from copium_loop.shell import run_command, stream_subprocess
+from copium_loop.git import get_current_branch, get_repo_name
 from copium_loop.telemetry import get_telemetry
 
 
@@ -23,57 +24,20 @@ class JulesRepoError(JulesError):
     """Raised when the git repository name cannot be detected."""
 
 
-# Constants for Jules CLI interactions
-DEFAULT_COMMAND_TIMEOUT = 3600
+# Constants for Jules API interactions
+API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 POLLING_INTERVAL = 10
-OUTPUT_FILE = "JULES_OUTPUT.txt"
 MAX_PROMPT_LENGTH = 12000
 
 
 class JulesEngine(LLMEngine):
-    """Concrete implementation of LLMEngine using Jules CLI."""
-
-    async def _get_repo_name(self, node: str | None = None) -> str:
-        """Extracts owner/repo from git remotes."""
-        # Try origin first, then any available remote
-        remotes_to_try = ["origin"]
-        res = await run_command("git", ["remote"], node=node, capture_stderr=False)
-        all_remotes = res["output"].strip().splitlines()
-        for r in all_remotes:
-            if r != "origin":
-                remotes_to_try.append(r)
-
-        url = None
-        for remote in remotes_to_try:
-            try:
-                res = await run_command(
-                    "git",
-                    ["remote", "get-url", remote],
-                    node=node,
-                    capture_stderr=True,
-                )
-                if res["exit_code"] == 0:
-                    url = res["output"].strip()
-                    break
-            except Exception:
-                continue
-
-        if not url:
-            raise JulesRepoError("Could not determine git remote URL.")
-
-        # Regex to match github.com/owner/repo or git@github.com:owner/repo
-        # Improved to handle trailing slashes and multiple segments (for GitLab etc)
-        match = re.search(r"[:/]([^/:]+/[^/:]+?)(?:\.git)?/?$", url)
-        if match:
-            return match.group(1)
-
-        raise JulesRepoError(f"Could not parse repo name from remote URL: {url}")
+    """Concrete implementation of LLMEngine using Jules API."""
 
     async def invoke(
         self,
         prompt: str,
-        _args: list[str] | None = None,
-        _models: list[str | None] | None = None,
+        args: list[str] | None = None,
+        models: list[str | None] | None = None,
         verbose: bool = False,
         label: str | None = None,
         node: str | None = None,
@@ -81,8 +45,8 @@ class JulesEngine(LLMEngine):
         inactivity_timeout: int | None = None,
     ) -> str:
         """
-        Invokes the Jules CLI to create a remote session, polls for completion,
-        and pulls the results.
+        Invokes the Jules API to create a remote session, polls for completion,
+        and returns the result.
         """
         if node:
             get_telemetry().log(node, "prompt", prompt)
@@ -97,101 +61,90 @@ class JulesEngine(LLMEngine):
             print(prompt)
             print("-" * len(banner) + "\n")
 
-        repo = await self._get_repo_name(node=node)
+        try:
+            repo = await get_repo_name(node=node)
+        except ValueError as e:
+            raise JulesRepoError(str(e)) from e
+
+        branch = await get_current_branch(node=node)
+
+        api_key = os.environ.get("JULES_API_KEY")
+        if not api_key:
+            raise JulesSessionError("JULES_API_KEY environment variable is not set.")
+
+        headers = {
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json",
+        }
 
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
 
-        # Instruct Jules to write to JULES_OUTPUT.txt
-        prompt_with_instr = (
-            f"{safe_prompt}\n\n"
-            f"IMPORTANT: Write your final summary or verdict to {OUTPUT_FILE} "
-            "before finishing."
-        )
-
         # 1. Create session
-        # Use a longer timeout for Jules session creation/upload if needed
-        timeout = (
-            command_timeout if command_timeout is not None else DEFAULT_COMMAND_TIMEOUT
-        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            payload = {
+                "prompt": safe_prompt,
+                "sourceContext": {
+                    "repository": repo,
+                    "branch": branch,
+                },
+            }
 
-        env = os.environ.copy()
-        # Prevent interactive prompts
-        env.update({"GH_PROMPT_DISABLED": "1"})
-
-        output, exit_code, timed_out, timeout_message = await stream_subprocess(
-            "jules",
-            ["remote", "new", "--repo", repo, "-p", prompt_with_instr],
-            env,
-            node,
-            timeout,
-            inactivity_timeout=inactivity_timeout,
-            capture_stderr=True,
-        )
-
-        if timed_out:
-            raise JulesTimeoutError(
-                f"Jules session creation timed out: {timeout_message}"
-            )
-        if exit_code != 0:
-            raise JulesSessionError(
-                f"Jules session creation failed with code {exit_code}: {output}"
+            resp = await client.post(
+                f"{API_BASE_URL}/sessions",
+                headers=headers,
+                json=payload,
             )
 
-        match = re.search(r"Session ID: (\S+)", output)
-        if not match:
-            raise JulesSessionError(
-                f"Failed to parse Session ID from Jules output: {output}"
-            )
-        session_id = match.group(1)
-
-        if verbose:
-            print(f"Jules session created: {session_id}")
-
-        # 2. Poll for completion
-        while True:
-            output, exit_code, timed_out, timeout_message = await stream_subprocess(
-                "jules",
-                ["remote", "list", "--session", session_id],
-                env,
-                node,
-                timeout,
-                capture_stderr=True,
-            )
-            if timed_out:
-                raise JulesTimeoutError(
-                    f"Polling Jules session timed out: {timeout_message}"
+            if resp.status_code != 201:
+                raise JulesSessionError(
+                    f"Jules session creation failed with status {resp.status_code}: {resp.text}"
                 )
 
-            if "Status: Completed" in output:
-                break
-            elif "Status: Failed" in output:
-                raise JulesSessionError(f"Jules session {session_id} failed.")
+            session_data = resp.json()
+            session_name = session_data["name"]  # e.g., "sessions/sess_123"
 
-            await asyncio.sleep(POLLING_INTERVAL)
+            if verbose:
+                print(f"Jules session created: {session_name}")
 
-        # 3. Pull results
-        output, exit_code, timed_out, timeout_message = await stream_subprocess(
-            "jules",
-            ["remote", "pull", "--session", session_id, "--apply"],
-            env,
-            node,
-            timeout,
-            capture_stderr=True,
-        )
-        if timed_out:
-            raise JulesTimeoutError(
-                f"Pulling Jules results timed out: {timeout_message}"
-            )
-        if exit_code != 0:
-            raise JulesSessionError(f"Failed to pull Jules results: {output}")
+            # 2. Poll for completion
+            start_time = asyncio.get_running_loop().time()
+            timeout = command_timeout if command_timeout is not None else 300  # Default 5 minutes
 
-        # 4. Read JULES_OUTPUT.txt
-        try:
-            with open(OUTPUT_FILE) as f:
-                return f.read()
-        except FileNotFoundError:
-            return f"Jules task completed, but {OUTPUT_FILE} was not found."
+            while True:
+                if asyncio.get_running_loop().time() - start_time > timeout:
+                     raise JulesTimeoutError("Jules operation timed out.")
+
+                resp = await client.get(
+                    f"{API_BASE_URL}/{session_name}",
+                    headers=headers,
+                )
+                if resp.status_code != 200:
+                    raise JulesSessionError(
+                        f"Failed to poll Jules session {session_name}: {resp.status_code}"
+                    )
+
+                status_data = resp.json()
+                state = status_data.get("state")
+
+                if state == "COMPLETED":
+                    # 3. Extract results
+                    outputs = status_data.get("outputs", {})
+                    summary = outputs.get("summary")
+                    if not summary:
+                        # Fallback to activities if summary is not in outputs
+                        activities = status_data.get("activities", [])
+                        for activity in reversed(activities):
+                            if "text" in activity:
+                                summary = activity["text"]
+                                break
+
+                    return summary or "Jules task completed, but no summary was found."
+
+                if state == "FAILED":
+                    raise JulesSessionError(f"Jules session {session_name} failed.")
+
+                await asyncio.sleep(POLLING_INTERVAL)
 
     def sanitize_for_prompt(
         self, text: str, max_length: int = MAX_PROMPT_LENGTH
