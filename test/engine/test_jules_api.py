@@ -20,7 +20,9 @@ async def test_jules_api_invoke_success():
         patch(
             "copium_loop.engine.jules.get_current_branch", return_value="feature-branch"
         ),
-        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}) as mock_pull,
+        patch(
+            "copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}
+        ) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch("builtins.open", mock_open()) as m_open,
@@ -75,7 +77,9 @@ async def test_jules_api_polling_retries():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
-        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}) as mock_pull,
+        patch(
+            "copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}
+        ) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch("builtins.open", mock_open()),
@@ -252,7 +256,10 @@ async def test_jules_api_pull_failure():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
-        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 1, "output": "Merge conflict"}),
+        patch(
+            "copium_loop.engine.jules.pull",
+            return_value={"exit_code": 1, "output": "Merge conflict"},
+        ),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch("builtins.open", mock_open()),
@@ -275,7 +282,8 @@ async def test_jules_api_pull_failure():
         )
 
         with pytest.raises(
-            JulesSessionError, match="Failed to pull changes after Jules completion: Merge conflict"
+            JulesSessionError,
+            match="Failed to pull changes after Jules completion: Merge conflict",
         ):
             await engine.invoke("Test prompt")
 
