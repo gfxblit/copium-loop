@@ -70,10 +70,11 @@ class SessionWidget(Vertical):
         color: yellow;
         text-align: center;
         text-style: bold;
-        height: 1;
+        height: 3;
         content-align: center middle;
         overflow: hidden;
         text-overflow: ellipsis;
+        border: round yellow;
     }
 
     .pillars-container {

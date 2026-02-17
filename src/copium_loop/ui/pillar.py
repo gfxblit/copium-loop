@@ -153,5 +153,5 @@ class MatrixPillar:
             title=header_text,
             border_style=border_style,
             expand=True,
-            box=box.HORIZONTALS,
+            box=box.ROUNDED,
         )

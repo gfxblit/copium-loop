@@ -82,7 +82,7 @@ class SessionColumn:
                     justify="center",
                 )
                 col_layout["workflow_status"].update(
-                    Panel(status_text, border_style="red", box=box.HORIZONTALS)
+                    Panel(status_text, border_style="red", box=box.ROUNDED)
                 )
             else:  # success
                 status_text = Text(
@@ -91,7 +91,7 @@ class SessionColumn:
                     justify="center",
                 )
                 col_layout["workflow_status"].update(
-                    Panel(status_text, border_style="green", box=box.HORIZONTALS)
+                    Panel(status_text, border_style="green", box=box.ROUNDED)
                 )
 
         # Dynamically truncate session_id based on available column width
@@ -108,7 +108,7 @@ class SessionColumn:
             Panel(
                 Text(header_text, justify="center", style="bold yellow"),
                 border_style="yellow",
-                box=box.HORIZONTALS,
+                box=box.ROUNDED,
             )
         )
         for node, pillar in self.pillars.items():
