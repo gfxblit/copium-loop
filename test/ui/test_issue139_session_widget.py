@@ -24,29 +24,29 @@ async def test_session_widget_header_status():
     async with app.run_test():
         widget = app.session_widget
 
-        # Helper to get plain text from border subtitle
-        def get_plain_subtitle(h):
-            sub = h.border_subtitle
-            if not sub:
+        # Helper to get plain text from header content
+        def get_plain_content(h):
+            content = h.render()
+            if not content:
                 return ""
-            # Textual might return a string with markup if it's internal
-            s = str(sub.plain) if hasattr(sub, "plain") else str(sub)
+            s = str(content.plain) if hasattr(content, "plain") else str(content)
             return re.sub(r"\[.*?\]", "", s)
 
         # Test running state
         col.workflow_status = "running"
         await widget.refresh_ui()
         header = widget.query_one("#header-test-session", Static)
-        assert get_plain_subtitle(header) == ""
+        assert "SUCCESS" not in get_plain_content(header)
+        assert "FAILED" not in get_plain_content(header)
         assert header.styles.border.top[1].rgb == (255, 255, 0)  # yellow
 
         # Test success state
         col.workflow_status = "success"
         await widget.refresh_ui()
-        assert get_plain_subtitle(header) == "✓ SUCCESS"
+        assert "✓ SUCCESS" in get_plain_content(header)
 
         # Test failed state
         col.workflow_status = "failed"
         await widget.refresh_ui()
-        assert get_plain_subtitle(header) == "⚠ FAILED"
+        assert "⚠ FAILED" in get_plain_content(header)
         assert header.styles.border.top[1].rgb == (255, 0, 0)  # red

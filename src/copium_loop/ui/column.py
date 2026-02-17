@@ -80,19 +80,24 @@ class SessionColumn:
         else:
             header_text = display_name
 
-        header_subtitle = None
         header_style = "yellow"
+        status_suffix = ""
         if self.workflow_status == "success":
-            header_subtitle = Text("✓ SUCCESS", style="bold green")
+            status_suffix = " ✓ SUCCESS"
             header_style = "green"
         elif self.workflow_status == "failed":
-            header_subtitle = Text("⚠ FAILED", style="bold red")
+            status_suffix = " ⚠ FAILED"
             header_style = "red"
+
+        full_header_text = Text(
+            f"{header_text}{status_suffix}",
+            justify="center",
+            style=f"bold {header_style}",
+        )
 
         col_layout["header"].update(
             Panel(
-                Text(header_text, justify="center", style=f"bold {header_style}"),
-                subtitle=header_subtitle,
+                full_header_text,
                 title_align="center",
                 subtitle_align="center",
                 border_style=header_style,

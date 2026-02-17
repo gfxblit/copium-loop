@@ -17,7 +17,7 @@ def test_session_column_render_header_subtitle():
     col.workflow_status = "success"
     layout = col.render()
     header_panel = layout["header"].renderable
-    assert "SUCCESS" in str(header_panel.subtitle)
+    assert "SUCCESS" in str(header_panel.renderable)
     # Check that there is no workflow_status layout element
     import pytest
 
@@ -31,4 +31,4 @@ def test_session_column_render_header_subtitle():
     col.workflow_status = "failed"
     layout = col.render()
     header_panel = layout["header"].renderable
-    assert "FAILED" in str(header_panel.subtitle)
+    assert "FAILED" in str(header_panel.renderable)
