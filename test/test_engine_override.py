@@ -1,18 +1,19 @@
-import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 from copium_loop.copium_loop import WorkflowManager
 from copium_loop.engine.base import LLMEngine
-from langchain_core.messages import HumanMessage
+
 
 class MockEngine(LLMEngine):
     def __init__(self, name="mock"):
         self.name = name
-    
+
     async def invoke(self, prompt, **kwargs):
+        _ = prompt, kwargs
         return "mock response"
-        
+
     def get_required_tools(self):
         return []
 
@@ -22,18 +23,18 @@ class MockEngine(LLMEngine):
 @pytest.mark.asyncio
 async def test_engine_priority_cli_overrides_saved():
     """Verify that CLI engine argument overrides saved state engine."""
-    
+
     # Setup mocks
     mock_graph = AsyncMock()
     mock_graph.ainvoke.side_effect = lambda x: x
-    
+
     with patch("copium_loop.copium_loop.get_engine", side_effect=lambda name: MockEngine(name)), \
          patch("copium_loop.copium_loop.create_graph", return_value=mock_graph), \
          patch("copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock) as mock_is_git, \
          patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run, \
          patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])), \
          patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()):
-         
+
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
 
@@ -49,7 +50,7 @@ async def test_engine_priority_cli_overrides_saved():
         }
 
         result_state = await mgr.run("test prompt", initial_state=initial_state)
-        
+
         # Expectation: The engine used should be "cli-engine", NOT "saved-engine"
         assert result_state["engine"].name == "cli-engine"
         assert result_state["other_data"] == "value"
@@ -57,18 +58,18 @@ async def test_engine_priority_cli_overrides_saved():
 @pytest.mark.asyncio
 async def test_engine_priority_saved_used_if_no_cli():
     """Verify that saved state engine is used if no CLI argument provided."""
-    
+
     # Setup mocks
     mock_graph = AsyncMock()
     mock_graph.ainvoke.side_effect = lambda x: x
-    
-    with patch("copium_loop.copium_loop.get_engine", side_effect=lambda name: MockEngine("default-engine")), \
+
+    with patch("copium_loop.copium_loop.get_engine", side_effect=lambda _: MockEngine("default-engine")), \
          patch("copium_loop.copium_loop.create_graph", return_value=mock_graph), \
          patch("copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock) as mock_is_git, \
          patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run, \
          patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])), \
          patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()):
-         
+
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
 
@@ -84,7 +85,7 @@ async def test_engine_priority_saved_used_if_no_cli():
         }
 
         result_state = await mgr.run("test prompt", initial_state=initial_state)
-        
+
         # Expectation: The engine used should be "saved-engine"
         assert result_state["engine"].name == "saved-engine"
         assert result_state["other_data"] == "value"

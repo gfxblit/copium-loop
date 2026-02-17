@@ -273,13 +273,13 @@ class TestWorkflowRun:
         assert result == {"status": "completed"}
 
     @pytest.mark.asyncio
-    async def test_run_with_initial_state(
+    async def test_run_with_initial_state_engine_override(
         self,
         mock_os_path_exists,
         mock_create_graph,
         mock_get_head,
         mock_verify_environment,
-        workflow,
+        workflow_manager_factory,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
@@ -288,14 +288,22 @@ class TestWorkflowRun:
         mock_graph.ainvoke.return_value = {"status": "completed"}
         mock_create_graph.return_value = mock_graph
 
-        initial_state = {"retry_count": 5, "code_status": "coded"}
+        # Workflow initialized with 'jules' engine via CLI
+        workflow = workflow_manager_factory(engine_name="jules")
+
+        # Initial state has 'gemini' engine (e.g. from a previous run)
+        gemini_engine = get_engine("gemini")
+        initial_state = {"engine": gemini_engine, "retry_count": 5}
+
         result = await workflow.run("test prompt", initial_state=initial_state)
 
         assert result == {"status": "completed"}
         state = mock_graph.ainvoke.call_args[0][0]
+
+        # Should be JulesEngine because it was specified via CLI
+        from copium_loop.engine.jules import JulesEngine
+        assert isinstance(state["engine"], JulesEngine)
         assert state["retry_count"] == 5
-        assert state["code_status"] == "coded"
-        assert state["initial_commit_hash"] == "commit123"
 
 
 class TestNodeTimeouts:

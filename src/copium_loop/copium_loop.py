@@ -248,7 +248,7 @@ class WorkflowManager:
         if initial_state:
             print(f"Merging reconstructed state: {initial_state}")
             for key, value in initial_state.items():
-                if key != "prompt":
+                if key != "prompt" and (key != "engine" or self.engine_name is None):
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)

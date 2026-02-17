@@ -35,12 +35,14 @@ def mock_telemetry_environment(monkeypatch, tmp_path):
 def workflow_manager_factory():
     """
     Fixture factory for creating WorkflowManager instances with optional
-    start_node and verbose settings.
+    start_node, verbose, and engine_name settings.
     """
     from copium_loop.copium_loop import WorkflowManager
 
-    def _factory(start_node=None, verbose=False):
-        return WorkflowManager(start_node=start_node, verbose=verbose)
+    def _factory(start_node=None, verbose=False, engine_name=None):
+        return WorkflowManager(
+            start_node=start_node, verbose=verbose, engine_name=engine_name
+        )
 
     return _factory
 
