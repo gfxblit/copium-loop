@@ -105,12 +105,15 @@ class WorkflowManager:
 
         return response
 
-    async def verify_environment(self) -> bool:
+    async def verify_environment(self, engine_name: str | None = None) -> bool:
         """Verifies that the necessary CLI tools are installed."""
         if WorkflowManager._environment_verified:
             return True
 
-        tools = ["git", "gh", "gemini"]
+        tools = ["git", "gh"]
+        if engine_name != "jules":
+            tools.append("gemini")
+
         for tool in tools:
             try:
                 res = await run_command(tool, ["--version"])
@@ -131,7 +134,18 @@ class WorkflowManager:
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
-        if not await self.verify_environment():
+        # Determine effective engine name for environment verification
+        from copium_loop.engine.jules import JulesEngine
+
+        effective_engine = self.engine_name
+        if (
+            effective_engine is None
+            and initial_state
+            and isinstance(initial_state.get("engine"), JulesEngine)
+        ):
+            effective_engine = "jules"
+
+        if not await self.verify_environment(effective_engine):
             return {"error": "Environment verification failed."}
 
         telemetry = get_telemetry()
@@ -242,6 +256,9 @@ class WorkflowManager:
             print(f"Merging reconstructed state: {initial_state}")
             for key, value in initial_state.items():
                 if key != "prompt":
+                    # Do not overwrite engine from state if we have a preference from the CLI
+                    if key == "engine" and self.engine_name is not None:
+                        continue
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)

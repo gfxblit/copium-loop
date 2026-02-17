@@ -4,7 +4,7 @@ import os
 import httpx
 
 from copium_loop.engine.base import LLMEngine
-from copium_loop.git import get_current_branch, get_repo_name
+from copium_loop.git import get_current_branch, get_repo_name, pull
 from copium_loop.telemetry import get_telemetry
 
 
@@ -131,6 +131,8 @@ class JulesEngine(LLMEngine):
                     # 3. Extract results
                     outputs = status_data.get("outputs", {})
                     summary = outputs.get("summary")
+                    pr_url = outputs.get("pr_url")
+
                     if not summary:
                         # Fallback to activities if summary is not in outputs
                         activities = status_data.get("activities", [])
@@ -138,6 +140,22 @@ class JulesEngine(LLMEngine):
                             if "text" in activity:
                                 summary = activity["text"]
                                 break
+
+                    if pr_url:
+                        summary = (
+                            f"{summary}\n\nPR Created: {pr_url}"
+                            if summary
+                            else f"PR Created: {pr_url}"
+                        )
+
+                    # 4. Pull changes locally if possible
+                    try:
+                        await pull(node=node)
+                    except Exception as e:
+                        if verbose:
+                            print(
+                                f"Warning: Failed to pull changes after Jules completion: {e}"
+                            )
 
                     return summary or "Jules task completed, but no summary was found."
 

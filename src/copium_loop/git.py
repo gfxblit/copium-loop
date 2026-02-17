@@ -84,6 +84,18 @@ async def push(
     return await run_command("git", args, node=node)
 
 
+async def pull(
+    remote: str = "origin",
+    branch: str | None = None,
+    node: str | None = None,
+) -> dict:
+    """Pulls changes from the remote repository."""
+    args = ["pull", remote]
+    if branch:
+        args.append(branch)
+    return await run_command("git", args, node=node)
+
+
 async def add(path: str = ".", node: str | None = None) -> dict:
     """Adds files to the staging area."""
     return await run_command("git", ["add", path], node=node)

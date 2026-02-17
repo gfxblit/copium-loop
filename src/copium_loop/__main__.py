@@ -39,7 +39,7 @@ async def async_main():
         "--engine",
         type=str,
         choices=["gemini", "jules"],
-        default="gemini",
+        default=None,
         help="The LLM engine to use (default: gemini)",
     )
 

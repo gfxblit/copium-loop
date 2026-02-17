@@ -17,7 +17,10 @@ async def test_jules_api_invoke_success():
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
-        patch("copium_loop.engine.jules.get_current_branch", return_value="feature-branch"),
+        patch(
+            "copium_loop.engine.jules.get_current_branch", return_value="feature-branch"
+        ),
+        patch("copium_loop.engine.jules.pull") as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -27,16 +30,24 @@ async def test_jules_api_invoke_success():
         client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_123"})
 
         # Mock polling
-        client.get.return_value = httpx.Response(200, json={
-            "name": "sessions/sess_123",
-            "state": "COMPLETED",
-            "outputs": {
-                "summary": "Jules API summary"
-            }
-        })
+        client.get.return_value = httpx.Response(
+            200,
+            json={
+                "name": "sessions/sess_123",
+                "state": "COMPLETED",
+                "outputs": {
+                    "summary": "Jules API summary",
+                    "pr_url": "https://github.com/owner/repo/pull/1",
+                },
+            },
+        )
 
         result = await engine.invoke("Test prompt")
-        assert result == "Jules API summary"
+        assert "Jules API summary" in result
+        assert "https://github.com/owner/repo/pull/1" in result
+
+        # Verify pull was called
+        mock_pull.assert_called_once()
 
         # Verify post payload
         args, kwargs = client.post.call_args
@@ -52,6 +63,7 @@ async def test_jules_api_polling_retries():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
+        patch("copium_loop.engine.jules.pull") as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -70,6 +82,7 @@ async def test_jules_api_polling_retries():
         result = await engine.invoke("Test prompt")
         assert result == "Done"
         assert client.get.call_count == 3
+        mock_pull.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_jules_api_failure_state():
