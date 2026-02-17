@@ -20,6 +20,7 @@ class MockEngine(LLMEngine):
     def sanitize_for_prompt(self, text: str) -> str:
         return text
 
+
 @pytest.mark.asyncio
 async def test_engine_priority_cli_overrides_saved():
     """Verify that CLI engine argument overrides saved state engine."""
@@ -28,13 +29,21 @@ async def test_engine_priority_cli_overrides_saved():
     mock_graph = AsyncMock()
     mock_graph.ainvoke.side_effect = lambda x: x
 
-    with patch("copium_loop.copium_loop.get_engine", side_effect=lambda name: MockEngine(name)), \
-         patch("copium_loop.copium_loop.create_graph", return_value=mock_graph), \
-         patch("copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock) as mock_is_git, \
-         patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run, \
-         patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])), \
-         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()):
-
+    with (
+        patch(
+            "copium_loop.copium_loop.get_engine",
+            side_effect=lambda name: MockEngine(name),
+        ),
+        patch("copium_loop.copium_loop.create_graph", return_value=mock_graph),
+        patch(
+            "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        ) as mock_is_git,
+        patch(
+            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+        ) as mock_run,
+        patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
+        patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
+    ):
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
 
@@ -44,16 +53,14 @@ async def test_engine_priority_cli_overrides_saved():
         mgr.verify_environment = AsyncMock(return_value=True)
 
         saved_engine = MockEngine("saved-engine")
-        initial_state = {
-            "engine": saved_engine,
-            "other_data": "value"
-        }
+        initial_state = {"engine": saved_engine, "other_data": "value"}
 
         result_state = await mgr.run("test prompt", initial_state=initial_state)
 
         # Expectation: The engine used should be "cli-engine", NOT "saved-engine"
         assert result_state["engine"].name == "cli-engine"
         assert result_state["other_data"] == "value"
+
 
 @pytest.mark.asyncio
 async def test_engine_priority_saved_used_if_no_cli():
@@ -63,13 +70,21 @@ async def test_engine_priority_saved_used_if_no_cli():
     mock_graph = AsyncMock()
     mock_graph.ainvoke.side_effect = lambda x: x
 
-    with patch("copium_loop.copium_loop.get_engine", side_effect=lambda _: MockEngine("default-engine")), \
-         patch("copium_loop.copium_loop.create_graph", return_value=mock_graph), \
-         patch("copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock) as mock_is_git, \
-         patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock_run, \
-         patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])), \
-         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()):
-
+    with (
+        patch(
+            "copium_loop.copium_loop.get_engine",
+            side_effect=lambda _: MockEngine("default-engine"),
+        ),
+        patch("copium_loop.copium_loop.create_graph", return_value=mock_graph),
+        patch(
+            "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        ) as mock_is_git,
+        patch(
+            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+        ) as mock_run,
+        patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
+        patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
+    ):
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
 
@@ -79,10 +94,7 @@ async def test_engine_priority_saved_used_if_no_cli():
         mgr.verify_environment = AsyncMock(return_value=True)
 
         saved_engine = MockEngine("saved-engine")
-        initial_state = {
-            "engine": saved_engine,
-            "other_data": "value"
-        }
+        initial_state = {"engine": saved_engine, "other_data": "value"}
 
         result_state = await mgr.run("test prompt", initial_state=initial_state)
 

@@ -302,6 +302,7 @@ class TestWorkflowRun:
 
         # Should be JulesEngine because it was specified via CLI
         from copium_loop.engine.jules import JulesEngine
+
         assert isinstance(state["engine"], JulesEngine)
         assert state["retry_count"] == 5
 
