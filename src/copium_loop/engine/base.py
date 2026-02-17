@@ -19,7 +19,38 @@ class LLMEngine(ABC):
         """Invokes the LLM with a prompt."""
         pass
 
-    @abstractmethod
     def sanitize_for_prompt(self, text: str, max_length: int = 12000) -> str:
-        """Sanitizes text for inclusion in a prompt."""
-        pass
+        """
+        Sanitizes untrusted text for inclusion in a prompt to prevent injection.
+        Escapes common delimiters and truncates excessively long input.
+        """
+        if not text:
+            return ""
+
+        # Escape common XML-like tags to prevent prompt injection breakouts
+        # We replace <tag> with [tag] and </tag> with [/tag]
+        replacements = {
+            # Closing tags
+            "</test_output>": "[/test_output]",
+            "</reviewer_feedback>": "[/reviewer_feedback]",
+            "</architect_feedback>": "[/architect_feedback]",
+            "</git_diff>": "[/git_diff]",
+            "</error>": "[/error]",
+            "</user_request>": "[/user_request]",
+            # Opening tags
+            "<test_output>": "[test_output]",
+            "<reviewer_feedback>": "[reviewer_feedback]",
+            "<architect_feedback>": "[architect_feedback]",
+            "<git_diff>": "[git_diff]",
+            "<error>": "[error]",
+            "<user_request>": "[user_request]",
+        }
+
+        safe_text = str(text)
+        for tag, replacement in replacements.items():
+            safe_text = safe_text.replace(tag, replacement)
+
+        if len(safe_text) > max_length:
+            safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
+
+        return safe_text
