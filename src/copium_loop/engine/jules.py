@@ -135,6 +135,19 @@ class JulesEngine(LLMEngine):
                                 )
                             elif "planGenerated" in activity:
                                 title = "Plan generated"
+                                plan = activity["planGenerated"].get("plan", {})
+                                steps = plan.get("steps", [])
+                                if steps:
+                                    desc = f"{len(steps)} steps planned"
+                            elif "toolCallStarted" in activity:
+                                tool_call = activity["toolCallStarted"]
+                                title = f"Tool Call: {tool_call.get('toolName')}"
+                                args = tool_call.get("args")
+                                if args:
+                                    desc = str(args)
+                            elif "toolCallCompleted" in activity:
+                                tool_resp = activity["toolCallCompleted"]
+                                title = f"Tool Call Completed: {tool_resp.get('toolName')}"
                             elif "sessionCompleted" in activity:
                                 title = "Session completed"
                             elif "sessionFailed" in activity:
@@ -142,7 +155,8 @@ class JulesEngine(LLMEngine):
                                 desc = activity["sessionFailed"].get("reason", "")
 
                             if not title:
-                                title = activity.get("description", "Activity update")
+                                # Fallback to top-level fields
+                                title = activity.get("description") or activity.get("text") or "Activity update"
 
                             msg = f"[{session_name}] {title}"
                             if desc:
