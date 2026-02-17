@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import httpx
 import pytest
@@ -23,11 +23,14 @@ async def test_jules_api_invoke_success():
         patch("copium_loop.engine.jules.pull") as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
+        patch("builtins.open", mock_open()) as m_open,
     ):
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
-        client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_123"})
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
 
         # Mock polling
         client.get.return_value = httpx.Response(
@@ -46,6 +49,14 @@ async def test_jules_api_invoke_success():
         assert "Jules API summary" in result
         assert "https://github.com/owner/repo/pull/1" in result
 
+        # Verify JULES_OUTPUT.txt was written
+        m_open.assert_called_once_with("JULES_OUTPUT.txt", "w", encoding="utf-8")
+        handle = m_open()
+        handle.write.assert_called_once()
+        written_content = handle.write.call_args[0][0]
+        assert "Jules API summary" in written_content
+        assert "https://github.com/owner/repo/pull/1" in written_content
+
         # Verify pull was called
         mock_pull.assert_called_once()
 
@@ -54,6 +65,7 @@ async def test_jules_api_invoke_success():
         payload = kwargs["json"]
         assert payload["sourceContext"]["repository"] == "owner/repo"
         assert payload["sourceContext"]["branch"] == "feature-branch"
+
 
 @pytest.mark.asyncio
 async def test_jules_api_polling_retries():
@@ -66,23 +78,29 @@ async def test_jules_api_polling_retries():
         patch("copium_loop.engine.jules.pull") as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
+        patch("builtins.open", mock_open()),
     ):
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
-        client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_123"})
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
 
         # Mock multiple polling responses
         client.get.side_effect = [
             httpx.Response(200, json={"state": "ACTIVE"}),
             httpx.Response(200, json={"state": "ACTIVE"}),
-            httpx.Response(200, json={"state": "COMPLETED", "outputs": {"summary": "Done"}})
+            httpx.Response(
+                200, json={"state": "COMPLETED", "outputs": {"summary": "Done"}}
+            ),
         ]
 
         result = await engine.invoke("Test prompt")
         assert result == "Done"
         assert client.get.call_count == 3
         mock_pull.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_jules_api_failure_state():
@@ -98,13 +116,20 @@ async def test_jules_api_failure_state():
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
-        client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_123"})
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
 
         # Mock failing polling response
-        client.get.return_value = httpx.Response(200, json={"state": "FAILED", "name": "sessions/sess_123"})
+        client.get.return_value = httpx.Response(
+            200, json={"state": "FAILED", "name": "sessions/sess_123"}
+        )
 
-        with pytest.raises(JulesSessionError, match="Jules session sessions/sess_123 failed"):
+        with pytest.raises(
+            JulesSessionError, match="Jules session sessions/sess_123 failed"
+        ):
             await engine.invoke("Test prompt")
+
 
 @pytest.mark.asyncio
 async def test_jules_api_creation_error():
@@ -121,17 +146,23 @@ async def test_jules_api_creation_error():
         # Mock session creation error
         client.post.return_value = httpx.Response(500, text="Internal Server Error")
 
-        with pytest.raises(JulesSessionError, match="Jules session creation failed with status 500"):
+        with pytest.raises(
+            JulesSessionError, match="Jules session creation failed with status 500"
+        ):
             await engine.invoke("Test prompt")
+
 
 @pytest.mark.asyncio
 async def test_jules_api_no_key():
     engine = JulesEngine()
     with (
         patch.dict("os.environ", {}, clear=True),
-        pytest.raises(JulesSessionError, match="JULES_API_KEY environment variable is not set"),
+        pytest.raises(
+            JulesSessionError, match="JULES_API_KEY environment variable is not set"
+        ),
     ):
         await engine.invoke("Test prompt")
+
 
 @pytest.mark.asyncio
 async def test_jules_api_timeout():
@@ -148,7 +179,9 @@ async def test_jules_api_timeout():
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
-        client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_123"})
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
 
         # Mock infinite polling (always ACTIVE)
         client.get.return_value = httpx.Response(200, json={"state": "ACTIVE"})
@@ -161,6 +194,7 @@ async def test_jules_api_timeout():
         with pytest.raises(JulesTimeoutError, match="Jules operation timed out"):
             # We need to pass command_timeout as a kwarg because it's in the signature
             await engine.invoke("Test prompt", command_timeout=1)
+
 
 def test_jules_engine_sanitize_for_prompt():
     engine = JulesEngine()

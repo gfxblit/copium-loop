@@ -109,11 +109,13 @@ class JulesEngine(LLMEngine):
 
             # 2. Poll for completion
             start_time = asyncio.get_running_loop().time()
-            timeout = command_timeout if command_timeout is not None else 300  # Default 5 minutes
+            timeout = (
+                command_timeout if command_timeout is not None else 300
+            )  # Default 5 minutes
 
             while True:
                 if asyncio.get_running_loop().time() - start_time > timeout:
-                     raise JulesTimeoutError("Jules operation timed out.")
+                    raise JulesTimeoutError("Jules operation timed out.")
 
                 resp = await client.get(
                     f"{API_BASE_URL}/{session_name}",
@@ -148,7 +150,15 @@ class JulesEngine(LLMEngine):
                             else f"PR Created: {pr_url}"
                         )
 
-                    # 4. Pull changes locally if possible
+                    # 4. Capture Jules text output via a designated file
+                    try:
+                        with open("JULES_OUTPUT.txt", "w", encoding="utf-8") as f:
+                            f.write(summary or "")
+                    except Exception as e:
+                        if verbose:
+                            print(f"Warning: Failed to write JULES_OUTPUT.txt: {e}")
+
+                    # 5. Pull changes locally if possible
                     try:
                         await pull(node=node)
                     except Exception as e:
