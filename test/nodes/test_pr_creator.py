@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from copium_loop.constants import NODE_PR_CREATOR
 from copium_loop.nodes import pr_creator
 
 # Get the module object explicitly to avoid shadowing issues
@@ -43,7 +44,7 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_created"
         assert "PR Created" in result["messages"][0].content
         mock_push.assert_called_with(
-            force=True, branch="feature-branch", node="pr_creator"
+            force=True, branch="feature-branch", node=NODE_PR_CREATOR
         )
         mock_add.assert_not_called()
         mock_commit.assert_not_called()
@@ -79,9 +80,9 @@ class TestPrCreatorNode:
         result = await pr_creator(state)
 
         assert result["review_status"] == "pr_created"
-        mock_add.assert_called_once_with(".", node="pr_creator")
+        mock_add.assert_called_once_with(".", node=NODE_PR_CREATOR)
         mock_commit.assert_called_once_with(
-            "docs: update GEMINI.md and session memory", node="pr_creator"
+            "docs: update GEMINI.md and session memory", node=NODE_PR_CREATOR
         )
         mock_push.assert_called_once()
 
