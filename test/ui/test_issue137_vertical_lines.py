@@ -16,13 +16,13 @@ def test_session_widget_css_removes_vertical_borders():
     css = SessionWidget.DEFAULT_CSS
     # Should not have 'border: solid' or similar that includes vertical lines for the whole widget
     assert "border: solid" not in css
-    assert "border-top: solid" in css
-    assert "border-bottom: solid" in css
+    assert "border-top: solid" not in css
+    assert "border-bottom: solid" not in css
 
     # Also check focus-within
     assert "border: double" not in css
-    assert "border-top: double" in css
-    assert "border-bottom: double" in css
+    assert "border-top: double" not in css
+    assert "border-bottom: double" not in css
 
 
 def test_session_column_render_uses_rounded_box():

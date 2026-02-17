@@ -14,15 +14,11 @@ class SessionWidget(Vertical):
     SessionWidget {
         width: 1fr;
         height: 100%;
-        border-top: solid green;
-        border-bottom: solid green;
         margin: 0;
         min-width: 8;
     }
 
     SessionWidget:focus-within {
-        border-top: double cyan;
-        border-bottom: double cyan;
     }
 
     .session-header {
