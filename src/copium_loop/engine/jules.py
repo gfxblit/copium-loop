@@ -90,11 +90,16 @@ class JulesEngine(LLMEngine):
                 },
             }
 
-            resp = await client.post(
-                f"{API_BASE_URL}/sessions",
-                headers=headers,
-                json=payload,
-            )
+            try:
+                resp = await client.post(
+                    f"{API_BASE_URL}/sessions",
+                    headers=headers,
+                    json=payload,
+                )
+            except httpx.HTTPError as e:
+                raise JulesSessionError(
+                    f"Network error creating Jules session: {e}"
+                ) from e
 
             if resp.status_code != 201:
                 raise JulesSessionError(
@@ -117,10 +122,16 @@ class JulesEngine(LLMEngine):
                 if asyncio.get_running_loop().time() - start_time > timeout:
                     raise JulesTimeoutError("Jules operation timed out.")
 
-                resp = await client.get(
-                    f"{API_BASE_URL}/{session_name}",
-                    headers=headers,
-                )
+                try:
+                    resp = await client.get(
+                        f"{API_BASE_URL}/{session_name}",
+                        headers=headers,
+                    )
+                except httpx.HTTPError as e:
+                    raise JulesSessionError(
+                        f"Network error polling Jules session: {e}"
+                    ) from e
+
                 if resp.status_code != 200:
                     raise JulesSessionError(
                         f"Failed to poll Jules session {session_name}: {resp.status_code}"
@@ -159,13 +170,11 @@ class JulesEngine(LLMEngine):
                             print(f"Warning: Failed to write JULES_OUTPUT.txt: {e}")
 
                     # 5. Pull changes locally if possible
-                    try:
-                        await pull(node=node)
-                    except Exception as e:
-                        if verbose:
-                            print(
-                                f"Warning: Failed to pull changes after Jules completion: {e}"
-                            )
+                    res = await pull(node=node)
+                    if res["exit_code"] != 0:
+                        raise JulesSessionError(
+                            f"Failed to pull changes after Jules completion: {res['output']}"
+                        )
 
                     return summary or "Jules task completed, but no summary was found."
 

@@ -20,7 +20,7 @@ async def test_jules_api_invoke_success():
         patch(
             "copium_loop.engine.jules.get_current_branch", return_value="feature-branch"
         ),
-        patch("copium_loop.engine.jules.pull") as mock_pull,
+        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch("builtins.open", mock_open()) as m_open,
@@ -75,7 +75,7 @@ async def test_jules_api_polling_retries():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
-        patch("copium_loop.engine.jules.pull") as mock_pull,
+        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch("builtins.open", mock_open()),
@@ -194,6 +194,90 @@ async def test_jules_api_timeout():
         with pytest.raises(JulesTimeoutError, match="Jules operation timed out"):
             # We need to pass command_timeout as a kwarg because it's in the signature
             await engine.invoke("Test prompt", command_timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_jules_api_network_error_creation():
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
+        patch("httpx.AsyncClient") as mock_client,
+    ):
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock network error
+        client.post.side_effect = httpx.RequestError("Network error")
+
+        with pytest.raises(
+            JulesSessionError, match="Network error creating Jules session"
+        ):
+            await engine.invoke("Test prompt")
+
+
+@pytest.mark.asyncio
+async def test_jules_api_network_error_polling():
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+    ):
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock session creation success
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
+
+        # Mock network error during polling
+        client.get.side_effect = httpx.RequestError("Network error")
+
+        with pytest.raises(
+            JulesSessionError, match="Network error polling Jules session"
+        ):
+            await engine.invoke("Test prompt")
+
+
+@pytest.mark.asyncio
+async def test_jules_api_pull_failure():
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
+        patch("copium_loop.engine.jules.pull", return_value={"exit_code": 1, "output": "Merge conflict"}),
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+        patch("builtins.open", mock_open()),
+    ):
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock session creation
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
+
+        # Mock polling success
+        client.get.return_value = httpx.Response(
+            200,
+            json={
+                "name": "sessions/sess_123",
+                "state": "COMPLETED",
+                "outputs": {"summary": "Done"},
+            },
+        )
+
+        with pytest.raises(
+            JulesSessionError, match="Failed to pull changes after Jules completion: Merge conflict"
+        ):
+            await engine.invoke("Test prompt")
 
 
 def test_jules_engine_sanitize_for_prompt():
