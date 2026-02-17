@@ -13,6 +13,8 @@ async def test_get_repo_name_parsing():
         ("https://github.com/owner/repo", "owner/repo"),
         ("git@github.com:owner/repo", "owner/repo"),
         ("https://github.com/owner/repo/", "owner/repo"),
+        ("https://github.com/user/my.project.git", "user/my.project"),
+        ("git@github.com:user/my.project.git", "user/my.project"),
     ]
 
     for url, expected in urls:

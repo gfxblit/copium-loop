@@ -138,8 +138,9 @@ async def get_repo_name(node: str | None = None) -> str:
 
     # Regex to match owner/repo at the end of the URL
     # It looks for a : or / followed by two components separated by /
-    # The components should not contain /, :, or .
-    match = re.search(r"[:/]([^/:\.]+/[^/:\.]+)(?:\.git)?/?$", url)
+    # Both components can contain dots, hyphens, and alphanumeric characters.
+    # The negative lookbehind (?<!/) ensures we don't match the protocol separator //
+    match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
     if match:
         return match.group(1)
 
