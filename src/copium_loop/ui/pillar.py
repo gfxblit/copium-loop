@@ -81,9 +81,31 @@ class MatrixPillar:
         else:
             return "#666666"
 
-    def get_header_text(self) -> Text:
-        """Returns the header text for the pillar."""
-        # Calculate display time if applicable - human readable (e.g. 1m 5s)
+    def get_title_text(self) -> Text:
+        """Returns the title text for the pillar (icon + name)."""
+        status_color = self.get_status_color()
+        if self.status == "active":
+            return Text(
+                f"▶ {self.name.upper()}",
+                style=f"bold black on {status_color}",
+            )
+        elif self.status in self.SUCCESS_STATUSES:
+            return Text(
+                f"✔ {self.name.upper()}",
+                style=f"bold black on {status_color}",
+            )
+        elif self.status in self.FAILURE_STATUSES:
+            return Text(
+                f"✘ {self.name.upper()}",
+                style=f"bold white on {status_color}",
+            )
+        elif len(self.buffer) > 0:
+            return Text(f"✔ {self.name.upper()}", style="dim cyan")
+        else:
+            return Text(f"○ {self.name.upper()}", style="dim grey50")
+
+    def get_subtitle_text(self) -> Text:
+        """Returns the subtitle text for the pillar (duration + completion time)."""
         time_suffix = ""
         duration_val = (
             self.duration
@@ -112,26 +134,15 @@ class MatrixPillar:
             completion_str = completion_dt.strftime("%H:%M:%S")
             time_suffix += f" @ {completion_str}"
 
-        status_color = self.get_status_color()
-        if self.status == "active":
-            return Text(
-                f"▶ {self.name.upper()}{time_suffix}",
-                style=f"bold black on {status_color}",
-            )
-        elif self.status in self.SUCCESS_STATUSES:
-            return Text(
-                f"✔ {self.name.upper()}{time_suffix}",
-                style=f"bold black on {status_color}",
-            )
-        elif self.status in self.FAILURE_STATUSES:
-            return Text(
-                f"✘ {self.name.upper()}{time_suffix}",
-                style=f"bold white on {status_color}",
-            )
-        elif len(self.buffer) > 0:
-            return Text(f"✔ {self.name.upper()}{time_suffix}", style="dim cyan")
-        else:
-            return Text(f"○ {self.name.upper()}", style="dim grey50")
+        return Text(time_suffix.strip(), style="dim")
+
+    def get_header_text(self) -> Text:
+        """Returns the combined header text for the pillar (legacy support)."""
+        title = self.get_title_text()
+        subtitle = self.get_subtitle_text()
+        if subtitle.plain:
+            return Text.assemble(title, " ", subtitle)
+        return title
 
     def get_content_renderable(self) -> TailRenderable:
         """Returns the content renderable for the pillar."""
@@ -145,12 +156,16 @@ class MatrixPillar:
         # idle with content -> grey checkmark (passed history)
         # idle without content -> dim grey (never run)
 
-        header_text = self.get_header_text()
+        title_text = self.get_title_text()
+        subtitle_text = self.get_subtitle_text()
         border_style = self.get_status_color()
 
         return Panel(
             self.get_content_renderable(),
-            title=header_text,
+            title=title_text,
+            subtitle=subtitle_text,
+            title_align="center",
+            subtitle_align="center",
             border_style=border_style,
             expand=True,
             box=box.ROUNDED,

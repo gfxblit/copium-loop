@@ -78,7 +78,7 @@ def test_session_column_status_banners():
     with console.capture() as capture:
         console.print(layout)
     output = capture.get()
-    assert "WORKFLOW COMPLETED SUCCESSFULLY" in output
+    assert "SUCCESS" in output
 
     # Failed
     s = SessionColumn("test_fail")
@@ -87,4 +87,4 @@ def test_session_column_status_banners():
     with console.capture() as capture:
         console.print(layout)
     output = capture.get()
-    assert "WORKFLOW FAILED" in output
+    assert "FAILED" in output

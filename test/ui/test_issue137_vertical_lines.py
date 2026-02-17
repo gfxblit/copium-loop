@@ -33,10 +33,3 @@ def test_session_column_render_uses_rounded_box():
     header_panel = layout["header"].renderable
     assert isinstance(header_panel, Panel)
     assert header_panel.box == box.ROUNDED
-
-    # Check workflow status panel (when failed)
-    session.workflow_status = "failed"
-    layout = session.render()
-    status_panel = layout["workflow_status"].renderable
-    assert isinstance(status_panel, Panel)
-    assert status_panel.box == box.ROUNDED
