@@ -2,6 +2,12 @@ import asyncio
 import os
 
 import httpx
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
 from copium_loop.engine.base import LLMEngine
@@ -48,6 +54,25 @@ class JulesEngine(LLMEngine):
             "Content-Type": "application/json",
         }
 
+    async def _request_with_retry(
+        self, context: str, func, *args, **kwargs
+    ) -> httpx.Response:
+        """Helper to retry a network request with exponential backoff using tenacity."""
+        try:
+            async for attempt in AsyncRetrying(
+                stop=stop_after_attempt(4),
+                wait=wait_exponential(multiplier=2, min=1, max=10),
+                retry=retry_if_exception_type(httpx.HTTPError),
+                reraise=True,
+            ):
+                with attempt:
+                    return await func(*args, **kwargs)
+        except httpx.HTTPError as e:
+            raise JulesSessionError(f"{context}: {e}") from e
+
+        # This part should be unreachable due to reraise=True and return in the loop
+        raise JulesSessionError("Request failed unexpectedly.")
+
     async def _create_session(
         self, client: httpx.AsyncClient, prompt: str, repo: str, branch: str
     ) -> str:
@@ -65,14 +90,13 @@ class JulesEngine(LLMEngine):
             },
         }
 
-        try:
-            resp = await client.post(
-                f"{self.api_base_url}/sessions",
-                headers=self._get_headers(),
-                json=payload,
-            )
-        except httpx.HTTPError as e:
-            raise JulesSessionError(f"Network error creating Jules session: {e}") from e
+        resp = await self._request_with_retry(
+            "Network error creating Jules session",
+            client.post,
+            f"{self.api_base_url}/sessions",
+            headers=self._get_headers(),
+            json=payload,
+        )
 
         if resp.status_code not in (200, 201):
             raise JulesSessionError(
@@ -112,7 +136,9 @@ class JulesEngine(LLMEngine):
 
             # 1. Fetch activities to show progress
             try:
-                act_resp = await client.get(
+                act_resp = await self._request_with_retry(
+                    "Network error fetching activities",
+                    client.get,
                     f"{self.api_base_url}/{session_name}/activities",
                     headers=self._get_headers(),
                 )
@@ -147,7 +173,9 @@ class JulesEngine(LLMEngine):
                                     desc = str(args)
                             elif "toolCallCompleted" in activity:
                                 tool_resp = activity["toolCallCompleted"]
-                                title = f"Tool Call Completed: {tool_resp.get('toolName')}"
+                                title = (
+                                    f"Tool Call Completed: {tool_resp.get('toolName')}"
+                                )
                             elif "sessionCompleted" in activity:
                                 title = "Session completed"
                             elif "sessionFailed" in activity:
@@ -156,7 +184,11 @@ class JulesEngine(LLMEngine):
 
                             if not title:
                                 # Fallback to top-level fields
-                                title = activity.get("description") or activity.get("text") or "Activity update"
+                                title = (
+                                    activity.get("description")
+                                    or activity.get("text")
+                                    or "Activity update"
+                                )
 
                             msg = f"[{session_name}] {title}"
                             if desc:
@@ -179,15 +211,12 @@ class JulesEngine(LLMEngine):
                     print(f"Warning: Failed to fetch activities: {e}")
 
             # 2. Check session state
-            try:
-                resp = await client.get(
-                    f"{self.api_base_url}/{session_name}",
-                    headers=self._get_headers(),
-                )
-            except httpx.HTTPError as e:
-                raise JulesSessionError(
-                    f"Network error polling Jules session: {e}"
-                ) from e
+            resp = await self._request_with_retry(
+                "Network error polling Jules session",
+                client.get,
+                f"{self.api_base_url}/{session_name}",
+                headers=self._get_headers(),
+            )
 
             if resp.status_code != 200:
                 raise JulesSessionError(

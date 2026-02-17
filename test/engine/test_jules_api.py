@@ -220,6 +220,7 @@ async def test_jules_api_creation_error():
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
         patch("httpx.AsyncClient") as mock_client,
+        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         client = mock_client.return_value.__aenter__.return_value
 
@@ -288,6 +289,7 @@ async def test_jules_api_network_error_creation():
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
         patch("httpx.AsyncClient") as mock_client,
+        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         client = mock_client.return_value.__aenter__.return_value
 

@@ -24,19 +24,46 @@ async def test_poll_session_detailed_activities():
         # Mock activity responses with more detailed types
         client.get.side_effect = [
             # First poll for activities
-            httpx.Response(200, json={
-                "activities": [
-                    {"id": "act1", "planGenerated": {"plan": {"steps": [{"description": "Step 1"}]}}},
-                    {"id": "act2", "toolCallStarted": {"toolName": "ls", "args": {"path": "."}}},
-                    {"id": "act3", "toolCallCompleted": {"toolName": "ls", "output": "file1.txt"}},
-                    {"id": "act4", "text": "Generic text message"}
-                ]
-            }),
+            httpx.Response(
+                200,
+                json={
+                    "activities": [
+                        {
+                            "id": "act1",
+                            "planGenerated": {
+                                "plan": {"steps": [{"description": "Step 1"}]}
+                            },
+                        },
+                        {
+                            "id": "act2",
+                            "toolCallStarted": {
+                                "toolName": "ls",
+                                "args": {"path": "."},
+                            },
+                        },
+                        {
+                            "id": "act3",
+                            "toolCallCompleted": {
+                                "toolName": "ls",
+                                "output": "file1.txt",
+                            },
+                        },
+                        {"id": "act4", "text": "Generic text message"},
+                    ]
+                },
+            ),
             # First poll for session state
             httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
         ]
 
-        await engine._poll_session(client, "sessions/sess_123", timeout=10, inactivity_timeout=5, node="test_node", verbose=True)
+        await engine._poll_session(
+            client,
+            "sessions/sess_123",
+            timeout=10,
+            inactivity_timeout=5,
+            node="test_node",
+            verbose=True,
+        )
 
         # We expect detailed messages for each
         # Depending on implementation, we might want to verify specific strings
@@ -44,4 +71,6 @@ async def test_poll_session_detailed_activities():
 
         # Check if we got more than just "Activity update"
         for call in calls:
-            assert "Activity update" not in call or "ls" in call or "plan" in call.lower()
+            assert (
+                "Activity update" not in call or "ls" in call or "plan" in call.lower()
+            )
