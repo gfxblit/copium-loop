@@ -42,12 +42,16 @@ async def test_jules_api_inactivity_timeout_reset():
         # 5. Activity poll at t=11: same activity
         # 6. State poll at t=11: ACTIVE
         client.get.side_effect = [
-            httpx.Response(200, json={"activities": []}), # 1
-            httpx.Response(200, json={"state": "ACTIVE"}), # 2
-            httpx.Response(200, json={"activities": [{"id": "act1", "description": "Progress"}]}), # 3
-            httpx.Response(200, json={"state": "ACTIVE"}), # 4
-            httpx.Response(200, json={"activities": [{"id": "act1", "description": "Progress"}]}), # 5
-            httpx.Response(200, json={"state": "ACTIVE"}), # 6
+            httpx.Response(200, json={"activities": []}),  # 1
+            httpx.Response(200, json={"state": "ACTIVE"}),  # 2
+            httpx.Response(
+                200, json={"activities": [{"id": "act1", "description": "Progress"}]}
+            ),  # 3
+            httpx.Response(200, json={"state": "ACTIVE"}),  # 4
+            httpx.Response(
+                200, json={"activities": [{"id": "act1", "description": "Progress"}]}
+            ),  # 5
+            httpx.Response(200, json={"state": "ACTIVE"}),  # 6
         ]
 
         mock_loop = MagicMock()
@@ -59,16 +63,18 @@ async def test_jules_api_inactivity_timeout_reset():
         # Loop 3 (t=11): current_time = 11. (11-0 <= 100, 11-5 <= 10). Still OK!
         # Loop 4 (t=20): current_time = 20. (20-0 <= 100, 20-5 > 10). TIMEOUT!
         mock_loop.time.side_effect = [
-            0, # start_time
-            0, # Loop 1 current_time
-            5, # Loop 2 current_time
-            11, # Loop 3 current_time
-            20, # Loop 4 current_time
+            0,  # start_time
+            0,  # Loop 1 current_time
+            5,  # Loop 2 current_time
+            11,  # Loop 3 current_time
+            20,  # Loop 4 current_time
         ]
 
         # We need to run it in a way that it eventually times out so we can assert it
         with pytest.raises(JulesTimeoutError, match="inactivity timeout: 10s"):
-            await engine.invoke("Test prompt", command_timeout=100, inactivity_timeout=10)
+            await engine.invoke(
+                "Test prompt", command_timeout=100, inactivity_timeout=10
+            )
 
         # Check that it reached at least the 3rd loop (6th GET call)
         assert client.get.call_count >= 6

@@ -36,7 +36,12 @@ async def test_jules_api_invoke_success():
 
         # Mock activity polling (1st) and session polling success (2nd)
         client.get.side_effect = [
-            httpx.Response(200, json={"activities": [{"id": "done", "description": "Jules API summary"}]}),
+            httpx.Response(
+                200,
+                json={
+                    "activities": [{"id": "done", "description": "Jules API summary"}]
+                },
+            ),
             httpx.Response(
                 200,
                 json={
@@ -51,7 +56,7 @@ async def test_jules_api_invoke_success():
                         }
                     ],
                 },
-            )
+            ),
         ]
 
         result = await engine.invoke("Test prompt")
@@ -73,7 +78,10 @@ async def test_jules_api_invoke_success():
         args, kwargs = client.post.call_args
         payload = kwargs["json"]
         assert payload["sourceContext"]["source"] == "sources/github/owner/repo"
-        assert payload["sourceContext"]["githubRepoContext"]["startingBranch"] == "feature-branch"
+        assert (
+            payload["sourceContext"]["githubRepoContext"]["startingBranch"]
+            == "feature-branch"
+        )
 
 
 @pytest.mark.asyncio
@@ -103,7 +111,12 @@ async def test_jules_api_invoke_success_200():
 
         # Mock activity polling (1st) and session polling success (2nd)
         client.get.side_effect = [
-            httpx.Response(200, json={"activities": [{"id": "done", "description": "Success with 200"}]}),
+            httpx.Response(
+                200,
+                json={
+                    "activities": [{"id": "done", "description": "Success with 200"}]
+                },
+            ),
             httpx.Response(
                 200,
                 json={
@@ -111,7 +124,7 @@ async def test_jules_api_invoke_success_200():
                     "state": "COMPLETED",
                     "outputs": [],
                 },
-            )
+            ),
         ]
 
         result = await engine.invoke("Test prompt")
@@ -150,12 +163,15 @@ async def test_jules_api_polling_retries():
             httpx.Response(200, json={"activities": []}),
             httpx.Response(200, json={"state": "ACTIVE"}),
             # 3rd loop
-            httpx.Response(200, json={"activities": [{"id": "done", "description": "Done"}]}),
             httpx.Response(
-                200, json={
+                200, json={"activities": [{"id": "done", "description": "Done"}]}
+            ),
+            httpx.Response(
+                200,
+                json={
                     "state": "COMPLETED",
                     "outputs": [],
-                }
+                },
             ),
         ]
 
@@ -186,7 +202,7 @@ async def test_jules_api_failure_state():
         # Mock activity polling (1st) and failing session polling (2nd)
         client.get.side_effect = [
             httpx.Response(200, json={"activities": []}),
-            httpx.Response(200, json={"state": "FAILED", "name": "sessions/sess_123"})
+            httpx.Response(200, json={"state": "FAILED", "name": "sessions/sess_123"}),
         ]
 
         with pytest.raises(
@@ -336,7 +352,9 @@ async def test_jules_api_pull_failure():
 
         # Mock activity polling (1st) and session polling success (2nd)
         client.get.side_effect = [
-            httpx.Response(200, json={"activities": [{"id": "done", "description": "Done"}]}),
+            httpx.Response(
+                200, json={"activities": [{"id": "done", "description": "Done"}]}
+            ),
             httpx.Response(
                 200,
                 json={
@@ -344,7 +362,7 @@ async def test_jules_api_pull_failure():
                     "state": "COMPLETED",
                     "outputs": [],
                 },
-            )
+            ),
         ]
 
         with pytest.raises(
@@ -372,30 +390,53 @@ async def test_jules_api_poll_session_logs():
         # Mock activity responses
         client.get.side_effect = [
             # First poll for activities
-            httpx.Response(200, json={
-                "activities": [
-                    {"id": "act1", "progressUpdated": {"title": "Step 1"}}
-                ]
-            }),
+            httpx.Response(
+                200,
+                json={
+                    "activities": [
+                        {"id": "act1", "progressUpdated": {"title": "Step 1"}}
+                    ]
+                },
+            ),
             # First poll for session state
             httpx.Response(200, json={"state": "ACTIVE"}),
             # Second poll for activities
-            httpx.Response(200, json={
-                "activities": [
-                    {"id": "act1", "progressUpdated": {"title": "Step 1"}},
-                    {"id": "act2", "progressUpdated": {"title": "Step 2", "description": "Doing work"}}
-                ]
-            }),
+            httpx.Response(
+                200,
+                json={
+                    "activities": [
+                        {"id": "act1", "progressUpdated": {"title": "Step 1"}},
+                        {
+                            "id": "act2",
+                            "progressUpdated": {
+                                "title": "Step 2",
+                                "description": "Doing work",
+                            },
+                        },
+                    ]
+                },
+            ),
             # Second poll for session state
             httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
         ]
 
-        await engine._poll_session(client, "sessions/sess_123", timeout=10, inactivity_timeout=5, node="test_node", verbose=True)
+        await engine._poll_session(
+            client,
+            "sessions/sess_123",
+            timeout=10,
+            inactivity_timeout=5,
+            node="test_node",
+            verbose=True,
+        )
 
         # Verify telemetry calls
         assert mock_telemetry.log_output.call_count == 2
-        mock_telemetry.log_output.assert_any_call("test_node", "[sessions/sess_123] Step 1\n")
-        mock_telemetry.log_output.assert_any_call("test_node", "[sessions/sess_123] Step 2: Doing work\n")
+        mock_telemetry.log_output.assert_any_call(
+            "test_node", "[sessions/sess_123] Step 1\n"
+        )
+        mock_telemetry.log_output.assert_any_call(
+            "test_node", "[sessions/sess_123] Step 2: Doing work\n"
+        )
 
         # Verify print calls
         assert mock_print.call_count == 2

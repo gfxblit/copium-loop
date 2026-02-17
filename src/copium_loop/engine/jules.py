@@ -265,9 +265,7 @@ class JulesEngine(LLMEngine):
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
 
-        timeout = (
-            command_timeout if command_timeout is not None else COMMAND_TIMEOUT
-        )
+        timeout = command_timeout if command_timeout is not None else COMMAND_TIMEOUT
         inactivity = (
             inactivity_timeout if inactivity_timeout is not None else INACTIVITY_TIMEOUT
         )
