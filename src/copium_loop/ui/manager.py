@@ -11,9 +11,12 @@ from .column import SessionColumn
 class SessionManager:
     """Manages the lifecycle and state of workflow sessions."""
 
-    def __init__(self, log_dir: Path, sessions_per_page: int = 3):
+    def __init__(
+        self, log_dir: Path, sessions_per_page: int = 3, max_sessions: int = 100
+    ):
         self.log_dir = log_dir
         self.sessions_per_page = sessions_per_page
+        self.max_sessions = max_sessions
         self.sessions: dict[str, SessionColumn] = {}
         self.log_offsets: dict[str, int] = {}
         self.current_page = 0
@@ -41,6 +44,10 @@ class SessionManager:
         # Fallback if stat fails (e.g. file deleted during scan)
         with contextlib.suppress(OSError):
             log_entries.sort(key=lambda e: e.stat().st_mtime)
+
+        # Apply session limit: keep only the most recent files
+        if len(log_entries) > self.max_sessions:
+            log_entries = log_entries[-self.max_sessions :]
 
         active_sids = set()
         for entry in log_entries:
