@@ -15,6 +15,7 @@ class SessionManager:
         self.sessions_per_page = sessions_per_page
         self.sessions: dict[str, SessionColumn] = {}
         self.log_offsets: dict[str, int] = {}
+        self.file_stats: dict[str, tuple[float, int]] = {}
         self.current_page = 0
 
     def update_from_logs(self) -> list[dict[str, Any]]:
@@ -25,8 +26,20 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
-        active_sids = {f.stem for f in log_files}
+        # Use os.scandir for better performance (avoid stat calls on every file if unchanged)
+        log_entries = []
+        try:
+            with os.scandir(self.log_dir) as entries:
+                for entry in entries:
+                    if entry.is_file() and entry.name.endswith(".jsonl"):
+                        log_entries.append(entry)
+        except OSError:
+            return []
+
+        # Sort simply by name for deterministic iteration order, though not strictly required
+        log_entries.sort(key=lambda e: e.name)
+
+        active_sids = {e.name[:-6] for e in log_entries}
 
         # Remove stale sessions
         stale_sids = [sid for sid in self.sessions if sid not in active_sids]
@@ -34,11 +47,27 @@ class SessionManager:
             del self.sessions[sid]
             if sid in self.log_offsets:
                 del self.log_offsets[sid]
+            if sid in self.file_stats:
+                del self.file_stats[sid]
 
         updates = []
 
-        for target_file in log_files:
-            sid = target_file.stem
+        for entry in log_entries:
+            sid = entry.name[:-6]
+
+            # Check if file has changed
+            try:
+                stat = entry.stat()
+                current_mtime = stat.st_mtime
+                current_size = stat.st_size
+            except OSError:
+                continue
+
+            cached_stats = self.file_stats.get(sid)
+            if cached_stats == (current_mtime, current_size):
+                continue
+
+            self.file_stats[sid] = (current_mtime, current_size)
 
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
@@ -47,16 +76,15 @@ class SessionManager:
             # and it's large (> 1MB), seek to 1MB from the end to avoid parsing everything.
             is_initial_read = sid not in self.log_offsets
             if is_initial_read:
-                file_size = target_file.stat().st_size
-                if file_size > 1024 * 1024:
-                    self.log_offsets[sid] = file_size - (1024 * 1024)
+                if current_size > 1024 * 1024:
+                    self.log_offsets[sid] = current_size - (1024 * 1024)
                 else:
                     self.log_offsets[sid] = 0
 
             offset = self.log_offsets.get(sid, 0)
             events = []
             try:
-                with open(target_file) as f:
+                with open(entry.path) as f:
                     if offset > 0:
                         f.seek(offset)
                         # If we seeked into the middle of a file (initial read of a large file),
