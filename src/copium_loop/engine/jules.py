@@ -185,9 +185,7 @@ class JulesEngine(LLMEngine):
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 1. Create session
-            session_name = await self._create_session(
-                client, safe_prompt, repo, branch
-            )
+            session_name = await self._create_session(client, safe_prompt, repo, branch)
 
             if verbose:
                 print(f"Jules session created: {session_name}")
