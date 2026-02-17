@@ -52,7 +52,12 @@ def mock_scandir():
 
 @pytest.fixture
 def mock_file_open():
-    with patch("builtins.open", mock_open(read_data='{"node": "test", "event_type": "status", "data": "active"}')) as mock:
+    with patch(
+        "builtins.open",
+        mock_open(
+            read_data='{"node": "test", "event_type": "status", "data": "active"}'
+        ),
+    ) as mock:
         yield mock
 
 
