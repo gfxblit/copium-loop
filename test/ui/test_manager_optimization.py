@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
+
 from src.copium_loop.ui.manager import SessionManager
 
 
