@@ -7,6 +7,7 @@ import pytest
 from langgraph.graph.state import CompiledStateGraph
 
 from copium_loop.copium_loop import WorkflowManager
+from copium_loop.engine.factory import get_engine
 from copium_loop.graph import START, create_graph
 
 
@@ -127,18 +128,21 @@ class TestEnvironmentVerification:
     @pytest.mark.asyncio
     async def test_verify_environment_success(self, mock_run_command, workflow):
         mock_run_command.return_value = {"exit_code": 0}
-        assert await workflow.verify_environment() is True
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is True
         assert mock_run_command.call_count == 3
 
     @pytest.mark.asyncio
     async def test_verify_environment_failure(self, mock_run_command, workflow):
         mock_run_command.return_value = {"exit_code": 1}
-        assert await workflow.verify_environment() is False
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is False
 
     @pytest.mark.asyncio
     async def test_verify_environment_exception(self, mock_run_command, workflow):
         mock_run_command.side_effect = Exception("failed")
-        assert await workflow.verify_environment() is False
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is False
 
 
 class TestWorkflowRun:

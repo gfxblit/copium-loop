@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
+from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.factory import get_engine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
@@ -105,14 +106,12 @@ class WorkflowManager:
 
         return response
 
-    async def verify_environment(self, engine_name: str | None = None) -> bool:
+    async def verify_environment(self, engine: LLMEngine) -> bool:
         """Verifies that the necessary CLI tools are installed."""
         if WorkflowManager._environment_verified:
             return True
 
-        tools = ["git", "gh"]
-        if engine_name != "jules":
-            tools.append("gemini")
+        tools = ["git", "gh"] + engine.get_required_tools()
 
         for tool in tools:
             try:
@@ -134,18 +133,12 @@ class WorkflowManager:
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
-        # Determine effective engine name for environment verification
-        from copium_loop.engine.jules import JulesEngine
+        # Determine engine
+        engine = get_engine(self.engine_name)
+        if initial_state and "engine" in initial_state and self.engine_name is None:
+            engine = initial_state["engine"]
 
-        effective_engine = self.engine_name
-        if (
-            effective_engine is None
-            and initial_state
-            and isinstance(initial_state.get("engine"), JulesEngine)
-        ):
-            effective_engine = "jules"
-
-        if not await self.verify_environment(effective_engine):
+        if not await self.verify_environment(engine):
             return {"error": "Environment verification failed."}
 
         telemetry = get_telemetry()
@@ -233,7 +226,7 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "engine": get_engine(self.engine_name),
+            "engine": engine,
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
@@ -256,9 +249,6 @@ class WorkflowManager:
             print(f"Merging reconstructed state: {initial_state}")
             for key, value in initial_state.items():
                 if key != "prompt":
-                    # Do not overwrite engine from state if we have a preference from the CLI
-                    if key == "engine" and self.engine_name is not None:
-                        continue
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)
