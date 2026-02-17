@@ -49,6 +49,7 @@ async def test_poll_session_detailed_activities():
                             },
                         },
                         {"id": "act4", "text": "Generic text message"},
+                        {"id": "act5"},
                     ]
                 },
             ),
@@ -68,6 +69,9 @@ async def test_poll_session_detailed_activities():
         # We expect detailed messages for each
         # Depending on implementation, we might want to verify specific strings
         calls = [call.args[1] for call in mock_telemetry.log_output.call_args_list]
+
+        # act5 should be filtered
+        assert len(calls) == 4
 
         # Check if we got more than just "Activity update"
         for call in calls:

@@ -190,14 +190,18 @@ class JulesEngine(LLMEngine):
                                     or "Activity update"
                                 )
 
-                            msg = f"[{session_name}] {title}"
-                            if desc:
-                                msg += f": {desc}"
+                            # Filter out useless generic updates
+                            if title == "Activity update" and not desc:
+                                pass
+                            else:
+                                msg = f"[{session_name}] {title}"
+                                if desc:
+                                    msg += f": {desc}"
 
-                            if verbose:
-                                print(msg)
-                            if node:
-                                telemetry.log_output(node, msg + "\n")
+                                if verbose:
+                                    print(msg)
+                                if node:
+                                    telemetry.log_output(node, msg + "\n")
 
                             # Update last_summary with any textual description we find
                             if title or desc:
