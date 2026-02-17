@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 from datetime import datetime
@@ -16,6 +17,7 @@ class SessionManager:
         self.sessions: dict[str, SessionColumn] = {}
         self.log_offsets: dict[str, int] = {}
         self.current_page = 0
+        self.file_stats: dict[str, tuple[float, int]] = {}
 
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
@@ -25,8 +27,25 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        log_files = sorted(self.log_dir.glob("*.jsonl"), key=os.path.getmtime)
-        active_sids = {f.stem for f in log_files}
+        try:
+            with os.scandir(self.log_dir) as entries:
+                log_entries = [
+                    entry
+                    for entry in entries
+                    if entry.name.endswith(".jsonl") and entry.is_file()
+                ]
+        except OSError:
+            return []
+
+        # Sort by mtime to preserve consistent processing order
+        # Fallback if stat fails (e.g. file deleted during scan)
+        with contextlib.suppress(OSError):
+            log_entries.sort(key=lambda e: e.stat().st_mtime)
+
+        active_sids = set()
+        for entry in log_entries:
+            sid = entry.name[:-6]  # Remove .jsonl
+            active_sids.add(sid)
 
         # Remove stale sessions
         stale_sids = [sid for sid in self.sessions if sid not in active_sids]
@@ -34,11 +53,27 @@ class SessionManager:
             del self.sessions[sid]
             if sid in self.log_offsets:
                 del self.log_offsets[sid]
+            if sid in self.file_stats:
+                del self.file_stats[sid]
 
         updates = []
 
-        for target_file in log_files:
-            sid = target_file.stem
+        for entry in log_entries:
+            sid = entry.name[:-6]
+
+            try:
+                stat = entry.stat()
+                mtime = stat.st_mtime
+                size = stat.st_size
+            except OSError:
+                continue
+
+            # Optimization: Skip file if mtime and size match cached values
+            cached_stat = self.file_stats.get(sid)
+            if cached_stat and cached_stat == (mtime, size):
+                continue
+
+            self.file_stats[sid] = (mtime, size)
 
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
@@ -47,7 +82,7 @@ class SessionManager:
             # and it's large (> 1MB), seek to 1MB from the end to avoid parsing everything.
             is_initial_read = sid not in self.log_offsets
             if is_initial_read:
-                file_size = target_file.stat().st_size
+                file_size = size
                 if file_size > 1024 * 1024:
                     self.log_offsets[sid] = file_size - (1024 * 1024)
                 else:
@@ -56,7 +91,8 @@ class SessionManager:
             offset = self.log_offsets.get(sid, 0)
             events = []
             try:
-                with open(target_file) as f:
+                # Use entry.path (string) or Path(entry.path)
+                with open(entry.path) as f:
                     if offset > 0:
                         f.seek(offset)
                         # If we seeked into the middle of a file (initial read of a large file),
