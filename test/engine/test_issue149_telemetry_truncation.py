@@ -1,7 +1,10 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import httpx
 import pytest
+
 from copium_loop.engine.jules import JulesEngine
+
 
 @pytest.mark.asyncio
 async def test_poll_session_truncates_large_outputs():
@@ -59,7 +62,7 @@ async def test_poll_session_truncates_large_outputs():
         # Verify telemetry log_output was called
         assert mock_telemetry.log_output.called
         calls = [call.args[1] for call in mock_telemetry.log_output.call_args_list]
-        
+
         for call in calls:
             # Each call should be reasonably short, around the MAX_ACTIVITY_DESC_LENGTH (1000)
             # plus some overhead for the title and suffix.
