@@ -11,12 +11,7 @@ async def coder(state: AgentState) -> dict:
     telemetry.log_status("coder", "active")
     telemetry.log_output("coder", "--- Coder Node ---\n")
     print("--- Coder Node ---")
-    messages = state["messages"]
     engine = state["engine"]
-    test_output = state.get("test_output", "")
-    review_status = state.get("review_status", "")
-    architect_status = state.get("architect_status", "")
-    code_status = state.get("code_status", "")
 
     system_prompt = await get_coder_prompt(engine.engine_type, state)
 
