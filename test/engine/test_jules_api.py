@@ -138,7 +138,9 @@ async def test_jules_api_invoke_apply_artifacts():
         patch("copium_loop.git.add", new_callable=AsyncMock) as mock_add,
         patch("copium_loop.git.commit", new_callable=AsyncMock) as mock_commit,
         patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
-        patch("copium_loop.engine.jules.run_command", new_callable=AsyncMock) as mock_run_command,
+        patch(
+            "copium_loop.engine.jules.run_command", new_callable=AsyncMock
+        ) as mock_run_command,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):

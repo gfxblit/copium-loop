@@ -203,7 +203,9 @@ class JulesEngine(LLMEngine):
 
                             # Consistently truncate description
                             if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
-                                desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
+                                desc = (
+                                    desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
+                                )
 
                             # Filter out useless generic updates
                             if title == "Activity update" and not desc:
@@ -302,7 +304,9 @@ class JulesEngine(LLMEngine):
 
         return summary or "Jules task completed, but no summary was found."
 
-    async def _apply_artifacts(self, status_data: dict, node: str | None = None) -> bool:
+    async def _apply_artifacts(
+        self, status_data: dict, node: str | None = None
+    ) -> bool:
         """Applies unidiff patches from session outputs and commits them."""
         outputs = status_data.get("outputs", [])
         patches_applied = False
@@ -325,7 +329,9 @@ class JulesEngine(LLMEngine):
                 continue
 
             # Write patch to a temporary file
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".patch", delete=False
+            ) as f:
                 f.write(patch_text)
                 patch_path = f.name
 
@@ -337,7 +343,9 @@ class JulesEngine(LLMEngine):
                     if "suggestedCommitMessage" in git_patch:
                         commit_message = git_patch["suggestedCommitMessage"]
                 else:
-                    get_telemetry().log_output(node or "jules", f"Failed to apply patch: {res['output']}\n")
+                    get_telemetry().log_output(
+                        node or "jules", f"Failed to apply patch: {res['output']}\n"
+                    )
             finally:
                 if os.path.exists(patch_path):
                     os.remove(patch_path)
@@ -349,6 +357,7 @@ class JulesEngine(LLMEngine):
             return True
 
         return False
+
     async def invoke(
         self,
         prompt: str,
@@ -420,7 +429,9 @@ class JulesEngine(LLMEngine):
                 else:
                     # Fallback to pull in case Jules DID push commits but no artifacts are in activities
                     if verbose:
-                        print(f"[{node}] No artifacts applied, falling back to git pull...")
+                        print(
+                            f"[{node}] No artifacts applied, falling back to git pull..."
+                        )
                     res = await git.pull(node=node)
                     if res["exit_code"] != 0:
                         raise LLMError(f"Failed to pull changes: {res['output']}")
