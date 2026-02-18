@@ -65,7 +65,9 @@ class GeminiEngine(LLMEngine):
             raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
 
         if exit_code != 0:
-            raise Exception(f"Gemini CLI exited with code {exit_code}\nOutput:\n{output}")
+            raise Exception(
+                f"Gemini CLI exited with code {exit_code}\nOutput:\n{output}"
+            )
 
         return output.strip()
 
