@@ -344,7 +344,6 @@ class JulesEngine(LLMEngine):
             return True
 
         return False
-
     async def invoke(
         self,
         prompt: str,
