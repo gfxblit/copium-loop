@@ -304,15 +304,15 @@ class JulesEngine(LLMEngine):
         for output in outputs:
             if not isinstance(output, dict):
                 continue
-            
+
             change_set = output.get("changeSet")
             if not change_set:
                 continue
-                
+
             git_patch = change_set.get("gitPatch")
             if not git_patch:
                 continue
-                
+
             patch_text = git_patch.get("unidiffPatch")
             if not patch_text:
                 continue
@@ -322,7 +322,7 @@ class JulesEngine(LLMEngine):
             with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
                 f.write(patch_text)
                 patch_path = f.name
-            
+
             try:
                 # Apply the patch
                 from copium_loop.shell import run_command
@@ -343,7 +343,7 @@ class JulesEngine(LLMEngine):
             await git.commit(commit_message, node=node)
             # We don't push here, we push in the invoke method if needed
             return True
-        
+
         return False
 
     async def invoke(
