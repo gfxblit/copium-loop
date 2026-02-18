@@ -54,11 +54,12 @@ class SessionColumn:
             # Base ratio is content length + 2 (for header/borders)
             # We add a weight bonus for the active node
             count = len(pillar.buffer)
-            weight = count + 2
             if pillar.status == "active":
-                weight += 20  # Ensure active node has enough space
-            elif pillar.status == "idle" and count == 0:
-                weight = 1  # Keep empty idle nodes very small
+                weight = count + 22  # Ensure active node has enough space
+            elif count > 0:
+                weight = max(4, count + 2)  # Ensure at least 2 lines of content
+            else:
+                weight = 1
 
             ratios[node] = weight
 

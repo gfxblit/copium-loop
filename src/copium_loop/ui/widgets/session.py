@@ -112,10 +112,10 @@ class SessionWidget(Vertical):
                 count = len(pillar_data.buffer)
                 if pillar_data.status == "active":
                     weight = 100 + (count * 2)
-                    widget.styles.min_height = 3
+                    widget.styles.min_height = 4
                 elif count > 0:
                     weight = 10 + count
-                    widget.styles.min_height = 3
+                    widget.styles.min_height = 4
                 else:
                     weight = 1
                     widget.styles.min_height = 3
