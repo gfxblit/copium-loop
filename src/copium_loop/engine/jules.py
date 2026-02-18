@@ -1,5 +1,6 @@
 import asyncio
 import os
+import tempfile
 
 import httpx
 from tenacity import (
@@ -12,6 +13,7 @@ from tenacity import (
 from copium_loop import git
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
 from copium_loop.engine.base import LLMEngine, LLMError
+from copium_loop.shell import run_command
 from copium_loop.telemetry import get_telemetry
 
 
@@ -318,14 +320,12 @@ class JulesEngine(LLMEngine):
                 continue
 
             # Write patch to a temporary file
-            import tempfile
             with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
                 f.write(patch_text)
                 patch_path = f.name
 
             try:
                 # Apply the patch
-                from copium_loop.shell import run_command
                 res = await run_command("git", ["apply", patch_path], node=node)
                 if res["exit_code"] == 0:
                     patches_applied = True
@@ -334,7 +334,6 @@ class JulesEngine(LLMEngine):
                 else:
                     get_telemetry().log_output(node or "jules", f"Failed to apply patch: {res['output']}\n")
             finally:
-                import os
                 if os.path.exists(patch_path):
                     os.remove(patch_path)
 
