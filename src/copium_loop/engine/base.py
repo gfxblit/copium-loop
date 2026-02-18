@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class LLMError(Exception):
@@ -25,6 +26,7 @@ class LLMEngine(ABC):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
+        jules_metadata: dict[str, str] | None = None,
     ) -> str:
         """Invokes the LLM with a prompt."""
         pass

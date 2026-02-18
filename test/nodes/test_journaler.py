@@ -33,13 +33,12 @@ async def test_journaler_success(mock_engine):
         "git_diff": "diff content",
         "verbose": False,
         "last_error": "",
-        "engine": mock_engine,
     }
 
     with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
         instance = mock_memory_manager.return_value
 
-        result = await journaler(state)
+        result = await journaler(state, mock_engine)
 
         assert result["journal_status"] == "journaled"
         assert result["review_status"] == "approved"  # Preserved
@@ -63,12 +62,11 @@ async def test_journaler_updates_pending_status(mock_engine):
         "git_diff": "diff content",
         "verbose": False,
         "last_error": "",
-        "engine": mock_engine,
     }
 
     mock_engine.invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager"):
-        result = await journaler(state)
+        result = await journaler(state, mock_engine)
         assert result["review_status"] == "journaled"
         mock_engine.invoke.assert_called_once()
         # Verify that the prompt contains some relevant info
@@ -93,7 +91,6 @@ async def test_journaler_includes_telemetry_log(mock_engine):
         "git_diff": "diff content",
         "verbose": False,
         "last_error": "",
-        "engine": mock_engine,
     }
 
     with (
@@ -111,7 +108,7 @@ async def test_journaler_includes_telemetry_log(mock_engine):
             "tester: output: Running tests..."
         )
 
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         # Verify that the prompt contains telemetry information
         args, _ = mock_engine.invoke.call_args
@@ -127,12 +124,11 @@ async def test_journaler_includes_telemetry_log(mock_engine):
 @pytest.mark.asyncio
 async def test_journaler_verbosity_and_filtering(mock_engine):
     # Setup
-    state = AgentState()
+    state = {}
     state["test_output"] = "Tests passed"
     state["review_status"] = "Approved"
     state["git_diff"] = "diff"
     state["verbose"] = False
-    state["engine"] = mock_engine
 
     # Mock dependencies
     with patch.object(journaler_module, "MemoryManager") as MockMemoryManager:
@@ -143,7 +139,7 @@ async def test_journaler_verbosity_and_filtering(mock_engine):
         # If the LLM returns something that is NOT "NO_LESSON", it SHOULD be logged.
         mock_engine.invoke.return_value = "No significant lesson learned."
 
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         mock_mem_instance.log_learning.assert_called_once_with(
             "No significant lesson learned."
@@ -155,14 +151,14 @@ async def test_journaler_verbosity_and_filtering(mock_engine):
         # Case 2: LLM explicitly returns NO_LESSON
         mock_engine.invoke.return_value = "NO_LESSON"
 
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         # Expectation: log_learning should NOT be called for NO_LESSON
         mock_mem_instance.log_learning.assert_not_called()
 
         # Case 3: Empty string
         mock_engine.invoke.return_value = ""
-        await journaler(state)
+        await journaler(state, mock_engine)
         mock_mem_instance.log_learning.assert_not_called()
 
 
@@ -171,15 +167,15 @@ async def test_journaler_prompt_content(mock_engine):
     # We want to verify that the prompt sent to Gemini includes instructions about
     # being concise, not being a status report, and the context about tracking overall experience.
 
-    state = AgentState()
+    state = {}
     state["test_output"] = "out"
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
-    state["engine"] = mock_engine
+    state["verbose"] = False
 
     mock_engine.invoke.return_value = "A lesson"  # Needed so lesson.strip() works
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         call_args = mock_engine.invoke.call_args
         prompt = call_args[0][0]
@@ -196,15 +192,15 @@ async def test_journaler_prompt_includes_timestamp_instruction(mock_engine):
     # We want to verify that the prompt sent to Gemini includes instructions about
     # including a timestamp when using save_memory.
 
-    state = AgentState()
+    state = {}
     state["test_output"] = "out"
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
-    state["engine"] = mock_engine
+    state["verbose"] = False
 
     mock_engine.invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         call_args = mock_engine.invoke.call_args
         prompt = call_args[0][0]
@@ -221,11 +217,11 @@ async def test_journaler_prompt_includes_timestamp_instruction(mock_engine):
 
 @pytest.mark.asyncio
 async def test_journaler_prompt_includes_existing_memories(mock_engine):
-    state = AgentState()
+    state = {}
     state["test_output"] = "out"
     state["review_status"] = "rev"
     state["git_diff"] = "diff"
-    state["engine"] = mock_engine
+    state["verbose"] = False
 
     mock_engine.invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
@@ -235,7 +231,7 @@ async def test_journaler_prompt_includes_existing_memories(mock_engine):
             "Existing Memory 2",
         ]
 
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         call_args = mock_engine.invoke.call_args
         prompt = call_args[0][0]
@@ -262,9 +258,8 @@ async def test_journaler_telemetry(mock_engine):
             "review_status": "pending",
             "git_diff": "diff",
             "test_output": "PASS",
-            "engine": mock_engine,
         }
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         mock_telemetry.log_status.assert_any_call("journaler", "active")
         mock_telemetry.log_output.assert_any_call(
@@ -289,12 +284,11 @@ async def test_journaler_prompt_bans_changelogs(mock_engine):
         "verbose": False,
         "last_error": "",
         "journal_status": "",
-        "engine": mock_engine,
     }
 
     mock_engine.invoke.return_value = "NO_LESSON"
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(state, mock_engine)
 
         call_args = mock_engine.invoke.call_args
         prompt = call_args[0][0]

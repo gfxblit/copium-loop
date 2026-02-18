@@ -6,6 +6,16 @@ import pytest
 from copium_loop.copium_loop import WorkflowManager
 
 
+@pytest.fixture(autouse=True)
+def mock_session_manager():
+    """Mock SessionManager to prevent filesystem access."""
+    with (
+        patch("copium_loop.copium_loop.SessionManager"),
+        patch("copium_loop.session_manager.SessionManager"),
+    ):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_initial_commit_hash_for_architect_with_origin_main(
     mock_verify_environment,

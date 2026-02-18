@@ -17,14 +17,16 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def reviewer_node(state: AgentState) -> dict:
+from copium_loop.engine.base import LLMEngine
+
+
+async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
     telemetry.log_output("reviewer", "--- Reviewer Node ---\n")
     print("--- Reviewer Node ---")
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
-    engine = state["engine"]
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
@@ -59,6 +61,7 @@ async def reviewer_node(state: AgentState) -> dict:
                 SystemMessage(content="No changes detected. Skipping review.")
             ],
             "retry_count": retry_count,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     try:
@@ -69,6 +72,7 @@ async def reviewer_node(state: AgentState) -> dict:
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
+            jules_metadata=state.get("jules_metadata"),
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
@@ -79,6 +83,7 @@ async def reviewer_node(state: AgentState) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
             "retry_count": retry_count + 1,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     verdict = _parse_verdict(review_content)
@@ -91,6 +96,7 @@ async def reviewer_node(state: AgentState) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=review_content)],
             "retry_count": retry_count + 1,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     is_approved = verdict == "APPROVED"
@@ -103,4 +109,5 @@ async def reviewer_node(state: AgentState) -> dict:
         "review_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
+        "jules_metadata": state.get("jules_metadata"),
     }

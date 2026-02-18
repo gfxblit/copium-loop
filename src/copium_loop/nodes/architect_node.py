@@ -17,13 +17,15 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def architect_node(state: AgentState) -> dict:
+from copium_loop.engine.base import LLMEngine
+
+
+async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
     telemetry.log_output("architect", "--- Architect Node ---\n")
     print("--- Architect Node ---")
     retry_count = state.get("retry_count", 0)
-    engine = state["engine"]
 
     try:
         system_prompt = await get_architect_prompt(engine.engine_type, state)
@@ -52,6 +54,7 @@ async def architect_node(state: AgentState) -> dict:
                 )
             ],
             "retry_count": retry_count,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     try:
@@ -62,6 +65,7 @@ async def architect_node(state: AgentState) -> dict:
             verbose=state.get("verbose"),
             label="Architect System",
             node="architect",
+            jules_metadata=state.get("jules_metadata"),
         )
     except Exception as e:
         msg = f"Error during architectural evaluation: {e}\n"
@@ -72,6 +76,7 @@ async def architect_node(state: AgentState) -> dict:
             "architect_status": "error",
             "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
             "retry_count": retry_count + 1,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     verdict = _parse_verdict(architect_content)
@@ -84,6 +89,7 @@ async def architect_node(state: AgentState) -> dict:
             "architect_status": "error",
             "messages": [SystemMessage(content=architect_content)],
             "retry_count": retry_count + 1,
+            "jules_metadata": state.get("jules_metadata"),
         }
 
     is_ok = verdict == "OK"
@@ -96,4 +102,5 @@ async def architect_node(state: AgentState) -> dict:
         "architect_status": "ok" if is_ok else "refactor",
         "messages": [SystemMessage(content=architect_content)],
         "retry_count": retry_count if is_ok else retry_count + 1,
+        "jules_metadata": state.get("jules_metadata"),
     }

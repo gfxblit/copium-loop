@@ -148,6 +148,12 @@ class TestEnvironmentVerification:
 class TestWorkflowRun:
     """Tests for workflow execution."""
 
+    @pytest.fixture(autouse=True)
+    def mock_session_manager(self):
+        """Mock SessionManager to prevent filesystem access."""
+        with patch("copium_loop.copium_loop.SessionManager"):
+            yield
+
     @pytest.mark.asyncio
     async def test_run_verify_failure(self, mock_verify_environment, workflow):
         mock_verify_environment.return_value = False
@@ -193,7 +199,7 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_wrap_node_exception_handling(self, workflow):
-        async def failing_node(_state):
+        async def failing_node(_state, *args, **kwargs):
             raise ValueError("node failed")
 
         wrapped = workflow._wrap_node("coder", failing_node)
@@ -295,7 +301,8 @@ class TestWorkflowRun:
         gemini_engine = get_engine("gemini")
         initial_state = {"engine": gemini_engine, "retry_count": 5}
 
-        result = await workflow.run("test prompt", initial_state=initial_state)
+        with patch("copium_loop.copium_loop.SessionManager"):
+            result = await workflow.run("test prompt", initial_state=initial_state)
 
         assert result == {"status": "completed"}
         state = mock_graph.ainvoke.call_args[0][0]
@@ -303,7 +310,7 @@ class TestWorkflowRun:
         # Should be JulesEngine because it was specified via CLI
         from copium_loop.engine.jules import JulesEngine
 
-        assert isinstance(state["engine"], JulesEngine)
+        assert isinstance(workflow.engine, JulesEngine)
         assert state["retry_count"] == 5
 
 
@@ -351,14 +358,17 @@ class TestNodeTimeouts:
     ):
         """Test that nodes time out and update state accordingly."""
 
-        async def slow_node(_state):
+        async def slow_node(_state, *args, **kwargs):
             await asyncio.sleep(2)  # Simulate a node taking too long
             return {
                 "arbitrary_key": "arbitrary_value"
             }  # Return something to be overridden
 
         manager = workflow_manager_factory()
-        with patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1):  # Set a short timeout
+        with (
+            patch("copium_loop.copium_loop.NODE_TIMEOUT", 0.1),  # Set a short timeout
+            patch("copium_loop.copium_loop.SessionManager"),
+        ):
             wrapped = manager._wrap_node(node_name, slow_node)
             state = {"retry_count": 0}
             result = await wrapped(state)

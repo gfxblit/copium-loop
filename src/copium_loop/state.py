@@ -8,7 +8,7 @@ class AgentState(TypedDict):
     """The state of the workflow."""
 
     messages: Annotated[list[BaseMessage], add_messages]
-    engine: Any  # LLMEngine
+    jules_metadata: dict[str, Any]
     code_status: str
     test_output: str
     review_status: str

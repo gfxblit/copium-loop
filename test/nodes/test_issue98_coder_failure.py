@@ -63,10 +63,9 @@ class TestIssue98CoderFailure:
             ],
             "code_status": "failed",
             "retry_count": 1,
-            "engine": mock_engine,
         }
 
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the "unexpected failure" message
 

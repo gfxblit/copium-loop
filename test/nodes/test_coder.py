@@ -26,9 +26,8 @@ class TestCoderNode:
         """Test that coder node returns coded status."""
         state = {
             "messages": [HumanMessage(content="Build a login form")],
-            "engine": mock_engine,
         }
-        result = await coder(state)
+        result = await coder(state, mock_engine)
 
         assert result["code_status"] == "coded"
         assert "Mocked Code Response" in result["messages"][0].content
@@ -42,9 +41,8 @@ class TestCoderNode:
         state = {
             "messages": [HumanMessage(content="Fix bug")],
             "test_output": "FAIL: Expected 1 to be 2",
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the test failure
         call_args = mock_engine.invoke.call_args[0]
@@ -58,9 +56,8 @@ class TestCoderNode:
         state = {
             "messages": [HumanMessage(content="Test prompt")],
             "verbose": True,
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that engine.invoke was called with verbose=True and label="Coder System"
         _, kwargs = mock_engine.invoke.call_args
@@ -80,9 +77,8 @@ class TestCoderNode:
                 ),
             ],
             "review_status": "pr_failed",
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the PR failure message
         call_args = mock_engine.invoke.call_args[0]
@@ -98,9 +94,8 @@ class TestCoderNode:
         state = {
             "messages": [HumanMessage(content="Original request")],
             "review_status": "needs_commit",
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the needs_commit message
         call_args = mock_engine.invoke.call_args[0]
@@ -118,9 +113,8 @@ class TestCoderNode:
                 SystemMessage(content="Code is too complex."),
             ],
             "review_status": "rejected",
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the rejection message
         call_args = mock_engine.invoke.call_args[0]
@@ -141,9 +135,8 @@ class TestCoderNode:
                 ),
             ],
             "architect_status": "refactor",
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the architect feedback
         call_args = mock_engine.invoke.call_args[0]
@@ -160,9 +153,8 @@ class TestCoderNode:
         mock_engine.engine_type = "jules"
         state = {
             "messages": [HumanMessage(content="Test jules prompt")],
-            "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the force push instruction
         call_args = mock_engine.invoke.call_args[0]

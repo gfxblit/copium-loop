@@ -69,12 +69,11 @@ async def test_architect_node_engine_agnostic():
     type(mock_engine).engine_type = PropertyMock(return_value="jules")
     mock_engine.invoke = AsyncMock(return_value="VERDICT: OK")
 
-    state = AgentState(
-        messages=[HumanMessage(content="test")],
-        engine=mock_engine,
-        initial_commit_hash="sha123",
-        retry_count=0,
-    )
+    state = {
+        "messages": [HumanMessage(content="test")],
+        "initial_commit_hash": "sha123",
+        "retry_count": 0,
+    }
 
     with (
         patch(
@@ -82,7 +81,7 @@ async def test_architect_node_engine_agnostic():
             return_value="mock prompt",
         ) as mock_get_prompt,
     ):
-        result = await architect(state)
+        result = await architect(state, mock_engine)
 
         mock_get_prompt.assert_called_once()
         mock_engine.invoke.assert_called_once()
@@ -99,12 +98,11 @@ async def test_reviewer_node_engine_agnostic():
     type(mock_engine).engine_type = PropertyMock(return_value="jules")
     mock_engine.invoke = AsyncMock(return_value="VERDICT: APPROVED")
 
-    state = AgentState(
-        messages=[HumanMessage(content="test")],
-        engine=mock_engine,
-        initial_commit_hash="sha123",
-        retry_count=0,
-    )
+    state = {
+        "messages": [HumanMessage(content="test")],
+        "initial_commit_hash": "sha123",
+        "retry_count": 0,
+    }
 
     with (
         patch(
@@ -112,7 +110,7 @@ async def test_reviewer_node_engine_agnostic():
             return_value="mock prompt",
         ) as mock_get_prompt,
     ):
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         mock_get_prompt.assert_called_once()
         mock_engine.invoke.assert_called_once()
