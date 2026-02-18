@@ -179,8 +179,6 @@ class JulesEngine(LLMEngine):
                                 args = tool_call.get("args")
                                 if args:
                                     desc = str(args)
-                                    if len(desc) > MAX_ACTIVITY_DESC_LENGTH:
-                                        desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
                             elif "toolCallCompleted" in activity:
                                 tool_resp = activity["toolCallCompleted"]
                                 title = (
@@ -194,8 +192,6 @@ class JulesEngine(LLMEngine):
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
                                 desc = activity["agentMessaged"].get("message", "")
-                                if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
-                                    desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
 
                             if not title:
                                 # Fallback to top-level fields
@@ -204,6 +200,10 @@ class JulesEngine(LLMEngine):
                                     or activity.get("text")
                                     or "Activity update"
                                 )
+
+                            # Consistently truncate description
+                            if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
+                                desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
 
                             # Filter out useless generic updates
                             if title == "Activity update" and not desc:
