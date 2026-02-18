@@ -5,7 +5,6 @@ from langchain_core.messages import SystemMessage
 from copium_loop.constants import MODELS
 from copium_loop.engine.base import LLMEngine
 from copium_loop.nodes.utils import get_architect_prompt
-from copium_loop.session_manager import SessionManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -19,12 +18,13 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def architect_node(state: AgentState, engine: LLMEngine, session_manager: SessionManager | None = None) -> dict:
+async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
     telemetry.log_output("architect", "--- Architect Node ---\n")
     print("--- Architect Node ---")
     retry_count = state.get("retry_count", 0)
+    jules_metadata = state.get("jules_metadata", {})
 
     try:
         system_prompt = await get_architect_prompt(engine.engine_type, state)
@@ -63,7 +63,7 @@ async def architect_node(state: AgentState, engine: LLMEngine, session_manager: 
             verbose=state.get("verbose"),
             label="Architect System",
             node="architect",
-            session_manager=session_manager,
+            jules_metadata=jules_metadata,
         )
     except Exception as e:
         msg = f"Error during architectural evaluation: {e}\n"
@@ -98,4 +98,5 @@ async def architect_node(state: AgentState, engine: LLMEngine, session_manager: 
         "architect_status": "ok" if is_ok else "refactor",
         "messages": [SystemMessage(content=architect_content)],
         "retry_count": retry_count if is_ok else retry_count + 1,
+        "jules_metadata": jules_metadata,
     }

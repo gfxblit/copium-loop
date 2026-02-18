@@ -5,7 +5,6 @@ from langchain_core.messages import SystemMessage
 from copium_loop.constants import MODELS
 from copium_loop.engine.base import LLMEngine
 from copium_loop.nodes.utils import get_reviewer_prompt
-from copium_loop.session_manager import SessionManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -19,13 +18,14 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def reviewer_node(state: AgentState, engine: LLMEngine, session_manager: SessionManager | None = None) -> dict:
+async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
     telemetry.log_output("reviewer", "--- Reviewer Node ---\n")
     print("--- Reviewer Node ---")
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
+    jules_metadata = state.get("jules_metadata", {})
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
@@ -70,7 +70,7 @@ async def reviewer_node(state: AgentState, engine: LLMEngine, session_manager: S
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
-            session_manager=session_manager,
+            jules_metadata=jules_metadata,
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
@@ -105,4 +105,5 @@ async def reviewer_node(state: AgentState, engine: LLMEngine, session_manager: S
         "review_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
+        "jules_metadata": jules_metadata,
     }

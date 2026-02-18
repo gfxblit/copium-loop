@@ -1,7 +1,6 @@
 import asyncio
 import os
 import tempfile
-from typing import Any
 
 import httpx
 from tenacity import (
@@ -379,7 +378,6 @@ class JulesEngine(LLMEngine):
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
         jules_metadata: dict[str, str] | None = None,
-        session_manager: Any | None = None,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -417,9 +415,7 @@ class JulesEngine(LLMEngine):
             session_name = None
 
             # 1. Check for existing session
-            if session_manager and node:
-                session_name = session_manager.get_jules_session(node)
-            elif jules_metadata and node:
+            if jules_metadata and node:
                 session_name = jules_metadata.get(node)
 
             if session_name:
@@ -469,9 +465,7 @@ class JulesEngine(LLMEngine):
                     print(f"Jules session created: {session_name}")
 
                 # Persist session ID immediately
-                if session_manager and node:
-                    session_manager.update_jules_session(node, session_name)
-                elif jules_metadata is not None and node:
+                if jules_metadata is not None and node:
                     jules_metadata[node] = session_name
 
             # 3. Poll for completion

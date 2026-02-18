@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT, MODELS
 from copium_loop.engine.base import LLMEngine
@@ -59,14 +58,14 @@ class GeminiEngine(LLMEngine):
             node,
             command_timeout,
             inactivity_timeout=inactivity_timeout,
-            capture_stderr=False,
+            capture_stderr=True,
         )
 
         if timed_out:
             raise Exception(f"[TIMEOUT] Gemini CLI timed out: {timeout_message}")
 
         if exit_code != 0:
-            raise Exception(f"Gemini CLI exited with code {exit_code}")
+            raise Exception(f"Gemini CLI exited with code {exit_code}\nOutput:\n{output}")
 
         return output.strip()
 
@@ -81,7 +80,6 @@ class GeminiEngine(LLMEngine):
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
         jules_metadata: dict[str, str] | None = None,  # noqa: ARG002
-        session_manager: Any | None = None,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Gemini CLI with a prompt, supporting model fallback.

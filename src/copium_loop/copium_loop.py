@@ -61,10 +61,10 @@ class WorkflowManager:
         async def wrapper(state: AgentState):
             telemetry = get_telemetry()
             try:
-                # Inject engine and session_manager if the node expects it
+                # Inject engine if the node expects it
                 if node_name in ["coder", "architect", "reviewer", "journaler"]:
                     result = await asyncio.wait_for(
-                        node_func(state, self.engine, self.session_manager),
+                        node_func(state, self.engine),
                         timeout=NODE_TIMEOUT,
                     )
                 else:
@@ -78,7 +78,9 @@ class WorkflowManager:
                     # Update session manager with new sessions
                     for node_key, session_id in new_metadata.items():
                         if self.session_manager:
-                            self.session_manager.update_jules_session(node_key, session_id)
+                            self.session_manager.update_jules_session(
+                                node_key, session_id
+                            )
 
                 return result
             except asyncio.TimeoutError:
@@ -256,7 +258,9 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "jules_metadata": self.session_manager.get_all_jules_sessions() if self.session_manager else {},
+            "jules_metadata": self.session_manager.get_all_jules_sessions()
+            if self.session_manager
+            else {},
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
