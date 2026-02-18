@@ -196,7 +196,11 @@ class JulesEngine(LLMEngine):
 
                             # Fallback for desc from top-level fields
                             if not desc:
-                                desc = activity.get("description") or activity.get("text") or ""
+                                desc = (
+                                    activity.get("description")
+                                    or activity.get("text")
+                                    or ""
+                                )
 
                             if not title:
                                 # Fallback to top-level fields
