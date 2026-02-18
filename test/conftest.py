@@ -1,4 +1,3 @@
-import concurrent.futures
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -20,15 +19,25 @@ def mock_telemetry_environment(monkeypatch, tmp_path):
     """
     from copium_loop import telemetry
 
+    created_instances = []
+
     def mock_init(self, session_id):
         self.session_id = session_id
         self.log_dir = tmp_path / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self.writer = telemetry.AsyncLogWriter(self.log_file)
+        self.writer.start()
+        created_instances.append(self)
 
     monkeypatch.setattr(telemetry.Telemetry, "__init__", mock_init)
     monkeypatch.setattr(telemetry, "_telemetry_instance", None)
+
+    yield
+
+    for instance in created_instances:
+        if hasattr(instance, "shutdown"):
+            instance.shutdown()
 
 
 @pytest.fixture
