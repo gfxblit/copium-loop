@@ -48,9 +48,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "approved"
 
@@ -63,9 +62,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "rejected"
         assert result["retry_count"] == 1
@@ -81,17 +79,16 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
     async def test_reviewer_rejects_on_test_failure(self, mock_engine):
         """Test that reviewer rejects when tests fail."""
-        state = {"test_output": "FAIL", "retry_count": 0, "engine": mock_engine}
-        result = await reviewer(state)
+        state = {"test_output": "FAIL", "retry_count": 0}
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "rejected"
         assert result["retry_count"] == 1
@@ -105,9 +102,8 @@ class TestReviewerNode:
             "test_output": "",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "approved"
 
@@ -120,9 +116,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
@@ -136,9 +131,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
@@ -152,9 +146,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "rejected"
 
@@ -168,9 +161,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         # Expected: it should be "error" because no REAL verdict was given
         assert result["review_status"] == "error"
@@ -185,9 +177,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        result = await reviewer(state)
+        result = await reviewer(state, mock_engine)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
@@ -206,11 +197,10 @@ class TestReviewerNode:
                 "initial_commit_hash": "",
                 "retry_count": 0,
                 "verbose": False,
-                "engine": mock_engine,
             }
 
             # Run reviewer node
-            result = await reviewer(state)
+            result = await reviewer(state, mock_engine)
 
             # Verify
             assert result["review_status"] == "error"
@@ -230,11 +220,10 @@ class TestReviewerNode:
                 "initial_commit_hash": "some_hash",
                 "retry_count": 0,
                 "verbose": False,
-                "engine": mock_engine,
             }
 
             # Run reviewer node
-            result = await reviewer(state)
+            result = await reviewer(state, mock_engine)
 
             # Verify
             mock_get_diff.assert_called_once()
@@ -249,9 +238,8 @@ class TestReviewerNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
-            "engine": mock_engine,
         }
-        await reviewer(state)
+        await reviewer(state, mock_engine)
 
         args, kwargs = mock_engine.invoke.call_args
         system_prompt = args[0]

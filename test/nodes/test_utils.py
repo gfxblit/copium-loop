@@ -76,7 +76,7 @@ class TestGetCoderPrompt:
             "engine": engine,
         }
 
-        prompt = await utils.get_coder_prompt("jules", state)
+        prompt = await utils.get_coder_prompt("jules", state, engine)
 
         # Assert Jules-specific TDD prompt
         assert (
@@ -106,7 +106,7 @@ class TestGetCoderPrompt:
             "engine": engine,
         }
 
-        prompt = await utils.get_coder_prompt("gemini", state)
+        prompt = await utils.get_coder_prompt("gemini", state, engine)
 
         # Assert Gemini-specific (original) TDD prompt
         assert (

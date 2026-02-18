@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -113,6 +114,16 @@ def mock_instructions(tmp_path):
     counter_file = instr_file.with_suffix(".counter")
     if counter_file.exists():
         counter_file.unlink()
+
+
+@pytest.fixture(autouse=True)
+def mock_session_manager():
+    """Mock SessionManager to prevent filesystem access."""
+    with (
+        patch("copium_loop.copium_loop.SessionManager"),
+        patch("copium_loop.session_manager.SessionManager"),
+    ):
+        yield
 
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")

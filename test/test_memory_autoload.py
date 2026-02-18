@@ -29,11 +29,10 @@ async def test_nodes_do_not_call_get_all_memories(mock_engine):
         "messages": [HumanMessage(content="test")],
         "initial_commit_hash": "abc",
         "test_output": "PASS",
-        "engine": mock_engine,
     }
 
     mock_engine.invoke.return_value = "Done"
-    await coder(state)
+    await coder(state, mock_engine)
     # We don't want "## Global Persona Memory" or similar in the prompt
     # because it should be autoloaded by gemini-cli, not manually added by us.
     prompt = mock_engine.invoke.call_args[0][0]
@@ -46,7 +45,7 @@ async def test_nodes_do_not_call_get_all_memories(mock_engine):
     ) as mock_arch_diff:
         mock_arch_diff.return_value = "diff"
         mock_engine.invoke.return_value = "VERDICT: OK"
-        await architect(state)
+        await architect(state, mock_engine)
         prompt = mock_engine.invoke.call_args[0][0]
         assert "## Global Persona Memory" not in prompt
         assert "## Project-Specific Memory" not in prompt
@@ -57,7 +56,7 @@ async def test_nodes_do_not_call_get_all_memories(mock_engine):
     ) as mock_rev_diff:
         mock_rev_diff.return_value = "diff"
         mock_engine.invoke.return_value = "VERDICT: APPROVED"
-        await reviewer(state)
+        await reviewer(state, mock_engine)
         prompt = mock_engine.invoke.call_args[0][0]
         assert "## Global Persona Memory" not in prompt
         assert "## Project-Specific Memory" not in prompt

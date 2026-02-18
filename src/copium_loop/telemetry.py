@@ -150,7 +150,7 @@ class Telemetry:
         if not events:
             return None, {"reason": "no_log_found"}
 
-        # Check if workflow completed successfully or failed terminally
+        # Check if workflow completed successfully
         workflow_events = [
             e
             for e in events
@@ -158,7 +158,7 @@ class Telemetry:
         ]
         if workflow_events:
             last_workflow_status = workflow_events[-1].get("data")
-            if last_workflow_status in ["success", "failed"]:
+            if last_workflow_status == "success":
                 return None, {
                     "reason": "workflow_completed",
                     "status": last_workflow_status,
@@ -192,8 +192,8 @@ class Telemetry:
         for node in reversed(node_order):
             if node in node_statuses and node_statuses[node]:
                 last_status = node_statuses[node][-1]
-                # If the node is active or failed (but not at max retries), we should resume from it
-                if last_status in ["active", "failed", "rejected"]:
+                # If the node is active or failed/error, we should resume from it
+                if last_status in ["active", "failed", "rejected", "error"]:
                     last_active_node = node
                     break
                 # If it succeeded, check the next node in the workflow
@@ -245,8 +245,9 @@ class Telemetry:
         else:
             state["engine_name"] = "gemini"
 
-        # Count retries by counting how many times we've returned to coder from failures
-        retry_count = 0
+        # We start with 0 retries on continue to give the resumed session a fresh budget
+        state["retry_count"] = 0
+
         node_statuses = {}
         for event in events:
             if event.get("event_type") == "status":
@@ -256,14 +257,6 @@ class Telemetry:
                     if node not in node_statuses:
                         node_statuses[node] = []
                     node_statuses[node].append(status)
-
-        # Count failures that would increment retry_count
-        for node in ["tester", "reviewer"]:
-            if node in node_statuses:
-                retry_count += node_statuses[node].count("failed")
-                retry_count += node_statuses[node].count("rejected")
-
-        state["retry_count"] = retry_count
 
         # Determine test_output status
         if "tester" in node_statuses:

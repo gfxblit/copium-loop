@@ -3,6 +3,7 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import LLMEngine
 from copium_loop.nodes.utils import get_architect_prompt
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -17,13 +18,12 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def architect_node(state: AgentState) -> dict:
+async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
     telemetry.log_output("architect", "--- Architect Node ---\n")
     print("--- Architect Node ---")
     retry_count = state.get("retry_count", 0)
-    engine = state["engine"]
 
     try:
         system_prompt = await get_architect_prompt(engine.engine_type, state)

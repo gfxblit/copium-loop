@@ -1,6 +1,7 @@
 import asyncio
 import os
 import tempfile
+from typing import Any
 
 import httpx
 from tenacity import (
@@ -49,6 +50,7 @@ class JulesEngine(LLMEngine):
         return "jules"
 
     def __init__(self, api_base_url: str = API_BASE_URL):
+        super().__init__()
         self.api_base_url = api_base_url
 
     def _get_headers(self) -> dict[str, str]:
@@ -192,7 +194,12 @@ class JulesEngine(LLMEngine):
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
                                 am = activity["agentMessaged"]
-                                desc = am.get("message") or am.get("text") or ""
+                                desc = (
+                                    am.get("agentMessage")
+                                    or am.get("message")
+                                    or am.get("text")
+                                    or ""
+                                )
 
                             # Fallback for desc from top-level fields
                             if not desc:
@@ -293,7 +300,12 @@ class JulesEngine(LLMEngine):
             for activity in reversed(activities):
                 if "agentMessaged" in activity:
                     am = activity["agentMessaged"]
-                    summary = am.get("message") or am.get("text") or ""
+                    summary = (
+                        am.get("agentMessage")
+                        or am.get("message")
+                        or am.get("text")
+                        or ""
+                    )
                     if summary:
                         break
 
@@ -377,6 +389,7 @@ class JulesEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -411,13 +424,65 @@ class JulesEngine(LLMEngine):
         )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # 1. Create session
-            session_name = await self._create_session(client, safe_prompt, repo, branch)
+            session_name = None
 
-            if verbose:
-                print(f"Jules session created: {session_name}")
+            # 1. Check for existing session via SessionManager
+            if self.session_manager and node:
+                session_name = self.session_manager.get_engine_state("jules", node)
 
-            # 2. Poll for completion
+            if session_name:
+                if verbose:
+                    print(f"[{node}] Found existing Jules session: {session_name}")
+
+                # Verify session is still valid/running
+                try:
+                    resp = await self._request_with_retry(
+                        "Network error checking session status",
+                        client.get,
+                        f"{self.api_base_url}/{session_name}",
+                        headers=self._get_headers(),
+                    )
+                    if resp.status_code == 200:
+                        state = resp.json().get("state")
+                        if state in ["COMPLETED", "FAILED"]:
+                            if verbose:
+                                print(
+                                    f"[{node}] Session {session_name} is {state}. Resuming to get results."
+                                )
+                        else:
+                            if verbose:
+                                print(
+                                    f"[{node}] Resuming active session: {session_name}"
+                                )
+                    else:
+                        if verbose:
+                            print(
+                                f"[{node}] Existing session invalid (status {resp.status_code}). Starting new one."
+                            )
+                        session_name = None
+                except Exception as e:
+                    if verbose:
+                        print(
+                            f"[{node}] Error checking existing session: {e}. Starting new one."
+                        )
+                    session_name = None
+
+            if not session_name:
+                # 2. Create session
+                session_name = await self._create_session(
+                    client, safe_prompt, repo, branch
+                )
+
+                if verbose:
+                    print(f"Jules session created: {session_name}")
+
+                # Persist session ID immediately via SessionManager
+                if self.session_manager and node:
+                    self.session_manager.update_engine_state(
+                        "jules", node, session_name
+                    )
+
+            # 3. Poll for completion
             status_data = await self._poll_session(
                 client, session_name, timeout, inactivity, node, verbose
             )

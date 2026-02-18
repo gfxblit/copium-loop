@@ -188,10 +188,9 @@ async def validate_git_context(node: str) -> str | None:
     return branch_name
 
 
-async def get_coder_prompt(engine_type: str, state: dict) -> str:
+async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     """Generates the coder system prompt based on engine type."""
     messages = state["messages"]
-    engine = state["engine"]
     test_output = state.get("test_output", "")
     review_status = state.get("review_status", "")
     architect_status = state.get("architect_status", "")

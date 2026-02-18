@@ -13,6 +13,7 @@ from copium_loop.engine.factory import get_engine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
+from copium_loop.session_manager import SessionManager
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -31,11 +32,15 @@ class WorkflowManager:
         start_node: str | None = None,
         verbose: bool = False,
         engine_name: str | None = None,
+        session_id: str | None = None,
     ):
         self.graph = None
         self.start_node = start_node
         self.verbose = verbose
         self.engine_name = engine_name
+        self.session_id = session_id
+        self.engine: LLMEngine | None = None
+        self.session_manager: SessionManager | None = None
 
     async def notify(self, title: str, message: str, priority: int = 3):
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
@@ -56,7 +61,18 @@ class WorkflowManager:
         async def wrapper(state: AgentState):
             telemetry = get_telemetry()
             try:
-                return await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
+                # Inject engine if the node expects it
+                if node_name in ["coder", "architect", "reviewer", "journaler"]:
+                    result = await asyncio.wait_for(
+                        node_func(state, self.engine),
+                        timeout=NODE_TIMEOUT,
+                    )
+                else:
+                    result = await asyncio.wait_for(
+                        node_func(state), timeout=NODE_TIMEOUT
+                    )
+
+                return result
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")
@@ -133,15 +149,24 @@ class WorkflowManager:
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
-        # Determine engine
-        engine = get_engine(self.engine_name)
-        if initial_state and "engine" in initial_state and self.engine_name is None:
-            engine = initial_state["engine"]
+        # Initialize telemetry and session manager
+        telemetry = get_telemetry()
+        if not self.session_id:
+            self.session_id = telemetry.session_id
 
-        if not await self.verify_environment(engine):
+        self.session_manager = SessionManager(self.session_id)
+
+        # Determine engine
+        self.engine = get_engine(self.engine_name)
+        if initial_state and "engine" in initial_state and self.engine_name is None:
+            self.engine = initial_state["engine"]
+
+        if self.session_manager:
+            self.engine.set_session_manager(self.session_manager)
+
+        if not await self.verify_environment(self.engine):
             return {"error": "Environment verification failed."}
 
-        telemetry = get_telemetry()
         issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
 
         if not self.start_node:
@@ -226,7 +251,6 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "engine": engine,
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
@@ -242,13 +266,14 @@ class WorkflowManager:
             "git_diff": "",
             "verbose": self.verbose,
             "last_error": "",
+            "journal_status": "pending",
         }
 
         # Merge reconstructed state if provided
         if initial_state:
             print(f"Merging reconstructed state: {initial_state}")
             for key, value in initial_state.items():
-                if key != "prompt" and (key != "engine" or self.engine_name is None):
+                if key != "prompt" and key != "engine":
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)

@@ -1,15 +1,15 @@
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import LLMEngine
 from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-async def journaler_node(state: AgentState) -> dict:
+async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("journaler", "active")
     telemetry.log_output("journaler", "--- Journaling Node ---\n")
     print("--- Journaling Node ---")
-    engine = state["engine"]
 
     try:
         memory_manager = MemoryManager()
@@ -89,7 +89,10 @@ async def journaler_node(state: AgentState) -> dict:
             telemetry.log_output("journaler", "\nNo lesson learned.\n")
             print("\nNo lesson learned.")
             telemetry.log_status("journaler", "no_lesson")
-            return {"journal_status": "no_lesson", "review_status": new_review_status}
+            return {
+                "journal_status": "no_lesson",
+                "review_status": new_review_status,
+            }
 
         memory_manager.log_learning(lesson)
 
@@ -97,7 +100,10 @@ async def journaler_node(state: AgentState) -> dict:
         print(f"\nLesson Learned: {lesson}")
         telemetry.log_status("journaler", "journaled")
 
-        return {"journal_status": "journaled", "review_status": new_review_status}
+        return {
+            "journal_status": "journaled",
+            "review_status": new_review_status,
+        }
 
     except Exception as e:
         error_msg = f"Journaling failed gracefully: {e}"
@@ -108,4 +114,7 @@ async def journaler_node(state: AgentState) -> dict:
         # Ensure we don't block the loop, proceed as if journaled
         current_status = state.get("review_status", "pending")
         fallback_status = "journaled" if current_status == "pending" else current_status
-        return {"journal_status": "failed", "review_status": fallback_status}
+        return {
+            "journal_status": "failed",
+            "review_status": fallback_status,
+        }

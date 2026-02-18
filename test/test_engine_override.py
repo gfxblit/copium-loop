@@ -47,6 +47,7 @@ async def test_engine_priority_cli_overrides_saved():
         ) as mock_run,
         patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
+        patch("copium_loop.copium_loop.SessionManager"),
     ):
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
@@ -62,7 +63,8 @@ async def test_engine_priority_cli_overrides_saved():
         result_state = await mgr.run("test prompt", initial_state=initial_state)
 
         # Expectation: The engine used should be "cli-engine", NOT "saved-engine"
-        assert result_state["engine"].name == "cli-engine"
+        # Since engine is removed from state, we check the manager's engine
+        assert mgr.engine.name == "cli-engine"
         assert result_state["other_data"] == "value"
 
 
@@ -88,6 +90,7 @@ async def test_engine_priority_saved_used_if_no_cli():
         ) as mock_run,
         patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
+        patch("copium_loop.copium_loop.SessionManager"),
     ):
         mock_is_git.return_value = False
         mock_run.return_value = {"exit_code": 0}
@@ -103,5 +106,5 @@ async def test_engine_priority_saved_used_if_no_cli():
         result_state = await mgr.run("test prompt", initial_state=initial_state)
 
         # Expectation: The engine used should be "saved-engine"
-        assert result_state["engine"].name == "saved-engine"
+        assert mgr.engine.name == "saved-engine"
         assert result_state["other_data"] == "value"
