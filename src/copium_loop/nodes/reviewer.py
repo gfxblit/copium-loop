@@ -43,16 +43,12 @@ async def reviewer(state: AgentState) -> dict:
         telemetry.log_status("reviewer", "error")
         return {
             "review_status": "error",
-            "messages": [
-                SystemMessage(content=f"Reviewer encountered an error: {e}")
-            ],
+            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
             "retry_count": retry_count + 1,
         }
 
-    # Check for empty diff if not using Jules
-    if engine.engine_type != "jules" and re.search(
-        r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL
-    ):
+    # Check for empty diff
+    if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
         msg = "\nReview decision: Approved (no changes to review)\n"
         telemetry.log_output("reviewer", msg)
         print(msg, end="")
@@ -81,9 +77,7 @@ async def reviewer(state: AgentState) -> dict:
         telemetry.log_status("reviewer", "error")
         return {
             "review_status": "error",
-            "messages": [
-                SystemMessage(content=f"Reviewer encountered an error: {e}")
-            ],
+            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
             "retry_count": retry_count + 1,
         }
 

@@ -197,7 +197,9 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_handles_missing_initial_hash(self, mock_engine):
         """Test that reviewer returns error status on missing initial hash in git repo."""
-        with patch("copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock) as mock_is_git:
+        with patch(
+            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
+        ) as mock_is_git:
             mock_is_git.return_value = True
             state = {
                 "test_output": "PASS",
@@ -218,7 +220,9 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_skips_llm_on_empty_diff(self, mock_engine):
         """Test that reviewer returns approved immediately if git diff is empty, without invoking LLM."""
-        with patch("copium_loop.nodes.utils.get_diff", new_callable=AsyncMock) as mock_get_diff:
+        with patch(
+            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+        ) as mock_get_diff:
             mock_get_diff.return_value = ""  # Force empty diff
 
             state = {

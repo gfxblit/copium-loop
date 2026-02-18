@@ -18,9 +18,7 @@ async def test_jules_api_invoke_success():
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
-        patch(
-            "copium_loop.git.get_current_branch", return_value="feature-branch"
-        ),
+        patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
         patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
@@ -87,9 +85,7 @@ async def test_jules_api_invoke_success_200():
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
-        patch(
-            "copium_loop.git.get_current_branch", return_value="feature-branch"
-        ),
+        patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
         patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),

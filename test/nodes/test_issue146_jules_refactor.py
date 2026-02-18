@@ -27,7 +27,9 @@ async def test_get_architect_prompt():
     # Test Gemini prompt
     with (
         patch("copium_loop.nodes.utils.is_git_repo", return_value=True),
-        patch("copium_loop.nodes.utils.get_diff", return_value="some diff") as mock_get_diff,
+        patch(
+            "copium_loop.nodes.utils.get_diff", return_value="some diff"
+        ) as mock_get_diff,
     ):
         gemini_prompt = await get_architect_prompt("gemini", state)
         assert "some diff" in gemini_prompt
@@ -52,7 +54,9 @@ async def test_get_reviewer_prompt():
     # Test Gemini prompt
     with (
         patch("copium_loop.nodes.utils.is_git_repo", return_value=True),
-        patch("copium_loop.nodes.utils.get_diff", return_value="some diff") as mock_get_diff,
+        patch(
+            "copium_loop.nodes.utils.get_diff", return_value="some diff"
+        ) as mock_get_diff,
     ):
         gemini_prompt = await get_reviewer_prompt("gemini", state)
         assert "some diff" in gemini_prompt
@@ -74,7 +78,10 @@ async def test_architect_node_engine_agnostic():
     )
 
     with (
-        patch("copium_loop.nodes.architect.get_architect_prompt", return_value="mock prompt") as mock_get_prompt,
+        patch(
+            "copium_loop.nodes.architect.get_architect_prompt",
+            return_value="mock prompt",
+        ) as mock_get_prompt,
     ):
         result = await architect(state)
 
@@ -101,7 +108,9 @@ async def test_reviewer_node_engine_agnostic():
     )
 
     with (
-        patch("copium_loop.nodes.reviewer.get_reviewer_prompt", return_value="mock prompt") as mock_get_prompt,
+        patch(
+            "copium_loop.nodes.reviewer.get_reviewer_prompt", return_value="mock prompt"
+        ) as mock_get_prompt,
     ):
         result = await reviewer(state)
 

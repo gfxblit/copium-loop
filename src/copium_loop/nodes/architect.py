@@ -34,16 +34,12 @@ async def architect(state: AgentState) -> dict:
         telemetry.log_status("architect", "error")
         return {
             "architect_status": "error",
-            "messages": [
-                SystemMessage(content=f"Architect encountered an error: {e}")
-            ],
+            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
             "retry_count": retry_count + 1,
         }
 
-    # Check for empty diff if not using Jules (Jules handles its own exploration)
-    if engine.engine_type != "jules" and re.search(
-        r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL
-    ):
+    # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
+    if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
         msg = "\nArchitectural decision: OK (no changes to review)\n"
         telemetry.log_output("architect", msg)
         print(msg, end="")
