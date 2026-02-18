@@ -207,14 +207,7 @@ async def get_coder_prompt(engine_type: str, state: dict) -> str:
 
     if engine_type == "jules":
         push_instruction = "You MUST explicitly use 'git push --force' to push your changes to the feature branch."
-    else:
-        push_instruction = ""
-
-    system_prompt = f"""You are a software engineer. Implement the following request: {user_request_block}
-
-    You have access to the file system and git.
-
-    CRITICAL: You MUST follow Test-Driven Development (TDD) methodology:
+        tdd_instruction = """CRITICAL: You MUST follow Test-Driven Development (TDD) methodology:
     1. Write tests FIRST (Red): They should fail initially as the feature is not yet implemented.
     2. Run tests to verify they fail: Use the project's test runner (e.g., 'pytest', 'npm test').
     3. Write minimal implementation (Green): Write only enough code to make the tests pass.
@@ -227,7 +220,27 @@ async def get_coder_prompt(engine_type: str, state: dict) -> str:
     - Unit Tests: Test individual functions in isolation, handling edge cases (null, empty, invalid types).
     - Integration Tests: Test API endpoints, database operations, and component interactions.
 
-    Do not skip writing tests - they are mandatory. Always run the test suite and the linter to verify your changes.
+    Do not skip writing tests - they are mandatory. Always run the test suite and the linter to verify your changes."""
+    else:
+        push_instruction = ""
+        tdd_instruction = """CRITICAL: You MUST follow Test-Driven Development (TDD) methodology.
+    To do this, you MUST activate the 'tdd-guide' skill and follow its Red-Green-Refactor cycle:
+    1. Write tests FIRST (they should fail initially)
+    2. Run tests to verify they fail
+    3. Write minimal implementation to make tests pass
+    4. Run tests to verify they pass
+    5. Refactor and ensure 80%+ test coverage
+    6. Run linting and formatting (e.g., 'ruff check . && ruff format .' or 'npm run lint') to ensure code quality.
+
+    After the skill completes its guidance, implement the code following TDD principles.
+    Do not skip writing tests - they are mandatory for all new functionality.
+    Always run the test suite and the linter to verify your changes."""
+
+    system_prompt = f"""You are a software engineer. Implement the following request: {user_request_block}
+
+    You have access to the file system and git.
+
+    {tdd_instruction}
     The test suite will now report coverage - ensure it remains high (80%+).
 
     IMPORTANT: You MUST commit your changes using git. You may create multiple commits if it makes sense for the task.

@@ -168,3 +168,19 @@ class TestCoderNode:
         call_args = mock_engine.invoke.call_args[0]
         prompt = call_args[0]
         assert "You MUST explicitly use 'git push --force'" in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_gemini_prompt_includes_tdd_guide_skill(self, mock_engine):
+        """Test that coder node includes tdd-guide skill instruction when using gemini engine."""
+        mock_engine.engine_type = "gemini"
+        state = {
+            "messages": [HumanMessage(content="Test gemini prompt")],
+            "engine": mock_engine,
+        }
+        await coder(state)
+
+        # Check that the prompt contains the tdd-guide skill instruction
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "To do this, you MUST activate the 'tdd-guide' skill" in prompt
+        assert "1. Write tests FIRST (they should fail initially)" in prompt
