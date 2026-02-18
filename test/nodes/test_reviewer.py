@@ -1,17 +1,18 @@
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-from copium_loop.nodes.reviewer import reviewer
+from copium_loop.nodes import reviewer
 
 # Get the module object explicitly to avoid shadowing issues
-reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
+reviewer_module = sys.modules["copium_loop.nodes.reviewer_node"]
 
 
 @pytest.fixture
 def mock_engine():
     engine = MagicMock()
+    type(engine).engine_type = PropertyMock(return_value="gemini")
     engine.invoke = AsyncMock(return_value="VERDICT: APPROVED")
     engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
     return engine
@@ -23,14 +24,14 @@ class TestReviewerNode:
     @pytest.fixture(autouse=True)
     def setup_reviewer_mocks(self):
         """Setup common mocks for reviewer tests."""
-        self.mock_get_diff_patcher = patch.object(
-            reviewer_module, "get_diff", new_callable=AsyncMock
+        self.mock_get_diff_patcher = patch(
+            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
         )
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff content"
 
-        self.mock_is_git_repo_patcher = patch.object(
-            reviewer_module, "is_git_repo", new_callable=AsyncMock
+        self.mock_is_git_repo_patcher = patch(
+            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
         )
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True
@@ -175,7 +176,7 @@ class TestReviewerNode:
         assert result["review_status"] == "error"
 
     @pytest.mark.asyncio
-    @patch.object(reviewer_module, "get_diff", new_callable=AsyncMock)
+    @patch("copium_loop.nodes.utils.get_diff", new_callable=AsyncMock)
     async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_engine):
         """Test that reviewer returns error status on git diff failure."""
         mock_get_diff.side_effect = Exception("git diff error")
@@ -196,8 +197,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_handles_missing_initial_hash(self, mock_engine):
         """Test that reviewer returns error status on missing initial hash in git repo."""
-        with patch.object(
-            reviewer_module, "is_git_repo", new_callable=AsyncMock
+        with patch(
+            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
         ) as mock_is_git:
             mock_is_git.return_value = True
             state = {
@@ -219,8 +220,8 @@ class TestReviewerNode:
     @pytest.mark.asyncio
     async def test_reviewer_skips_llm_on_empty_diff(self, mock_engine):
         """Test that reviewer returns approved immediately if git diff is empty, without invoking LLM."""
-        with patch.object(
-            reviewer_module, "get_diff", new_callable=AsyncMock
+        with patch(
+            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
         ) as mock_get_diff:
             mock_get_diff.return_value = ""  # Force empty diff
 

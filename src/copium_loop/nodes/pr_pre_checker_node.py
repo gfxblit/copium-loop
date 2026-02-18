@@ -11,7 +11,7 @@ from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-async def pr_pre_checker(state: AgentState) -> dict:
+async def pr_pre_checker_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("pr_pre_checker", "active")
     telemetry.log_output("pr_pre_checker", "--- PR Pre-Checker Node ---\n")

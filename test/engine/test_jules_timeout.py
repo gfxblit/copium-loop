@@ -21,8 +21,8 @@ async def test_jules_api_inactivity_timeout_reset():
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
-        patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
-        patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="main"),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.get_running_loop") as mock_get_loop,
         patch("asyncio.sleep", return_value=None),

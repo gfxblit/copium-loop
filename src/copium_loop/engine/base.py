@@ -1,8 +1,18 @@
 from abc import ABC, abstractmethod
 
 
+class LLMError(Exception):
+    """Base exception for LLM engines."""
+
+
 class LLMEngine(ABC):
     """Abstract base class for LLM engines."""
+
+    @property
+    @abstractmethod
+    def engine_type(self) -> str:
+        """Returns the type of the engine (e.g., 'gemini', 'jules')."""
+        pass
 
     @abstractmethod
     async def invoke(

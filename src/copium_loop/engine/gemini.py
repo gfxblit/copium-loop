@@ -9,6 +9,10 @@ from copium_loop.telemetry import get_telemetry
 class GeminiEngine(LLMEngine):
     """Concrete implementation of LLMEngine using Gemini CLI."""
 
+    @property
+    def engine_type(self) -> str:
+        return "gemini"
+
     async def _execute_gemini(
         self,
         prompt: str,

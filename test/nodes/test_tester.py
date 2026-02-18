@@ -6,7 +6,7 @@ import pytest
 from copium_loop.nodes import tester
 
 # Get the module object explicitly to avoid shadowing issues
-tester_module = sys.modules["copium_loop.nodes.tester"]
+tester_module = sys.modules["copium_loop.nodes.tester_node"]
 
 
 class TestTesterNode:

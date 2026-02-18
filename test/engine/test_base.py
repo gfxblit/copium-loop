@@ -9,7 +9,22 @@ def test_llm_engine_interface():
         LLMEngine()
 
     class MockEngine(LLMEngine):
-        async def invoke(self, _prompt, **_kwargs):
+        @property
+        def engine_type(self):
+            return "mock"
+
+        async def invoke(
+            self,
+            _prompt,
+            args=None,  # noqa: ARG002
+            models=None,  # noqa: ARG002
+            verbose=False,  # noqa: ARG002
+            label=None,  # noqa: ARG002
+            node=None,  # noqa: ARG002
+            command_timeout=None,  # noqa: ARG002
+            inactivity_timeout=None,  # noqa: ARG002
+            sync_strategy=None,  # noqa: ARG002
+        ):
             return "mocked"
 
         def sanitize_for_prompt(self, text, _max_length=12000):
@@ -20,3 +35,4 @@ def test_llm_engine_interface():
 
     engine = MockEngine()
     assert engine is not None
+    assert engine.engine_type == "mock"

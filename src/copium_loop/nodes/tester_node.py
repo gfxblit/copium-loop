@@ -46,7 +46,7 @@ async def _run_stage(
     return success, output
 
 
-async def tester(state: AgentState) -> dict:
+async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("tester", "active")
     telemetry.log_output("tester", "--- Test Runner Node ---\n")

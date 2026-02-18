@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from copium_loop.nodes.journaler import journaler
+from copium_loop.nodes import journaler
 from copium_loop.state import AgentState
 
 # Get the module object explicitly to avoid shadowing issues
-journaler_module = sys.modules["copium_loop.nodes.journaler"]
+journaler_module = sys.modules["copium_loop.nodes.journaler_node"]
 
 
 @pytest.fixture

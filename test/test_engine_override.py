@@ -10,6 +10,10 @@ class MockEngine(LLMEngine):
     def __init__(self, name="mock"):
         self.name = name
 
+    @property
+    def engine_type(self) -> str:
+        return "mock"
+
     async def invoke(self, prompt, **kwargs):
         _ = prompt, kwargs
         return "mock response"

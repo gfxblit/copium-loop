@@ -1,19 +1,20 @@
 import subprocess
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-# We'll need to import from copium_loop.nodes.architect once it exists
-from copium_loop.nodes.architect import architect
+# Import from the nodes package
+from copium_loop.nodes import architect
 
 # Get the module object explicitly to avoid shadowing issues
-architect_module = sys.modules["copium_loop.nodes.architect"]
+architect_module = sys.modules["copium_loop.nodes.architect_node"]
 
 
 @pytest.fixture
 def mock_engine():
     engine = MagicMock()
+    type(engine).engine_type = PropertyMock(return_value="gemini")
     engine.invoke = AsyncMock(return_value="VERDICT: OK")
     engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
     return engine
@@ -25,14 +26,14 @@ class TestArchitectNode:
     @pytest.fixture(autouse=True)
     def setup_architect_mocks(self):
         """Setup common mocks for architect tests."""
-        self.mock_get_diff_patcher = patch.object(
-            architect_module, "get_diff", new_callable=AsyncMock
+        self.mock_get_diff_patcher = patch(
+            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
         )
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff"
 
-        self.mock_is_git_repo_patcher = patch.object(
-            architect_module, "is_git_repo", new_callable=AsyncMock
+        self.mock_is_git_repo_patcher = patch(
+            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
         )
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True

@@ -1,5 +1,5 @@
-from .architect import architect
-from .coder import coder
+from .architect_node import architect_node as architect
+from .coder_node import coder_node as coder
 from .conditionals import (
     should_continue_from_architect,
     should_continue_from_coder,
@@ -9,11 +9,11 @@ from .conditionals import (
     should_continue_from_review,
     should_continue_from_test,
 )
-from .journaler import journaler
-from .pr_creator import pr_creator
-from .pr_pre_checker import pr_pre_checker
-from .reviewer import reviewer
-from .tester import tester
+from .journaler_node import journaler_node as journaler
+from .pr_creator_node import pr_creator_node as pr_creator
+from .pr_pre_checker_node import pr_pre_checker_node as pr_pre_checker
+from .reviewer_node import reviewer_node as reviewer
+from .tester_node import tester_node as tester
 
 __all__ = [
     "coder",
