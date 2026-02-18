@@ -35,6 +35,7 @@ class JulesRepoError(JulesError):
 API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 POLLING_INTERVAL = 10
 MAX_PROMPT_LENGTH = 12000
+MAX_API_RETRIES = 10
 
 
 class JulesEngine(LLMEngine):
@@ -64,7 +65,7 @@ class JulesEngine(LLMEngine):
         """Helper to retry a network request with exponential backoff using tenacity."""
         try:
             async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(4),
+                stop=stop_after_attempt(MAX_API_RETRIES),
                 wait=wait_exponential(multiplier=2, min=1, max=10),
                 retry=retry_if_exception_type(httpx.HTTPError),
                 reraise=True,
