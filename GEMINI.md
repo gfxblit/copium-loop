@@ -5,4 +5,3 @@
 - [2026-02-04 18:23:19] Explicitly log a 'failed' status to telemetry when a node encounters a process failure to ensure the UI dashboard correctly renders visual failure indicators.
 - [2026-02-12 11:30:00] Replaced the Rich-based Dashboard with a Textual-based TextualDashboard for the --monitor flag, improving UI flexibility and interaction. Removed the old Dashboard and InputReader implementations.
 - [2026-02-12 11:45:00] Improved TextualDashboard with most-recent-first session sorting, arrow key navigation, and immediate stats loading on mount. Verified with full test suite.
-- [2026-02-18 09:34:00] Refactored Jules engine session management to use `jules_metadata` in `AgentState` instead of threading `SessionManager` through nodes. Updated `WorkflowManager` to handle persistence and injection. Verified with full test suite.
