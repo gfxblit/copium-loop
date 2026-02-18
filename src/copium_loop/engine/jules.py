@@ -194,7 +194,12 @@ class JulesEngine(LLMEngine):
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
                                 am = activity["agentMessaged"]
-                                desc = am.get("message") or am.get("text") or ""
+                                desc = (
+                                    am.get("agentMessage")
+                                    or am.get("message")
+                                    or am.get("text")
+                                    or ""
+                                )
 
                             # Fallback for desc from top-level fields
                             if not desc:
@@ -295,7 +300,12 @@ class JulesEngine(LLMEngine):
             for activity in reversed(activities):
                 if "agentMessaged" in activity:
                     am = activity["agentMessaged"]
-                    summary = am.get("message") or am.get("text") or ""
+                    summary = (
+                        am.get("agentMessage")
+                        or am.get("message")
+                        or am.get("text")
+                        or ""
+                    )
                     if summary:
                         break
 
