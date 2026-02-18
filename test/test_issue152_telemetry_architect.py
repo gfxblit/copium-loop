@@ -1,7 +1,9 @@
 from pathlib import Path
-from unittest.mock import patch
+
 import pytest
+
 from copium_loop.telemetry import Telemetry
+
 
 @pytest.fixture
 def temp_log_dir(tmp_path):

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -15,11 +15,11 @@ async def test_poll_session_verdict_preservation():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch("copium_loop.engine.jules.get_telemetry") as mock_get_telemetry,
+        patch("copium_loop.engine.jules.get_telemetry"),
         patch("builtins.print"),
     ):
         client = mock_client.return_value.__aenter__.return_value
-        
+
         # Mock activity responses
         # 1. Activity with verdict in description
         # 2. Activity with "Session completed" title but no description
@@ -95,7 +95,7 @@ async def test_poll_session_verdict_anywhere_in_text():
         patch("builtins.print"),
     ):
         client = mock_client.return_value.__aenter__.return_value
-        
+
         client.get.side_effect = [
             # First poll: Verdict in title
             httpx.Response(
