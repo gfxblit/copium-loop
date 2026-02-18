@@ -109,6 +109,10 @@ async def async_main():
         prompt = reconstructed_state.get(
             "prompt", "Continue development and verify implementation."
         )
+
+        # Use reconstructed engine if not explicitly provided
+        if args.engine is None and "engine_name" in reconstructed_state:
+            args.engine = reconstructed_state["engine_name"]
     else:
         prompt = (
             " ".join(args.prompt)
