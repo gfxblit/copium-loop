@@ -1,6 +1,7 @@
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import FullPullStrategy
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -131,7 +132,7 @@ async def coder(state: AgentState) -> dict:
         verbose=state.get("verbose"),
         label="Coder System",
         node="coder",
-        sync_locally=True,
+        sync_strategy=FullPullStrategy(),
     )
     telemetry.log_output("coder", "\nCoding complete.\n")
     print("\nCoding complete.")

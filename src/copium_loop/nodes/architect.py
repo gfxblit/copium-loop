@@ -4,6 +4,7 @@ from pathlib import Path
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import SelectiveFileStrategy
 from copium_loop.git import get_diff, is_git_repo
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -62,6 +63,11 @@ async def architect(state: AgentState) -> dict:
     After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
+        # Clear stale output file
+        jules_output_file = Path("JULES_OUTPUT.txt")
+        if jules_output_file.exists():
+            jules_output_file.unlink()
+
         try:
             architect_content = await engine.invoke(
                 system_prompt,
@@ -70,11 +76,10 @@ async def architect(state: AgentState) -> dict:
                 verbose=state.get("verbose"),
                 label="Architect System",
                 node="architect",
-                sync_locally=True,
+                sync_strategy=SelectiveFileStrategy(filenames=["JULES_OUTPUT.txt"]),
             )
 
             # Check for JULES_OUTPUT.txt
-            jules_output_file = Path("JULES_OUTPUT.txt")
             if jules_output_file.exists():
                 jules_content = jules_output_file.read_text()
                 # Use content from file if available, as it's the source of truth

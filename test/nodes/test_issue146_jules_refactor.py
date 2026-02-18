@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import pytest
 from langchain_core.messages import HumanMessage
 
+from copium_loop.engine.base import FullPullStrategy, SelectiveFileStrategy
 from copium_loop.engine.gemini import GeminiEngine
 from copium_loop.engine.jules import JulesEngine
 from copium_loop.nodes.architect import architect
@@ -42,6 +43,7 @@ async def test_architect_jules_workflow():
             "copium_loop.nodes.architect.get_diff", new_callable=AsyncMock
         ) as mock_get_diff,
         patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.unlink"),
         patch("pathlib.Path.read_text", return_value="VERDICT: OK") as mock_read_text,
     ):
         result = await architect(state)
@@ -50,7 +52,9 @@ async def test_architect_jules_workflow():
         mock_get_diff.assert_not_called()
         assert mock_engine.invoke.called
         call_args = mock_engine.invoke.call_args
-        assert call_args.kwargs.get("sync_locally") is True
+        strategy = call_args.kwargs.get("sync_strategy")
+        assert isinstance(strategy, SelectiveFileStrategy)
+        assert strategy.filenames == ["JULES_OUTPUT.txt"]
         prompt = call_args.args[0]
         assert "JULES_OUTPUT.txt" in prompt
         assert "sha123" in prompt
@@ -80,6 +84,7 @@ async def test_reviewer_jules_workflow():
             "copium_loop.nodes.reviewer.get_diff", new_callable=AsyncMock
         ) as mock_get_diff,
         patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.unlink"),
         patch(
             "pathlib.Path.read_text", return_value="VERDICT: APPROVED"
         ) as mock_read_text,
@@ -89,6 +94,9 @@ async def test_reviewer_jules_workflow():
         mock_get_diff.assert_not_called()
         assert mock_engine.invoke.called
         call_args = mock_engine.invoke.call_args
+        strategy = call_args.kwargs.get("sync_strategy")
+        assert isinstance(strategy, SelectiveFileStrategy)
+        assert strategy.filenames == ["JULES_OUTPUT.txt"]
         prompt = call_args.args[0]
         assert "JULES_OUTPUT.txt" in prompt
         assert "sha123" in prompt
@@ -132,9 +140,9 @@ async def test_jules_engine_selective_sync():
         patch(
             "copium_loop.engine.jules.get_current_branch", new_callable=AsyncMock
         ) as mock_get_branch,
-        patch("copium_loop.engine.jules.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch(
-            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
         mock_get_repo.return_value = "owner/repo"
@@ -142,7 +150,7 @@ async def test_jules_engine_selective_sync():
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
 
-        await engine.invoke("prompt", node="coder", sync_locally=True)
+        await engine.invoke("prompt", node="coder", sync_strategy=FullPullStrategy())
         mock_pull.assert_called_once()
         mock_stream.assert_not_called()
 
@@ -150,7 +158,10 @@ async def test_jules_engine_selective_sync():
         mock_stream.reset_mock()
 
         await engine.invoke(
-            "prompt", node="architect", sync_locally=True, command_timeout=60
+            "prompt",
+            node="architect",
+            sync_strategy=SelectiveFileStrategy(filenames=["JULES_OUTPUT.txt"]),
+            command_timeout=60,
         )
         mock_pull.assert_not_called()
         assert mock_stream.call_count == 2

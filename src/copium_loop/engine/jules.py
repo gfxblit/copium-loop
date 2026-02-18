@@ -10,13 +10,12 @@ from tenacity import (
 )
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
-from copium_loop.engine.base import LLMEngine
-from copium_loop.git import get_current_branch, get_repo_name, pull
-from copium_loop.shell import stream_subprocess
+from copium_loop.engine.base import LLMError, LLMEngine, SyncStrategy
+from copium_loop.git import get_current_branch, get_repo_name
 from copium_loop.telemetry import get_telemetry
 
 
-class JulesError(Exception):
+class JulesError(LLMError):
     """Base exception for JulesEngine."""
 
 
@@ -305,7 +304,7 @@ class JulesEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        sync_locally: bool = True,
+        sync_strategy: SyncStrategy | None = None,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -354,36 +353,9 @@ class JulesEngine(LLMEngine):
             # 3. Extract results
             summary = self._extract_summary(status_data)
 
-            # 4. Pull changes locally if possible and requested
-            if sync_locally:
-                if node == "coder":
-                    # Full pull for coder
-                    res = await pull(node=node)
-                    if res["exit_code"] != 0:
-                        raise JulesSessionError(
-                            f"Failed to pull changes after Jules completion: {res['output']}"
-                        )
-                elif node in ("architect", "reviewer"):
-                    # Selective sync for architect/reviewer: fetch + checkout JULES_OUTPUT.txt
-                    # git fetch
-                    await stream_subprocess("git", ["fetch"], os.environ, node, timeout)
-                    # git checkout FETCH_HEAD -- JULES_OUTPUT.txt
-                    # We use FETCH_HEAD because pull usually fetches into FETCH_HEAD
-                    output, exit_code, _, _ = await stream_subprocess(
-                        "git",
-                        ["checkout", "FETCH_HEAD", "--", "JULES_OUTPUT.txt"],
-                        os.environ,
-                        node,
-                        timeout,
-                    )
-                    # It's okay if JULES_OUTPUT.txt doesn't exist (node might not have written it)
-                else:
-                    # Default to full pull for other nodes
-                    res = await pull(node=node)
-                    if res["exit_code"] != 0:
-                        raise JulesSessionError(
-                            f"Failed to pull changes after Jules completion: {res['output']}"
-                        )
+            # 4. Execute sync strategy if provided
+            if sync_strategy:
+                await sync_strategy.execute(node or "unknown", timeout)
 
             return summary
 

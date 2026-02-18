@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from copium_loop.engine.base import FullPullStrategy, LLMError
 from copium_loop.engine.jules import (
     JulesEngine,
     JulesSessionError,
@@ -20,15 +21,14 @@ async def test_jules_api_invoke_success():
         patch(
             "copium_loop.engine.jules.get_current_branch", return_value="feature-branch"
         ),
-        patch(
-            "copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}
-        ) as mock_pull,
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
+        mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -62,11 +62,11 @@ async def test_jules_api_invoke_success():
             ),
         ]
 
-        result = await engine.invoke("Test prompt")
+        result = await engine.invoke("Test prompt", sync_strategy=FullPullStrategy())
         assert "Jules API summary" in result
         assert "https://github.com/owner/repo/pull/1" in result
 
-        # Verify pull was called (default behavior when node is not architect/reviewer)
+        # Verify pull was called
         mock_pull.assert_called_once()
 
         # Verify post payload
@@ -90,15 +90,14 @@ async def test_jules_api_invoke_success_200():
         patch(
             "copium_loop.engine.jules.get_current_branch", return_value="feature-branch"
         ),
-        patch(
-            "copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}
-        ),
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
+        mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -125,7 +124,7 @@ async def test_jules_api_invoke_success_200():
             ),
         ]
 
-        result = await engine.invoke("Test prompt")
+        result = await engine.invoke("Test prompt", sync_strategy=FullPullStrategy())
         assert result == "Success with 200"
         assert client.post.call_count == 1
 
@@ -138,15 +137,14 @@ async def test_jules_api_polling_retries():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
-        patch(
-            "copium_loop.engine.jules.pull", return_value={"exit_code": 0, "output": ""}
-        ) as mock_pull,
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
+        mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -176,7 +174,7 @@ async def test_jules_api_polling_retries():
             ),
         ]
 
-        result = await engine.invoke("Test prompt")
+        result = await engine.invoke("Test prompt", sync_strategy=FullPullStrategy())
         assert result == "Done"
         assert client.get.call_count == 6
         mock_pull.assert_called_once()
@@ -339,13 +337,13 @@ async def test_jules_api_pull_failure():
         patch("copium_loop.engine.jules.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.engine.jules.get_current_branch", return_value="main"),
         patch(
-            "copium_loop.engine.jules.pull",
+            "copium_loop.git.pull",
             return_value={"exit_code": 1, "output": "Merge conflict"},
         ),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
         mock_stream.return_value = ("output", 0, False, "")
@@ -372,10 +370,10 @@ async def test_jules_api_pull_failure():
         ]
 
         with pytest.raises(
-            JulesSessionError,
-            match="Failed to pull changes after Jules completion: Merge conflict",
+            LLMError,
+            match="Failed to pull changes: Merge conflict",
         ):
-            await engine.invoke("Test prompt")
+            await engine.invoke("Test prompt", sync_strategy=FullPullStrategy())
 
 
 @pytest.mark.asyncio

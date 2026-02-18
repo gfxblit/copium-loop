@@ -23,7 +23,7 @@ def test_llm_engine_interface():
             node=None,  # noqa: ARG002
             command_timeout=None,  # noqa: ARG002
             inactivity_timeout=None,  # noqa: ARG002
-            sync_locally=True,  # noqa: ARG002
+            sync_strategy=None,  # noqa: ARG002
         ):
             return "mocked"
 
