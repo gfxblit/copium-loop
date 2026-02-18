@@ -269,7 +269,7 @@ async def get_coder_prompt(engine_type: str, state: dict) -> str:
     if review_status == "needs_commit":
         system_prompt = f"""You have uncommitted changes that prevent PR creation.
     Please review your changes and commit them using git.
-    {push_instruction if engine_type == 'jules' else ''}
+    {push_instruction if engine_type == "jules" else ""}
     Original request: {user_request_block}"""
 
     return system_prompt
