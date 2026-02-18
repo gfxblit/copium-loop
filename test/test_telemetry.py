@@ -191,15 +191,15 @@ class TestGetLastIncompleteNode:
         assert metadata["status"] == "success"
 
     def test_workflow_completed_failed(self, telemetry_with_temp_dir):
-        """Test when workflow failed terminally."""
+        """Test when workflow failed terminally, it should still be resumable."""
         telemetry_with_temp_dir.log_status("coder", "active")
         telemetry_with_temp_dir.log_status("tester", "failed")
         telemetry_with_temp_dir.log_workflow_status("failed")
 
         node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
-        assert node is None
-        assert metadata["reason"] == "workflow_completed"
-        assert metadata["status"] == "failed"
+        # Should now resume at tester even if workflow was marked failed
+        assert node == "tester"
+        assert metadata["reason"] == "incomplete"
 
     def test_interrupted_at_coder(self, telemetry_with_temp_dir):
         """Test when workflow interrupted during coder node."""
@@ -299,16 +299,17 @@ class TestReconstructState:
         assert state["engine_name"] == "jules"
 
     def test_reconstruct_retry_count(self, telemetry_with_temp_dir):
-        """Test reconstructing retry count from failures."""
+        """Test that retry count is reset to 0 upon reconstruction."""
         telemetry_with_temp_dir.log_status("coder", "active")
         telemetry_with_temp_dir.log_status("tester", "failed")
         telemetry_with_temp_dir.log_status("coder", "active")
         telemetry_with_temp_dir.log_status("tester", "failed")
         telemetry_with_temp_dir.log_status("reviewer", "rejected")
+        telemetry_with_temp_dir.log_status("reviewer", "error")
 
         state = telemetry_with_temp_dir.reconstruct_state()
-        # 2 tester failures + 1 reviewer rejection = 3 retries
-        assert state["retry_count"] == 3
+        # Should be reset to 0 even with past failures
+        assert state["retry_count"] == 0
 
     def test_reconstruct_test_output_pass(self, telemetry_with_temp_dir):
         """Test reconstructing test output when tests pass."""
@@ -370,7 +371,7 @@ class TestReconstructState:
 
         state = telemetry_with_temp_dir.reconstruct_state()
         assert state["prompt"] == "Fix bug in login"
-        assert state["retry_count"] == 1  # One tester failure
+        assert state["retry_count"] == 0  # Reset on reconstruction
         assert state["test_output"] == "PASS"
         assert state["review_status"] == "approved"
 
