@@ -40,7 +40,7 @@ def test_save_and_load_session():
     with open(manager.state_file) as f:
         data = json.load(f)
         assert data["session_id"] == "test_session"
-        assert data["jules_sessions"]["node1"] == "session_123"
+        assert data["engine_state"]["jules"]["node1"] == "session_123"
         assert data["metadata"]["key1"] == "value1"
 
     # Test loading from disk
@@ -82,4 +82,4 @@ def test_corrupted_session_file(temp_session_dir):
 
     with open(manager.state_file) as f:
         data = json.load(f)
-        assert data["jules_sessions"]["node1"] == "new_session"
+        assert data["engine_state"]["jules"]["node1"] == "new_session"
