@@ -191,15 +191,16 @@ class JulesEngine(LLMEngine):
                                 desc = activity["sessionFailed"].get("reason", "")
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
-                                desc = activity["agentMessaged"].get("message", "")
+                                am = activity["agentMessaged"]
+                                desc = am.get("message") or am.get("text") or ""
+
+                            # Fallback for desc from top-level fields
+                            if not desc:
+                                desc = activity.get("description") or activity.get("text") or ""
 
                             if not title:
                                 # Fallback to top-level fields
-                                title = (
-                                    activity.get("description")
-                                    or activity.get("text")
-                                    or "Activity update"
-                                )
+                                title = desc or "Activity update"
 
                             # Consistently truncate description
                             if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
@@ -287,16 +288,16 @@ class JulesEngine(LLMEngine):
             # Check for agentMessaged first
             for activity in reversed(activities):
                 if "agentMessaged" in activity:
-                    summary = activity["agentMessaged"].get("message", "")
+                    am = activity["agentMessaged"]
+                    summary = am.get("message") or am.get("text") or ""
                     if summary:
                         break
 
             # Fallback to description/text
             if not summary:
                 for activity in reversed(activities):
-                    text = activity.get("description") or activity.get("text")
-                    if text:
-                        summary = text
+                    summary = activity.get("description") or activity.get("text") or ""
+                    if summary:
                         break
 
         if pr_url:

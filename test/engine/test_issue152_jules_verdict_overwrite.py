@@ -140,3 +140,82 @@ async def test_poll_session_verdict_anywhere_in_text():
         summary = status_data["activities"][0]["description"]
         assert "VERDICT: OK" in summary
         assert "Cleaning up" not in summary
+
+
+@pytest.mark.asyncio
+async def test_poll_session_verdict_in_agent_messaged_text():
+    """Verify that _poll_session extracts verdict from agentMessaged.text."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+        patch("copium_loop.engine.jules.get_telemetry"),
+        patch("builtins.print"),
+    ):
+        client = mock_client.return_value.__aenter__.return_value
+
+        client.get.side_effect = [
+            # First poll: agentMessaged with text instead of message
+            httpx.Response(
+                200,
+                json={
+                    "activities": [
+                        {
+                            "id": "act1",
+                            "agentMessaged": {
+                                "text": "VERDICT: APPROVED",
+                            },
+                        }
+                    ]
+                },
+            ),
+            httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
+        ]
+
+        status_data = await engine._poll_session(
+            client, "sessions/sess_123", timeout=10, inactivity_timeout=5
+        )
+
+        summary = status_data["activities"][0]["description"]
+        # If the bug exists, summary will be "Agent message" because desc was empty
+        assert "VERDICT: APPROVED" in summary
+
+
+@pytest.mark.asyncio
+async def test_poll_session_verdict_in_top_level_text():
+    """Verify that _poll_session extracts verdict from top-level text field."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+        patch("copium_loop.engine.jules.get_telemetry"),
+        patch("builtins.print"),
+    ):
+        client = mock_client.return_value.__aenter__.return_value
+
+        client.get.side_effect = [
+            # First poll: Top-level text only
+            httpx.Response(
+                200,
+                json={
+                    "activities": [
+                        {
+                            "id": "act1",
+                            "text": "VERDICT: REJECTED",
+                        }
+                    ]
+                },
+            ),
+            httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
+        ]
+
+        status_data = await engine._poll_session(
+            client, "sessions/sess_123", timeout=10, inactivity_timeout=5
+        )
+
+        summary = status_data["activities"][0]["description"]
+        assert "VERDICT: REJECTED" in summary
