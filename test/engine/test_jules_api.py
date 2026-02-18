@@ -20,6 +20,7 @@ async def test_jules_api_invoke_success():
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
         patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
@@ -27,6 +28,7 @@ async def test_jules_api_invoke_success():
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
+        mock_push.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -87,6 +89,7 @@ async def test_jules_api_invoke_success_200():
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
         patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
@@ -94,6 +97,7 @@ async def test_jules_api_invoke_success_200():
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
+        mock_push.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -144,6 +148,7 @@ async def test_jules_api_invoke_apply_artifacts():
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
+        mock_push.return_value = {"exit_code": 0, "output": "Pushed"}
         mock_run_command.return_value = {"exit_code": 0, "output": "Applied"}
         client = mock_client.return_value.__aenter__.return_value
 
@@ -180,7 +185,11 @@ async def test_jules_api_invoke_apply_artifacts():
         assert "apply" in args[1]
         mock_add.assert_called_once()
         mock_commit.assert_called_once_with("fix: bug", node="coder")
-        mock_push.assert_called_once()
+        assert mock_push.call_count == 2
+        # First call is the initial branch push
+        mock_push.assert_any_call(remote="origin", branch="main", node="coder")
+        # Second call is the force push after artifacts
+        mock_push.assert_any_call(force=True, node="coder")
 
 
 @pytest.mark.asyncio
@@ -192,6 +201,7 @@ async def test_jules_api_polling_retries():
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
         patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
@@ -199,6 +209,7 @@ async def test_jules_api_polling_retries():
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
+        mock_push.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -418,12 +429,14 @@ async def test_jules_api_pull_failure():
             "copium_loop.git.pull",
             return_value={"exit_code": 1, "output": "Merge conflict"},
         ),
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
             "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream,
     ):
+        mock_push.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
@@ -539,3 +552,137 @@ def test_jules_engine_sanitize_for_prompt():
     # Test empty
     assert engine.sanitize_for_prompt("") == ""
     assert engine.sanitize_for_prompt(None) == ""
+
+
+@pytest.mark.asyncio
+async def test_jules_api_invoke_pushes_branch_for_coder():
+    """Verify that git.push is called for coder node when starting a new session."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+    ):
+        mock_push.return_value = {"exit_code": 0, "output": "Pushed"}
+        mock_pull.return_value = {"exit_code": 0, "output": ""}
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock session creation
+        client.post.return_value = httpx.Response(
+            201, json={"name": "sessions/sess_123"}
+        )
+
+        # Mock polling
+        client.get.side_effect = [
+            httpx.Response(200, json={"activities": []}),
+            httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
+        ]
+
+        await engine.invoke("Test prompt", node="coder")
+
+        # Verify git.push was called
+        mock_push.assert_called_with(
+            remote="origin", branch="feature-branch", node="coder"
+        )
+
+
+@pytest.mark.asyncio
+async def test_jules_api_invoke_no_push_for_architect():
+    """Verify that git.push is NOT called for non-coder nodes."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="main"),
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+    ):
+        mock_push.return_value = {"exit_code": 0, "output": "Pushed"}
+        client = mock_client.return_value.__aenter__.return_value
+        client.post.return_value = httpx.Response(201, json={"name": "sess"})
+        client.get.side_effect = [
+            httpx.Response(200, json={"activities": []}),
+            httpx.Response(200, json={"state": "COMPLETED", "outputs": []}),
+        ]
+
+        await engine.invoke("Test prompt", node="architect")
+
+        # Verify git.push was NOT called
+        # Note: it might be called AFTER artifacts are applied if it was coder,
+        # but here it shouldn't be called at all for architect.
+        mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_jules_api_invoke_push_failure():
+    """Verify that a push failure raises JulesSessionError."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+    ):
+        mock_push.return_value = {"exit_code": 1, "output": "Permission denied"}
+
+        with pytest.raises(
+            JulesSessionError, match="Failed to push branch feature-branch to origin"
+        ):
+            await engine.invoke("Test prompt", node="coder")
+
+
+@pytest.mark.asyncio
+async def test_jules_api_invoke_no_push_when_resuming():
+    """Verify that git.push is NOT called when resuming an existing session."""
+    engine = JulesEngine()
+    mock_session_manager = MagicMock()
+    engine.session_manager = mock_session_manager
+
+    # Mock session manager to return an existing session
+    mock_session_manager.get_engine_state.return_value = "sessions/existing_sess"
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="main"),
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+    ):
+        mock_push.return_value = {"exit_code": 0, "output": "Pushed"}
+        mock_pull.return_value = {"exit_code": 0, "output": ""}
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock session check (it's active)
+        client.get.side_effect = [
+            httpx.Response(200, json={"state": "ACTIVE"}),  # Session check
+            httpx.Response(200, json={"activities": []}),  # Activity poll
+            httpx.Response(
+                200, json={"state": "COMPLETED", "outputs": []}
+            ),  # State poll
+        ]
+
+        await engine.invoke("Test prompt", node="coder")
+
+        # Verify git.push was NOT called for the initial branch push
+        # (It might be called later if artifacts are applied, but our mock poll returns no artifacts)
+        # Actually, if artifacts are applied, push is called with force=True and no branch.
+        # Let's check call arguments.
+        for call in mock_push.call_args_list:
+            args, kwargs = call
+            # The initial push we want to avoid should have 'branch' and 'remote'
+            if kwargs.get("branch") == "main" and kwargs.get("remote") == "origin":
+                pytest.fail(
+                    "git.push was called for initial branch push while resuming"
+                )
+
+        mock_push.assert_not_called()

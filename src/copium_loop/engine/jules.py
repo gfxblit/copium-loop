@@ -468,6 +468,17 @@ class JulesEngine(LLMEngine):
                     session_name = None
 
             if not session_name:
+                # For coder node, we must ensure the branch exists on the remote
+                # before Jules can clone it.
+                if node == "coder":
+                    if verbose:
+                        print(f"[{node}] Pushing branch {branch} to origin...")
+                    res = await git.push(remote="origin", branch=branch, node=node)
+                    if res["exit_code"] != 0:
+                        raise JulesSessionError(
+                            f"Failed to push branch {branch} to origin: {res['output']}"
+                        )
+
                 # 2. Create session
                 session_name = await self._create_session(
                     client, safe_prompt, repo, branch
