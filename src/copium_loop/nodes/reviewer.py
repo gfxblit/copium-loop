@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 
 from langchain_core.messages import SystemMessage
 
@@ -51,19 +50,20 @@ async def reviewer(state: AgentState) -> dict:
         }
 
     # Check for empty diff if not using Jules
-    if engine.engine_type != "jules":
-        if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
-            msg = "\nReview decision: Approved (no changes to review)\n"
-            telemetry.log_output("reviewer", msg)
-            print(msg, end="")
-            telemetry.log_status("reviewer", "approved")
-            return {
-                "review_status": "approved",
-                "messages": [
-                    SystemMessage(content="No changes detected. Skipping review.")
-                ],
-                "retry_count": retry_count,
-            }
+    if engine.engine_type != "jules" and re.search(
+        r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL
+    ):
+        msg = "\nReview decision: Approved (no changes to review)\n"
+        telemetry.log_output("reviewer", msg)
+        print(msg, end="")
+        telemetry.log_status("reviewer", "approved")
+        return {
+            "review_status": "approved",
+            "messages": [
+                SystemMessage(content="No changes detected. Skipping review.")
+            ],
+            "retry_count": retry_count,
+        }
 
     try:
         review_content = await engine.invoke(

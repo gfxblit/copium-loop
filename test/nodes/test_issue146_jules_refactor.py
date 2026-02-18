@@ -1,10 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
-from pathlib import Path
 
 import pytest
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 
-from copium_loop.engine.gemini import GeminiEngine
 from copium_loop.engine.jules import JulesEngine
 from copium_loop.nodes.architect import architect
 from copium_loop.nodes.reviewer import reviewer
@@ -18,14 +16,14 @@ async def test_get_architect_prompt():
     state = AgentState(
         initial_commit_hash="sha123",
     )
-    
+
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
         jules_prompt = await get_architect_prompt("jules", state)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
-        
+
     # Test Gemini prompt
     with (
         patch("copium_loop.nodes.utils.is_git_repo", return_value=True),
@@ -43,14 +41,14 @@ async def test_get_reviewer_prompt():
         initial_commit_hash="sha123",
         test_output="PASS",
     )
-    
+
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
         jules_prompt = await get_reviewer_prompt("jules", state)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
-        
+
     # Test Gemini prompt
     with (
         patch("copium_loop.nodes.utils.is_git_repo", return_value=True),

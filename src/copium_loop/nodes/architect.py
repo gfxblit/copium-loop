@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 
 from langchain_core.messages import SystemMessage
 
@@ -42,21 +41,22 @@ async def architect(state: AgentState) -> dict:
         }
 
     # Check for empty diff if not using Jules (Jules handles its own exploration)
-    if engine.engine_type != "jules":
-        if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
-            msg = "\nArchitectural decision: OK (no changes to review)\n"
-            telemetry.log_output("architect", msg)
-            print(msg, end="")
-            telemetry.log_status("architect", "ok")
-            return {
-                "architect_status": "ok",
-                "messages": [
-                    SystemMessage(
-                        content="No changes detected. Skipping architectural review."
-                    )
-                ],
-                "retry_count": retry_count,
-            }
+    if engine.engine_type != "jules" and re.search(
+        r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL
+    ):
+        msg = "\nArchitectural decision: OK (no changes to review)\n"
+        telemetry.log_output("architect", msg)
+        print(msg, end="")
+        telemetry.log_status("architect", "ok")
+        return {
+            "architect_status": "ok",
+            "messages": [
+                SystemMessage(
+                    content="No changes detected. Skipping architectural review."
+                )
+            ],
+            "retry_count": retry_count,
+        }
 
     try:
         architect_content = await engine.invoke(
