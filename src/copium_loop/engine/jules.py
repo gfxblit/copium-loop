@@ -10,7 +10,7 @@ from tenacity import (
 )
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
-from copium_loop.engine.base import LLMError, LLMEngine, SyncStrategy
+from copium_loop.engine.base import LLMEngine, LLMError, SyncStrategy
 from copium_loop.git import get_current_branch, get_repo_name
 from copium_loop.telemetry import get_telemetry
 
