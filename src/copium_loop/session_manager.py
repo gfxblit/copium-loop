@@ -13,16 +13,12 @@ class SessionData:
     session_id: str
     engine_state: dict[str, dict[str, Any]] = field(default_factory=dict)
     metadata: dict[str, str] = field(default_factory=dict)
-    jules_sessions: dict[str, str] = field(
-        default_factory=dict
-    )  # Deprecated but kept for migration
 
     def to_dict(self) -> dict:
         return {
             "session_id": self.session_id,
             "engine_state": self.engine_state,
             "metadata": self.metadata,
-            "jules_sessions": self.jules_sessions,
         }
 
     @classmethod
@@ -31,7 +27,6 @@ class SessionData:
             session_id=data["session_id"],
             engine_state=data.get("engine_state", {}),
             metadata=data.get("metadata", {}),
-            jules_sessions=data.get("jules_sessions", {}),
         )
 
 
@@ -101,30 +96,7 @@ class SessionManager:
         ):
             return self._data.engine_state[engine_type][key]
 
-        # Backward compatibility for Jules
-        if engine_type == "jules" and key in self._data.jules_sessions:
-            return self._data.jules_sessions[key]
-
         return None
-
-    def update_jules_session(self, node: str, jules_session_id: str):
-        """Updates the Jules session ID for a specific node."""
-        self.update_engine_state("jules", node, jules_session_id)
-
-    def get_jules_session(self, node: str) -> str | None:
-        """Retrieves the Jules session ID for a specific node."""
-        return self.get_engine_state("jules", node)
-
-    def get_all_jules_sessions(self) -> dict[str, str]:
-        """Retrieves all Jules session IDs."""
-        if not self._data:
-            self._load()
-
-        # Combine new and old for migration purposes
-        sessions = self._data.jules_sessions.copy()
-        if "jules" in self._data.engine_state:
-            sessions.update(self._data.engine_state["jules"])
-        return sessions
 
     def update_metadata(self, key: str, value: str):
         """Updates arbitrary metadata."""
