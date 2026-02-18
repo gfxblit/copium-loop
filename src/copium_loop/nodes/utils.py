@@ -9,25 +9,34 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
         raise ValueError("Missing initial commit hash.")
 
     if engine_type == "jules":
-        return f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
+        return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity.
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
 
     Your primary responsibility is to ensure the code changes adhere to architectural best practices:
+
+    ### Architectural Principles
     1. Single Responsibility Principle (SRP): Each module/class should have one reason to change.
     2. Open/Closed Principle (OCP): Entities should be open for extension but closed for modification.
-    3. Liskov Substitution Principle (LSP): Subtypes must be substitutable for their base types without altering the correctness of the program.
+    3. Liskov Substitution Principle (LSP): Subtypes must be substitutable for their base types without altering correctness.
     4. Interface Segregation Principle (ISP): No client should be forced to depend on methods it does not use.
     5. Dependency Inversion Principle (DIP): Depend upon abstractions, not concretions.
-    6. Modularity: The code should be well-organized and modular.
-    7. File Size: Ensure files are not becoming too large and unwieldy.
+    6. Modularity & Separation of Concerns: High cohesion, low coupling, and clear interfaces.
+    7. Maintainability: Clear organization, consistent patterns, and ease of understanding.
+    8. Scalability & Performance: Efficient algorithms, horizontal scaling capability, and minimal resource usage.
+    9. Security: Defense in depth, least privilege, and secure by default.
+
+    ### Architecture Review Process
+    1. Analyze the changes in the git diff.
+    2. Identify patterns, conventions, and potential technical debt.
+    3. Evaluate technical trade-offs of the implemented design.
+    4. Watch for Red Flags: Big Ball of Mud, Tight Coupling, God Objects, and Premature Optimization.
 
     You MUST provide your final verdict in the format: "VERDICT: OK" or "VERDICT: REFACTOR".
 
-    To do this, you MUST activate the 'architect' skill and provide it with the necessary context.
-    Instruct the skill to evaluate the diff (which you calculated) for all SOLID principles, modularity, and overall architecture.
-    After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
-    determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
+    Do not make any fixes or changes yourself. Based on your evaluation, determine the final status.
+    If the changes are architecturally sound, respond with "VERDICT: OK".
+    If the changes introduce significant architectural debt or violate the principles above, respond with "VERDICT: REFACTOR" and explain why."""
 
     # Default/Gemini prompt
     git_diff = ""
@@ -69,27 +78,43 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
         raise ValueError("Missing initial commit hash.")
 
     if engine_type == "jules":
-        return f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
+        return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch.
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
 
     Your primary responsibility is to ensure the code changes do not introduce critical or high-severity issues.
 
-    CRITICAL REQUIREMENTS:
-    1. ONLY reject if there are CRITICAL or HIGH severity issues introduced by the changes in the git diff.
-    2. Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
-    3. If the logic is correct and passes tests (which it has if you are seeing this), and no high-severity bugs are obvious in the diff, you SHOULD APPROVE.
-    4. Focus ONLY on the changes introduced in the diff.
-    5. You MUST provide your final verdict in the format: "VERDICT: APPROVED" or "VERDICT: REJECTED".
+    ### Your Objective
+    Identify potential bugs, security vulnerabilities, performance bottlenecks, and clarity issues. Provide insightful feedback and concrete, ready-to-use code suggestions.
 
-    EXAMPLE:
-    Reviewer: I have reviewed the changes. The logic is sound and no critical issues were found.
+    ### Critical Requirements
+    1. ONLY reject if there are CRITICAL or HIGH severity issues introduced by the changes.
+    2. Focus on correctness, efficiency, and long-term maintainability.
+    3. Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
+    4. If the logic is correct and passes tests (which it has if you are seeing this), and no high-severity bugs are obvious in the diff, you SHOULD APPROVE.
+    5. Focus ONLY on the changes introduced in the diff.
+
+    ### Severity Guidelines
+    - CRITICAL: Security vulnerabilities, system-breaking bugs, complete logic failure.
+    - HIGH: Performance bottlenecks, resource leaks, major architectural violations.
+    - MEDIUM/LOW: Minor issues, typos, or non-critical best practices (mention these but do not reject based on them).
+
+    ### Output Format
+    Your response MUST end with "VERDICT: APPROVED" or "VERDICT: REJECTED".
+
+    Example:
+    Change summary: [Summary of changes]
+    No issues found. Code looks clean.
     VERDICT: APPROVED
 
-    To do this, you MUST activate the 'code-reviewer' skill and provide it with the necessary context.
-    Instruct the skill to focus ONLY on identifying critical or high severity issues within the changes.
-    After the skill completes its review, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
-    determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
+    Example:
+    Change summary: [Summary of changes]
+    #### File: path/to/file
+    L10: [CRITICAL] Security vulnerability in authentication.
+    [Details...]
+    VERDICT: REJECTED
+
+    Do not make any fixes or changes yourself; rely entirely on your evaluation of the diff."""
 
     # Default/Gemini prompt
     git_diff = ""
@@ -182,25 +207,40 @@ async def get_coder_prompt(engine_type: str, state: dict) -> str:
 
     if engine_type == "jules":
         push_instruction = "You MUST explicitly use 'git push --force' to push your changes to the feature branch."
+        tdd_instruction = """CRITICAL: You MUST follow Test-Driven Development (TDD) methodology:
+    1. Write tests FIRST (Red): They should fail initially as the feature is not yet implemented.
+    2. Run tests to verify they fail: Use the project's test runner (e.g., 'pytest', 'npm test').
+    3. Write minimal implementation (Green): Write only enough code to make the tests pass.
+    4. Run tests to verify they pass.
+    5. Refactor (Improve): Remove duplication, improve names, and optimize performance while ensuring tests still pass.
+    6. Verify Coverage: Ensure 80%+ test coverage for all new functionality.
+    7. Run linting and formatting (e.g., 'ruff check . && ruff format .' or 'npm run lint') to ensure code quality.
+
+    ### Mandatory Test Types
+    - Unit Tests: Test individual functions in isolation, handling edge cases (null, empty, invalid types).
+    - Integration Tests: Test API endpoints, database operations, and component interactions.
+
+    Do not skip writing tests - they are mandatory. Always run the test suite and the linter to verify your changes."""
     else:
         push_instruction = ""
-
-    system_prompt = f"""You are a software engineer. Implement the following request: {user_request_block}
-
-    You have access to the file system and git.
-
-    CRITICAL: You MUST follow Test-Driven Development (TDD) methodology.
+        tdd_instruction = """CRITICAL: You MUST follow Test-Driven Development (TDD) methodology.
     To do this, you MUST activate the 'tdd-guide' skill and follow its Red-Green-Refactor cycle:
     1. Write tests FIRST (they should fail initially)
     2. Run tests to verify they fail
     3. Write minimal implementation to make tests pass
     4. Run tests to verify they pass
     5. Refactor and ensure 80%+ test coverage
-    6. Run linting and formatting (e.g., 'ruff check . && ruff format .' or 'npm run lint') to ensure code quality
+    6. Run linting and formatting (e.g., 'ruff check . && ruff format .' or 'npm run lint') to ensure code quality.
 
     After the skill completes its guidance, implement the code following TDD principles.
     Do not skip writing tests - they are mandatory for all new functionality.
-    Always run the test suite and the linter to verify your changes.
+    Always run the test suite and the linter to verify your changes."""
+
+    system_prompt = f"""You are a software engineer. Implement the following request: {user_request_block}
+
+    You have access to the file system and git.
+
+    {tdd_instruction}
     The test suite will now report coverage - ensure it remains high (80%+).
 
     IMPORTANT: You MUST commit your changes using git. You may create multiple commits if it makes sense for the task.

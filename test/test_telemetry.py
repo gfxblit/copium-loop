@@ -245,15 +245,15 @@ class TestGetLastIncompleteNode:
         assert node == "reviewer"
         assert metadata["reason"] == "incomplete"
 
-    def test_tester_success_should_resume_at_reviewer(self, telemetry_with_temp_dir):
-        """Test when tester succeeded, should resume at reviewer."""
+    def test_tester_success_should_resume_at_architect(self, telemetry_with_temp_dir):
+        """Test when tester succeeded, should resume at architect."""
         telemetry_with_temp_dir.log_status("coder", "active")
         telemetry_with_temp_dir.log_status("coder", "idle")
         telemetry_with_temp_dir.log_status("tester", "active")
         telemetry_with_temp_dir.log_status("tester", "success")
 
         node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
-        assert node == "reviewer"
+        assert node == "architect"
         assert metadata["reason"] == "incomplete"
 
     def test_reviewer_approved_should_resume_at_pr_pre_checker(
@@ -277,8 +277,8 @@ class TestReconstructState:
     def test_reconstruct_empty_state(self, telemetry_with_temp_dir):
         """Test reconstructing state from empty log."""
         state = telemetry_with_temp_dir.reconstruct_state()
-        # Empty log should still initialize retry_count to 0
-        assert state == {"retry_count": 0}
+        # Empty log should still initialize retry_count to 0 and default engine to gemini
+        assert state == {"retry_count": 0, "engine_name": "gemini"}
 
     def test_reconstruct_with_prompt(self, telemetry_with_temp_dir):
         """Test reconstructing state with initial prompt."""
@@ -288,6 +288,15 @@ class TestReconstructState:
 
         state = telemetry_with_temp_dir.reconstruct_state()
         assert state["prompt"] == "Add hello world function"
+        assert state["engine_name"] == "gemini"
+
+    def test_reconstruct_jules_engine(self, telemetry_with_temp_dir):
+        """Test reconstructing state with jules engine."""
+        telemetry_with_temp_dir.log_output(
+            "coder", "Jules session created: sessions/123"
+        )
+        state = telemetry_with_temp_dir.reconstruct_state()
+        assert state["engine_name"] == "jules"
 
     def test_reconstruct_retry_count(self, telemetry_with_temp_dir):
         """Test reconstructing retry count from failures."""

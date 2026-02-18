@@ -176,10 +176,11 @@ class Telemetry:
                     node_statuses[node].append(status)
 
         # Determine which node was last active but didn't complete
-        # Node progression: coder -> tester -> reviewer -> pr_pre_checker -> journaler -> pr_creator
+        # Node progression: coder -> tester -> architect -> reviewer -> pr_pre_checker -> journaler -> pr_creator
         node_order = [
             "coder",
             "tester",
+            "architect",
             "reviewer",
             "pr_pre_checker",
             "journaler",
@@ -233,6 +234,16 @@ class Telemetry:
                 if "Starting workflow with prompt:" in data:
                     prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
                     state["prompt"] = prompt
+
+        # Reconstruct engine from output logs
+        for event in events:
+            if event.get("event_type") == "output":
+                data = str(event.get("data", ""))
+                if "Jules session created" in data:
+                    state["engine_name"] = "jules"
+                    break
+        else:
+            state["engine_name"] = "gemini"
 
         # Count retries by counting how many times we've returned to coder from failures
         retry_count = 0

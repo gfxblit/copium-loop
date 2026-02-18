@@ -191,15 +191,20 @@ class JulesEngine(LLMEngine):
                                 desc = activity["sessionFailed"].get("reason", "")
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
-                                desc = activity["agentMessaged"].get("message", "")
+                                am = activity["agentMessaged"]
+                                desc = am.get("message") or am.get("text") or ""
+
+                            # Fallback for desc from top-level fields
+                            if not desc:
+                                desc = (
+                                    activity.get("description")
+                                    or activity.get("text")
+                                    or ""
+                                )
 
                             if not title:
                                 # Fallback to top-level fields
-                                title = (
-                                    activity.get("description")
-                                    or activity.get("text")
-                                    or "Activity update"
-                                )
+                                title = desc or "Activity update"
 
                             # Consistently truncate description
                             if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
@@ -224,10 +229,14 @@ class JulesEngine(LLMEngine):
                             # Prioritize agent messages
                             if title == "Agent message" and desc:
                                 last_summary = desc
-                            elif (title or desc) and not last_summary.startswith(
-                                "VERDICT"
-                            ):
+                            elif (
+                                title or desc
+                            ) and "VERDICT:" not in last_summary.upper():
+                                # Only overwrite if we don't already have a verdict
                                 last_summary = desc or title
+                            elif desc and "VERDICT:" in desc.upper():
+                                # Always update if the new description contains a verdict
+                                last_summary = desc
 
                     if new_activity_found:
                         last_activity_time = current_time
@@ -283,16 +292,16 @@ class JulesEngine(LLMEngine):
             # Check for agentMessaged first
             for activity in reversed(activities):
                 if "agentMessaged" in activity:
-                    summary = activity["agentMessaged"].get("message", "")
+                    am = activity["agentMessaged"]
+                    summary = am.get("message") or am.get("text") or ""
                     if summary:
                         break
 
             # Fallback to description/text
             if not summary:
                 for activity in reversed(activities):
-                    text = activity.get("description") or activity.get("text")
-                    if text:
-                        summary = text
+                    summary = activity.get("description") or activity.get("text") or ""
+                    if summary:
                         break
 
         if pr_url:
