@@ -224,10 +224,12 @@ class JulesEngine(LLMEngine):
                             # Prioritize agent messages
                             if title == "Agent message" and desc:
                                 last_summary = desc
-                            elif (title or desc) and not last_summary.startswith(
-                                "VERDICT"
-                            ):
+                            elif (title or desc) and "VERDICT:" not in last_summary.upper():
+                                # Only overwrite if we don't already have a verdict
                                 last_summary = desc or title
+                            elif desc and "VERDICT:" in desc.upper():
+                                # Always update if the new description contains a verdict
+                                last_summary = desc
 
                     if new_activity_found:
                         last_activity_time = current_time
