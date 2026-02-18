@@ -6,7 +6,7 @@ import pytest
 from copium_loop.nodes import pr_creator
 
 # Get the module object explicitly to avoid shadowing issues
-pr_creator_module = sys.modules["copium_loop.nodes.pr_creator"]
+pr_creator_module = sys.modules["copium_loop.nodes.pr_creator_node"]
 
 
 class TestPrCreatorNode:

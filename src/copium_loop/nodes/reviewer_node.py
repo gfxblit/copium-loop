@@ -17,7 +17,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def reviewer(state: AgentState) -> dict:
+async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
     telemetry.log_output("reviewer", "--- Reviewer Node ---\n")

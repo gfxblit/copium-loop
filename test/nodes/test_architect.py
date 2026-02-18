@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-# We'll need to import from copium_loop.nodes.architect once it exists
-from copium_loop.nodes.architect import architect
+# Import from the nodes package
+from copium_loop.nodes import architect
 
 # Get the module object explicitly to avoid shadowing issues
-architect_module = sys.modules["copium_loop.nodes.architect"]
+architect_module = sys.modules["copium_loop.nodes.architect_node"]
 
 
 @pytest.fixture

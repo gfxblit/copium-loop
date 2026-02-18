@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from copium_loop.nodes.pr_pre_checker import pr_pre_checker
+from copium_loop.nodes import pr_pre_checker
 from copium_loop.state import AgentState
 
 # Get the module object explicitly to avoid shadowing issues
-pr_pre_checker_module = sys.modules["copium_loop.nodes.pr_pre_checker"]
+pr_pre_checker_module = sys.modules["copium_loop.nodes.pr_pre_checker_node"]
 
 
 @pytest.mark.asyncio

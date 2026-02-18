@@ -8,7 +8,7 @@ from copium_loop.copium_loop import WorkflowManager
 from copium_loop.nodes import coder
 
 # Get the module object explicitly to avoid shadowing issues
-coder_module = sys.modules["copium_loop.nodes.coder"]
+coder_module = sys.modules["copium_loop.nodes.coder_node"]
 
 
 @pytest.fixture

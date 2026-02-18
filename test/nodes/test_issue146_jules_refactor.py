@@ -4,8 +4,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 
 from copium_loop.engine.jules import JulesEngine
-from copium_loop.nodes.architect import architect
-from copium_loop.nodes.reviewer import reviewer
+from copium_loop.nodes import architect, reviewer
 from copium_loop.nodes.utils import get_architect_prompt, get_reviewer_prompt
 from copium_loop.state import AgentState
 
@@ -79,7 +78,7 @@ async def test_architect_node_engine_agnostic():
 
     with (
         patch(
-            "copium_loop.nodes.architect.get_architect_prompt",
+            "copium_loop.nodes.architect_node.get_architect_prompt",
             return_value="mock prompt",
         ) as mock_get_prompt,
     ):
@@ -109,7 +108,8 @@ async def test_reviewer_node_engine_agnostic():
 
     with (
         patch(
-            "copium_loop.nodes.reviewer.get_reviewer_prompt", return_value="mock prompt"
+            "copium_loop.nodes.reviewer_node.get_reviewer_prompt",
+            return_value="mock prompt",
         ) as mock_get_prompt,
     ):
         result = await reviewer(state)

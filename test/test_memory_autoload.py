@@ -5,13 +5,11 @@ import pytest
 from langchain_core.messages import HumanMessage
 
 from copium_loop.memory import MemoryManager
-from copium_loop.nodes.architect import architect
-from copium_loop.nodes.coder import coder
-from copium_loop.nodes.reviewer import reviewer
+from copium_loop.nodes import architect, coder, reviewer
 
-architect_module = sys.modules["copium_loop.nodes.architect"]
-coder_module = sys.modules["copium_loop.nodes.coder"]
-reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
+architect_module = sys.modules["copium_loop.nodes.architect_node"]
+coder_module = sys.modules["copium_loop.nodes.coder_node"]
+reviewer_module = sys.modules["copium_loop.nodes.reviewer_node"]
 
 
 @pytest.fixture

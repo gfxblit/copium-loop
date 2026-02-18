@@ -17,7 +17,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-async def architect(state: AgentState) -> dict:
+async def architect_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
     telemetry.log_output("architect", "--- Architect Node ---\n")

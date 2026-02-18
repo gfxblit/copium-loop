@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-from copium_loop.nodes.reviewer import reviewer
+from copium_loop.nodes import reviewer
 
 # Get the module object explicitly to avoid shadowing issues
-reviewer_module = sys.modules["copium_loop.nodes.reviewer"]
+reviewer_module = sys.modules["copium_loop.nodes.reviewer_node"]
 
 
 @pytest.fixture
