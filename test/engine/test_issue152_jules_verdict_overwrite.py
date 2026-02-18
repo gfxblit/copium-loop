@@ -33,8 +33,8 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons."
-                            }
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                            },
                         }
                     ]
                 },
@@ -50,13 +50,10 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons."
-                            }
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                            },
                         },
-                        {
-                            "id": "act2",
-                            "sessionCompleted": {}
-                        }
+                        {"id": "act2", "sessionCompleted": {}},
                     ]
                 },
             ),
@@ -82,6 +79,7 @@ async def test_poll_session_verdict_preservation():
         assert "VERDICT: REFACTOR" in summary
         assert "Session completed" not in summary
 
+
 @pytest.mark.asyncio
 async def test_poll_session_verdict_anywhere_in_text():
     """Verify that 'VERDICT:' anywhere in text is preserved."""
@@ -106,7 +104,7 @@ async def test_poll_session_verdict_anywhere_in_text():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Final Verdict: VERDICT: OK",
-                            }
+                            },
                         }
                     ]
                 },
@@ -121,14 +119,14 @@ async def test_poll_session_verdict_anywhere_in_text():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Final Verdict: VERDICT: OK",
-                            }
+                            },
                         },
                         {
                             "id": "act2",
                             "progressUpdated": {
                                 "description": "Cleaning up resources..."
-                            }
-                        }
+                            },
+                        },
                     ]
                 },
             ),

@@ -224,7 +224,9 @@ class JulesEngine(LLMEngine):
                             # Prioritize agent messages
                             if title == "Agent message" and desc:
                                 last_summary = desc
-                            elif (title or desc) and "VERDICT:" not in last_summary.upper():
+                            elif (
+                                title or desc
+                            ) and "VERDICT:" not in last_summary.upper():
                                 # Only overwrite if we don't already have a verdict
                                 last_summary = desc or title
                             elif desc and "VERDICT:" in desc.upper():
