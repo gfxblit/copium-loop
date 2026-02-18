@@ -127,6 +127,63 @@ async def test_jules_api_invoke_success_200():
 
 
 @pytest.mark.asyncio
+async def test_jules_api_invoke_apply_artifacts():
+    """Verify that artifacts are applied when changeSet is present."""
+    engine = JulesEngine()
+
+    with (
+        patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
+        patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
+        patch("copium_loop.git.get_current_branch", return_value="main"),
+        patch("copium_loop.git.add", new_callable=AsyncMock) as mock_add,
+        patch("copium_loop.git.commit", new_callable=AsyncMock) as mock_commit,
+        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch(
+            "copium_loop.engine.jules.run_command", new_callable=AsyncMock
+        ) as mock_run_command,
+        patch("httpx.AsyncClient") as mock_client,
+        patch("asyncio.sleep", return_value=None),
+    ):
+        mock_run_command.return_value = {"exit_code": 0, "output": "Applied"}
+        client = mock_client.return_value.__aenter__.return_value
+
+        # Mock session creation
+        client.post.return_value = httpx.Response(201, json={"name": "sess"})
+
+        # Mock session polling success with changeSet
+        client.get.side_effect = [
+            httpx.Response(200, json={"activities": []}),
+            httpx.Response(
+                200,
+                json={
+                    "state": "COMPLETED",
+                    "outputs": [
+                        {
+                            "changeSet": {
+                                "gitPatch": {
+                                    "unidiffPatch": "patch content",
+                                    "suggestedCommitMessage": "fix: bug",
+                                }
+                            }
+                        }
+                    ],
+                },
+            ),
+        ]
+
+        result = await engine.invoke("Test prompt", node="coder")
+
+        assert result == "Jules task completed, but no summary was found."
+        mock_run_command.assert_called_once()
+        args, kwargs = mock_run_command.call_args
+        assert args[0] == "git"
+        assert "apply" in args[1]
+        mock_add.assert_called_once()
+        mock_commit.assert_called_once_with("fix: bug", node="coder")
+        mock_push.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_jules_api_polling_retries():
     engine = JulesEngine()
 
@@ -456,17 +513,13 @@ async def test_jules_api_poll_session_logs():
 
         # Verify telemetry calls
         assert mock_telemetry.log_output.call_count == 2
-        mock_telemetry.log_output.assert_any_call(
-            "test_node", "[sessions/sess_123] Step 1\n"
-        )
-        mock_telemetry.log_output.assert_any_call(
-            "test_node", "[sessions/sess_123] Step 2: Doing work\n"
-        )
+        mock_telemetry.log_output.assert_any_call("test_node", "Step 1\n")
+        mock_telemetry.log_output.assert_any_call("test_node", "Step 2: Doing work\n")
 
         # Verify print calls
         assert mock_print.call_count == 2
-        mock_print.assert_any_call("[sessions/sess_123] Step 1")
-        mock_print.assert_any_call("[sessions/sess_123] Step 2: Doing work")
+        mock_print.assert_any_call("Step 1")
+        mock_print.assert_any_call("Step 2: Doing work")
 
 
 def test_jules_engine_sanitize_for_prompt():

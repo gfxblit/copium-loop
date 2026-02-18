@@ -1,5 +1,6 @@
 import asyncio
 import os
+import tempfile
 
 import httpx
 from tenacity import (
@@ -12,6 +13,7 @@ from tenacity import (
 from copium_loop import git
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
 from copium_loop.engine.base import LLMEngine, LLMError
+from copium_loop.shell import run_command
 from copium_loop.telemetry import get_telemetry
 
 
@@ -35,6 +37,8 @@ class JulesRepoError(JulesError):
 API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 POLLING_INTERVAL = 10
 MAX_PROMPT_LENGTH = 12000
+MAX_API_RETRIES = 10
+MAX_ACTIVITY_DESC_LENGTH = 1000
 
 
 class JulesEngine(LLMEngine):
@@ -64,7 +68,7 @@ class JulesEngine(LLMEngine):
         """Helper to retry a network request with exponential backoff using tenacity."""
         try:
             async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(4),
+                stop=stop_after_attempt(MAX_API_RETRIES),
                 wait=wait_exponential(multiplier=2, min=1, max=10),
                 retry=retry_if_exception_type(httpx.HTTPError),
                 reraise=True,
@@ -197,11 +201,17 @@ class JulesEngine(LLMEngine):
                                     or "Activity update"
                                 )
 
+                            # Consistently truncate description
+                            if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
+                                desc = (
+                                    desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
+                                )
+
                             # Filter out useless generic updates
                             if title == "Activity update" and not desc:
                                 pass
                             else:
-                                msg = f"[{session_name}] {title}"
+                                msg = f"{title}"
                                 if desc:
                                     msg += f": {desc}"
 
@@ -294,6 +304,60 @@ class JulesEngine(LLMEngine):
 
         return summary or "Jules task completed, but no summary was found."
 
+    async def _apply_artifacts(
+        self, status_data: dict, node: str | None = None
+    ) -> bool:
+        """Applies unidiff patches from session outputs and commits them."""
+        outputs = status_data.get("outputs", [])
+        patches_applied = False
+        commit_message = "Update from Jules session"
+
+        for output in outputs:
+            if not isinstance(output, dict):
+                continue
+
+            change_set = output.get("changeSet")
+            if not change_set:
+                continue
+
+            git_patch = change_set.get("gitPatch")
+            if not git_patch:
+                continue
+
+            patch_text = git_patch.get("unidiffPatch")
+            if not patch_text:
+                continue
+
+            # Write patch to a temporary file
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".patch", delete=False
+            ) as f:
+                f.write(patch_text)
+                patch_path = f.name
+
+            try:
+                # Apply the patch
+                res = await run_command("git", ["apply", patch_path], node=node)
+                if res["exit_code"] == 0:
+                    patches_applied = True
+                    if "suggestedCommitMessage" in git_patch:
+                        commit_message = git_patch["suggestedCommitMessage"]
+                else:
+                    get_telemetry().log_output(
+                        node or "jules", f"Failed to apply patch: {res['output']}\n"
+                    )
+            finally:
+                if os.path.exists(patch_path):
+                    os.remove(patch_path)
+
+        if patches_applied:
+            await git.add(node=node)
+            await git.commit(commit_message, node=node)
+            # We don't push here, we push in the invoke method if needed
+            return True
+
+        return False
+
     async def invoke(
         self,
         prompt: str,
@@ -353,13 +417,24 @@ class JulesEngine(LLMEngine):
             summary = self._extract_summary(status_data)
 
             # 4. Handle sync if necessary
-            # For coder node, we pull changes from Jules (remote commits)
+            # For coder node, we apply artifacts from Jules locally and push
             if node == "coder":
                 if verbose:
-                    print(f"[{node}] Syncing changes from remote...")
-                res = await git.pull(node=node)
-                if res["exit_code"] != 0:
-                    raise LLMError(f"Failed to pull changes: {res['output']}")
+                    print(f"[{node}] Applying artifacts from Jules...")
+                applied = await self._apply_artifacts(status_data, node=node)
+                if applied:
+                    if verbose:
+                        print(f"[{node}] Artifacts applied, pushing to remote...")
+                    await git.push(force=True, node=node)
+                else:
+                    # Fallback to pull in case Jules DID push commits but no artifacts are in activities
+                    if verbose:
+                        print(
+                            f"[{node}] No artifacts applied, falling back to git pull..."
+                        )
+                    res = await git.pull(node=node)
+                    if res["exit_code"] != 0:
+                        raise LLMError(f"Failed to pull changes: {res['output']}")
 
             return summary
 

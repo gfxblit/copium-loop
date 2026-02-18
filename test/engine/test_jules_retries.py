@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from copium_loop.engine.jules import JulesEngine, JulesSessionError
+from copium_loop.engine.jules import MAX_API_RETRIES, JulesEngine, JulesSessionError
 
 
 @pytest.mark.asyncio
@@ -54,8 +54,8 @@ async def test_request_with_retry_exhaustion():
                 "Context", mock_client.get, "http://example.com"
             )
 
-        # 1 initial call + 3 retries = 4 calls
-        assert mock_client.get.call_count == 4
+        # 1 initial call + (MAX_API_RETRIES - 1) retries = MAX_API_RETRIES calls
+        assert mock_client.get.call_count == MAX_API_RETRIES
 
 
 @pytest.mark.asyncio
