@@ -1,9 +1,61 @@
 import atexit
-import concurrent.futures
 import json
+import queue
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
+
+class AsyncLogWriter(threading.Thread):
+    """
+    Dedicated thread for writing log events to a file.
+    Keeps the file open to minimize I/O overhead.
+    """
+
+    def __init__(self, log_file: Path):
+        super().__init__(daemon=True)
+        self.log_file = log_file
+        self.queue = queue.Queue()
+
+    def write(self, event: dict):
+        """Puts an event into the queue to be written."""
+        self.queue.put(event)
+
+    def stop(self):
+        """Signals the writer to stop and waits for it to finish."""
+        self.queue.put(None)  # Sentinel
+        self.join()
+
+    def wait_until_drained(self):
+        """Blocks until all items currently in the queue are processed."""
+        self.queue.join()
+
+    def run(self):
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                while True:
+                    event = self.queue.get()
+                    if event is None:
+                        self.queue.task_done()
+                        break
+
+                    try:
+                        f.write(json.dumps(event) + "\n")
+                        f.flush()
+                    except Exception:
+                        # Fail silently to avoid crashing the thread or app
+                        pass
+                    finally:
+                        self.queue.task_done()
+        except Exception:
+            # If file cannot be opened, drain queue to prevent blocks
+            while True:
+                item = self.queue.get()
+                if item is None:
+                    self.queue.task_done()
+                    break
+                self.queue.task_done()
 
 
 class Telemetry:
@@ -14,12 +66,19 @@ class Telemetry:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        atexit.register(self._executor.shutdown)
+
+        self.writer = AsyncLogWriter(self.log_file)
+        self.writer.start()
+        atexit.register(self.shutdown)
+
+    def shutdown(self):
+        """Stops the async log writer gracefully."""
+        if hasattr(self, "writer") and self.writer.is_alive():
+            self.writer.stop()
 
     def flush(self):
         """Waits for all pending log writes to complete."""
-        self._executor.submit(lambda: None).result()
+        self.writer.wait_until_drained()
 
     def log(self, node: str, event_type: str, data: str | dict):
         """Logs an event to the session's .jsonl file."""
@@ -30,12 +89,7 @@ class Telemetry:
             "event_type": event_type,  # 'status', 'output', 'metric'
             "data": data,
         }
-        self._executor.submit(self._write_event, event)
-
-    def _write_event(self, event: dict):
-        """Writes an event to disk. Called by the thread executor."""
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event) + "\n")
+        self.writer.write(event)
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""
