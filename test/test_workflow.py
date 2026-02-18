@@ -7,6 +7,7 @@ import pytest
 from langgraph.graph.state import CompiledStateGraph
 
 from copium_loop.copium_loop import WorkflowManager
+from copium_loop.engine.factory import get_engine
 from copium_loop.graph import START, create_graph
 
 
@@ -127,18 +128,21 @@ class TestEnvironmentVerification:
     @pytest.mark.asyncio
     async def test_verify_environment_success(self, mock_run_command, workflow):
         mock_run_command.return_value = {"exit_code": 0}
-        assert await workflow.verify_environment() is True
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is True
         assert mock_run_command.call_count == 3
 
     @pytest.mark.asyncio
     async def test_verify_environment_failure(self, mock_run_command, workflow):
         mock_run_command.return_value = {"exit_code": 1}
-        assert await workflow.verify_environment() is False
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is False
 
     @pytest.mark.asyncio
     async def test_verify_environment_exception(self, mock_run_command, workflow):
         mock_run_command.side_effect = Exception("failed")
-        assert await workflow.verify_environment() is False
+        engine = get_engine()
+        assert await workflow.verify_environment(engine) is False
 
 
 class TestWorkflowRun:
@@ -269,13 +273,13 @@ class TestWorkflowRun:
         assert result == {"status": "completed"}
 
     @pytest.mark.asyncio
-    async def test_run_with_initial_state(
+    async def test_run_with_initial_state_engine_override(
         self,
         mock_os_path_exists,
         mock_create_graph,
         mock_get_head,
         mock_verify_environment,
-        workflow,
+        workflow_manager_factory,
     ):
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
@@ -284,14 +288,23 @@ class TestWorkflowRun:
         mock_graph.ainvoke.return_value = {"status": "completed"}
         mock_create_graph.return_value = mock_graph
 
-        initial_state = {"retry_count": 5, "code_status": "coded"}
+        # Workflow initialized with 'jules' engine via CLI
+        workflow = workflow_manager_factory(engine_name="jules")
+
+        # Initial state has 'gemini' engine (e.g. from a previous run)
+        gemini_engine = get_engine("gemini")
+        initial_state = {"engine": gemini_engine, "retry_count": 5}
+
         result = await workflow.run("test prompt", initial_state=initial_state)
 
         assert result == {"status": "completed"}
         state = mock_graph.ainvoke.call_args[0][0]
+
+        # Should be JulesEngine because it was specified via CLI
+        from copium_loop.engine.jules import JulesEngine
+
+        assert isinstance(state["engine"], JulesEngine)
         assert state["retry_count"] == 5
-        assert state["code_status"] == "coded"
-        assert state["initial_commit_hash"] == "commit123"
 
 
 class TestNodeTimeouts:

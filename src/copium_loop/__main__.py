@@ -35,6 +35,13 @@ async def async_main():
         action="store_true",
         help="Continue from the last incomplete workflow session",
     )
+    parser.add_argument(
+        "--engine",
+        type=str,
+        choices=["gemini", "jules"],
+        default=None,
+        help="The LLM engine to use (default: gemini)",
+    )
 
     args = parser.parse_args()
 
@@ -109,7 +116,9 @@ async def async_main():
             else "Continue development and verify implementation."
         )
 
-    workflow = WorkflowManager(start_node=start_node, verbose=args.verbose)
+    workflow = WorkflowManager(
+        start_node=start_node, verbose=args.verbose, engine_name=args.engine
+    )
 
     try:
         result = await workflow.run(prompt, initial_state=reconstructed_state)

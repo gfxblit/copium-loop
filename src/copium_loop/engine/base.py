@@ -23,3 +23,8 @@ class LLMEngine(ABC):
     def sanitize_for_prompt(self, text: str, max_length: int = 12000) -> str:
         """Sanitizes text for inclusion in a prompt."""
         pass
+
+    @abstractmethod
+    def get_required_tools(self) -> list[str]:
+        """Returns a list of required CLI tools for the engine."""
+        pass

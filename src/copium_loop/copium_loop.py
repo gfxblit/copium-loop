@@ -8,7 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
 from copium_loop.discovery import get_test_command
-from copium_loop.engine.gemini import GeminiEngine
+from copium_loop.engine.base import LLMEngine
+from copium_loop.engine.factory import get_engine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
@@ -25,10 +26,16 @@ class WorkflowManager:
 
     _environment_verified = False
 
-    def __init__(self, start_node: str | None = None, verbose: bool = False):
+    def __init__(
+        self,
+        start_node: str | None = None,
+        verbose: bool = False,
+        engine_name: str | None = None,
+    ):
         self.graph = None
         self.start_node = start_node
         self.verbose = verbose
+        self.engine_name = engine_name
 
     async def notify(self, title: str, message: str, priority: int = 3):
         """Sends a notification to ntfy.sh if NTFY_CHANNEL is set."""
@@ -99,12 +106,13 @@ class WorkflowManager:
 
         return response
 
-    async def verify_environment(self) -> bool:
+    async def verify_environment(self, engine: LLMEngine) -> bool:
         """Verifies that the necessary CLI tools are installed."""
         if WorkflowManager._environment_verified:
             return True
 
-        tools = ["git", "gh", "gemini"]
+        tools = ["git", "gh"] + engine.get_required_tools()
+
         for tool in tools:
             try:
                 res = await run_command(tool, ["--version"])
@@ -125,7 +133,12 @@ class WorkflowManager:
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
-        if not await self.verify_environment():
+        # Determine engine
+        engine = get_engine(self.engine_name)
+        if initial_state and "engine" in initial_state and self.engine_name is None:
+            engine = initial_state["engine"]
+
+        if not await self.verify_environment(engine):
             return {"error": "Environment verification failed."}
 
         telemetry = get_telemetry()
@@ -213,7 +226,7 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "engine": GeminiEngine(),
+            "engine": engine,
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
@@ -235,7 +248,7 @@ class WorkflowManager:
         if initial_state:
             print(f"Merging reconstructed state: {initial_state}")
             for key, value in initial_state.items():
-                if key != "prompt":
+                if key != "prompt" and (key != "engine" or self.engine_name is None):
                     default_state[key] = value
 
         return await self.graph.ainvoke(default_state)

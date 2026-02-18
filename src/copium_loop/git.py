@@ -84,6 +84,18 @@ async def push(
     return await run_command("git", args, node=node)
 
 
+async def pull(
+    remote: str = "origin",
+    branch: str | None = None,
+    node: str | None = None,
+) -> dict:
+    """Pulls changes from the remote repository."""
+    args = ["pull", remote]
+    if branch:
+        args.append(branch)
+    return await run_command("git", args, node=node)
+
+
 async def add(path: str = ".", node: str | None = None) -> dict:
     """Adds files to the staging area."""
     return await run_command("git", ["add", path], node=node)
@@ -92,3 +104,44 @@ async def add(path: str = ".", node: str | None = None) -> dict:
 async def commit(message: str, node: str | None = None) -> dict:
     """Commits staged changes."""
     return await run_command("git", ["commit", "-m", message], node=node)
+
+
+async def get_repo_name(node: str | None = None) -> str:
+    """Extracts owner/repo from git remotes."""
+    import re
+
+    # Try origin first, then any available remote
+    remotes_to_try = ["origin"]
+    res = await run_command("git", ["remote"], node=node, capture_stderr=False)
+    all_remotes = res["output"].strip().splitlines()
+    for r in all_remotes:
+        if r != "origin":
+            remotes_to_try.append(r)
+
+    url = None
+    for remote in remotes_to_try:
+        try:
+            res = await run_command(
+                "git",
+                ["remote", "get-url", remote],
+                node=node,
+                capture_stderr=True,
+            )
+            if res["exit_code"] == 0:
+                url = res["output"].strip()
+                break
+        except Exception:
+            continue
+
+    if not url:
+        raise ValueError("Could not determine git remote URL.")
+
+    # Regex to match owner/repo at the end of the URL
+    # It looks for a : or / followed by two components separated by /
+    # Both components can contain dots, hyphens, and alphanumeric characters.
+    # The negative lookbehind (?<!/) ensures we don't match the protocol separator //
+    match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
+    if match:
+        return match.group(1)
+
+    raise ValueError(f"Could not parse repo name from remote URL: {url}")

@@ -15,5 +15,8 @@ def test_llm_engine_interface():
         def sanitize_for_prompt(self, text, _max_length=12000):
             return text
 
+        def get_required_tools(self):
+            return []
+
     engine = MockEngine()
     assert engine is not None

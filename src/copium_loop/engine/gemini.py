@@ -162,3 +162,7 @@ class GeminiEngine(LLMEngine):
             safe_text = safe_text[:max_length] + "\n... (truncated for brevity)"
 
         return safe_text
+
+    def get_required_tools(self) -> list[str]:
+        """Returns a list of required CLI tools for the Gemini engine."""
+        return ["gemini"]
