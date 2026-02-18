@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -25,8 +25,11 @@ async def test_jules_api_invoke_success():
         ) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch("builtins.open", mock_open()) as m_open,
+        patch(
+            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream,
     ):
+        mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
@@ -63,15 +66,7 @@ async def test_jules_api_invoke_success():
         assert "Jules API summary" in result
         assert "https://github.com/owner/repo/pull/1" in result
 
-        # Verify JULES_OUTPUT.txt was written
-        m_open.assert_called_once_with("JULES_OUTPUT.txt", "w", encoding="utf-8")
-        handle = m_open()
-        handle.write.assert_called_once()
-        written_content = handle.write.call_args[0][0]
-        assert "Jules API summary" in written_content
-        assert "https://github.com/owner/repo/pull/1" in written_content
-
-        # Verify pull was called
+        # Verify pull was called (default behavior when node is not architect/reviewer)
         mock_pull.assert_called_once()
 
         # Verify post payload
@@ -100,8 +95,11 @@ async def test_jules_api_invoke_success_200():
         ),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch("builtins.open", mock_open()),
+        patch(
+            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream,
     ):
+        mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation with 200 OK
@@ -145,8 +143,11 @@ async def test_jules_api_polling_retries():
         ) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch("builtins.open", mock_open()),
+        patch(
+            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream,
     ):
+        mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation
@@ -343,8 +344,11 @@ async def test_jules_api_pull_failure():
         ),
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch("builtins.open", mock_open()),
+        patch(
+            "copium_loop.engine.jules.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream,
     ):
+        mock_stream.return_value = ("output", 0, False, "")
         client = mock_client.return_value.__aenter__.return_value
 
         # Mock session creation

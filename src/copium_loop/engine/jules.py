@@ -12,6 +12,7 @@ from tenacity import (
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
 from copium_loop.engine.base import LLMEngine
 from copium_loop.git import get_current_branch, get_repo_name, pull
+from copium_loop.shell import stream_subprocess
 from copium_loop.telemetry import get_telemetry
 
 
@@ -39,6 +40,10 @@ MAX_PROMPT_LENGTH = 12000
 
 class JulesEngine(LLMEngine):
     """Concrete implementation of LLMEngine using Jules API."""
+
+    @property
+    def engine_type(self) -> str:
+        return "jules"
 
     def __init__(self, api_base_url: str = API_BASE_URL):
         self.api_base_url = api_base_url
@@ -181,6 +186,9 @@ class JulesEngine(LLMEngine):
                             elif "sessionFailed" in activity:
                                 title = "Session failed"
                                 desc = activity["sessionFailed"].get("reason", "")
+                            elif "agentMessaged" in activity:
+                                title = "Agent message"
+                                desc = activity["agentMessaged"].get("message", "")
 
                             if not title:
                                 # Fallback to top-level fields
@@ -204,7 +212,12 @@ class JulesEngine(LLMEngine):
                                     telemetry.log_output(node, msg + "\n")
 
                             # Update last_summary with any textual description we find
-                            if title or desc:
+                            # Prioritize agent messages
+                            if title == "Agent message" and desc:
+                                last_summary = desc
+                            elif (title or desc) and not last_summary.startswith(
+                                "VERDICT"
+                            ):
                                 last_summary = desc or title
 
                     if new_activity_found:
@@ -258,12 +271,20 @@ class JulesEngine(LLMEngine):
         # Fallback to activities for textual summary if not already found
         activities = status_data.get("activities", [])
         if not summary:
+            # Check for agentMessaged first
             for activity in reversed(activities):
-                # Check for description or other textual fields in activity
-                text = activity.get("description") or activity.get("text")
-                if text:
-                    summary = text
-                    break
+                if "agentMessaged" in activity:
+                    summary = activity["agentMessaged"].get("message", "")
+                    if summary:
+                        break
+
+            # Fallback to description/text
+            if not summary:
+                for activity in reversed(activities):
+                    text = activity.get("description") or activity.get("text")
+                    if text:
+                        summary = text
+                        break
 
         if pr_url:
             summary = (
@@ -284,6 +305,7 @@ class JulesEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
+        sync_locally: bool = True,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -332,20 +354,36 @@ class JulesEngine(LLMEngine):
             # 3. Extract results
             summary = self._extract_summary(status_data)
 
-            # 4. Capture Jules text output via a designated file
-            try:
-                with open("JULES_OUTPUT.txt", "w", encoding="utf-8") as f:
-                    f.write(summary)
-            except Exception as e:
-                if verbose:
-                    print(f"Warning: Failed to write JULES_OUTPUT.txt: {e}")
-
-            # 5. Pull changes locally if possible
-            res = await pull(node=node)
-            if res["exit_code"] != 0:
-                raise JulesSessionError(
-                    f"Failed to pull changes after Jules completion: {res['output']}"
-                )
+            # 4. Pull changes locally if possible and requested
+            if sync_locally:
+                if node == "coder":
+                    # Full pull for coder
+                    res = await pull(node=node)
+                    if res["exit_code"] != 0:
+                        raise JulesSessionError(
+                            f"Failed to pull changes after Jules completion: {res['output']}"
+                        )
+                elif node in ("architect", "reviewer"):
+                    # Selective sync for architect/reviewer: fetch + checkout JULES_OUTPUT.txt
+                    # git fetch
+                    await stream_subprocess("git", ["fetch"], os.environ, node, timeout)
+                    # git checkout FETCH_HEAD -- JULES_OUTPUT.txt
+                    # We use FETCH_HEAD because pull usually fetches into FETCH_HEAD
+                    output, exit_code, _, _ = await stream_subprocess(
+                        "git",
+                        ["checkout", "FETCH_HEAD", "--", "JULES_OUTPUT.txt"],
+                        os.environ,
+                        node,
+                        timeout,
+                    )
+                    # It's okay if JULES_OUTPUT.txt doesn't exist (node might not have written it)
+                else:
+                    # Default to full pull for other nodes
+                    res = await pull(node=node)
+                    if res["exit_code"] != 0:
+                        raise JulesSessionError(
+                            f"Failed to pull changes after Jules completion: {res['output']}"
+                        )
 
             return summary
 

@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 from langchain_core.messages import SystemMessage
 
@@ -26,50 +27,119 @@ async def architect(state: AgentState) -> dict:
     initial_commit_hash = state.get("initial_commit_hash", "")
     engine = state["engine"]
 
-    git_diff = ""
-    if initial_commit_hash and await is_git_repo(node="architect"):
-        try:
-            git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
-        except Exception as e:
-            msg = f"Error: Failed to get git diff: {e}\n"
+    is_jules = engine.engine_type == "jules"
+
+    if is_jules:
+        if not initial_commit_hash:
+            msg = "Error: Missing initial commit hash for Jules Architect.\n"
             telemetry.log_output("architect", msg)
             print(msg, end="")
             telemetry.log_status("architect", "error")
             return {
                 "architect_status": "error",
-                "messages": [SystemMessage(content=f"Failed to get git diff: {e}")],
+                "messages": [SystemMessage(content="Missing initial commit hash.")],
                 "retry_count": retry_count + 1,
             }
-    elif await is_git_repo(node="architect"):
-        # We are in a git repo but don't have an initial hash. This is unexpected.
-        msg = "Error: Missing initial commit hash in a git repository.\n"
-        telemetry.log_output("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        return {
-            "architect_status": "error",
-            "messages": [SystemMessage(content="Missing initial commit hash.")],
-            "retry_count": retry_count + 1,
-        }
 
-    safe_git_diff = engine.sanitize_for_prompt(git_diff)
+        system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
-    if not safe_git_diff.strip():
-        msg = "\nArchitectural decision: OK (no changes to review)\n"
-        telemetry.log_output("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "ok")
-        return {
-            "architect_status": "ok",
-            "messages": [
-                SystemMessage(
-                    content="No changes detected. Skipping architectural review."
+    Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
+
+    Your primary responsibility is to ensure the code changes adhere to architectural best practices:
+    1. Single Responsibility Principle (SRP): Each module/class should have one reason to change.
+    2. Open/Closed Principle (OCP): Entities should be open for extension but closed for modification.
+    3. Liskov Substitution Principle (LSP): Subtypes must be substitutable for their base types without altering the correctness of the program.
+    4. Interface Segregation Principle (ISP): No client should be forced to depend on methods it does not use.
+    5. Dependency Inversion Principle (DIP): Depend upon abstractions, not concretions.
+    6. Modularity: The code should be well-organized and modular.
+    7. File Size: Ensure files are not becoming too large and unwieldy.
+
+    You MUST provide your final verdict in the format: "VERDICT: OK" or "VERDICT: REFACTOR".
+    You MUST write your complete review and verdict to a file named JULES_OUTPUT.txt using the 'write_file' tool.
+
+    To do this, you MUST activate the 'architect' skill and provide it with the necessary context.
+    Instruct the skill to evaluate the diff (which you calculated) for all SOLID principles, modularity, and overall architecture.
+    After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
+    determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
+
+        try:
+            architect_content = await engine.invoke(
+                system_prompt,
+                ["--yolo"],
+                models=MODELS,
+                verbose=state.get("verbose"),
+                label="Architect System",
+                node="architect",
+                sync_locally=True,
+            )
+
+            # Check for JULES_OUTPUT.txt
+            jules_output_file = Path("JULES_OUTPUT.txt")
+            if jules_output_file.exists():
+                jules_content = jules_output_file.read_text()
+                # Use content from file if available, as it's the source of truth
+                architect_content = jules_content
+
+        except Exception as e:
+            msg = f"Error during architectural evaluation: {e}\n"
+            telemetry.log_output("architect", msg)
+            print(msg, end="")
+            telemetry.log_status("architect", "error")
+            return {
+                "architect_status": "error",
+                "messages": [
+                    SystemMessage(content=f"Architect encountered an error: {e}")
+                ],
+                "retry_count": retry_count + 1,
+            }
+
+    else:
+        git_diff = ""
+        if initial_commit_hash and await is_git_repo(node="architect"):
+            try:
+                git_diff = await get_diff(
+                    initial_commit_hash, head=None, node="architect"
                 )
-            ],
-            "retry_count": retry_count,
-        }
+            except Exception as e:
+                msg = f"Error: Failed to get git diff: {e}\n"
+                telemetry.log_output("architect", msg)
+                print(msg, end="")
+                telemetry.log_status("architect", "error")
+                return {
+                    "architect_status": "error",
+                    "messages": [SystemMessage(content=f"Failed to get git diff: {e}")],
+                    "retry_count": retry_count + 1,
+                }
+        elif await is_git_repo(node="architect"):
+            # We are in a git repo but don't have an initial hash. This is unexpected.
+            msg = "Error: Missing initial commit hash in a git repository.\n"
+            telemetry.log_output("architect", msg)
+            print(msg, end="")
+            telemetry.log_status("architect", "error")
+            return {
+                "architect_status": "error",
+                "messages": [SystemMessage(content="Missing initial commit hash.")],
+                "retry_count": retry_count + 1,
+            }
 
-    system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
+        safe_git_diff = engine.sanitize_for_prompt(git_diff)
+
+        if not safe_git_diff.strip():
+            msg = "\nArchitectural decision: OK (no changes to review)\n"
+            telemetry.log_output("architect", msg)
+            print(msg, end="")
+            telemetry.log_status("architect", "ok")
+            return {
+                "architect_status": "ok",
+                "messages": [
+                    SystemMessage(
+                        content="No changes detected. Skipping architectural review."
+                    )
+                ],
+                "retry_count": retry_count,
+            }
+
+        system_prompt = f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
     <git_diff>
     {safe_git_diff}
@@ -94,25 +164,27 @@ async def architect(state: AgentState) -> dict:
     After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REFACTOR"),
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
-    try:
-        architect_content = await engine.invoke(
-            system_prompt,
-            ["--yolo"],
-            models=MODELS,
-            verbose=state.get("verbose"),
-            label="Architect System",
-            node="architect",
-        )
-    except Exception as e:
-        msg = f"Error during architectural evaluation: {e}\n"
-        telemetry.log_output("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        return {
-            "architect_status": "error",
-            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
-            "retry_count": retry_count + 1,
-        }
+        try:
+            architect_content = await engine.invoke(
+                system_prompt,
+                ["--yolo"],
+                models=MODELS,
+                verbose=state.get("verbose"),
+                label="Architect System",
+                node="architect",
+            )
+        except Exception as e:
+            msg = f"Error during architectural evaluation: {e}\n"
+            telemetry.log_output("architect", msg)
+            print(msg, end="")
+            telemetry.log_status("architect", "error")
+            return {
+                "architect_status": "error",
+                "messages": [
+                    SystemMessage(content=f"Architect encountered an error: {e}")
+                ],
+                "retry_count": retry_count + 1,
+            }
 
     verdict = _parse_verdict(architect_content)
     if not verdict:
