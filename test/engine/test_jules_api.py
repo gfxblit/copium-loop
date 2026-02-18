@@ -456,17 +456,13 @@ async def test_jules_api_poll_session_logs():
 
         # Verify telemetry calls
         assert mock_telemetry.log_output.call_count == 2
-        mock_telemetry.log_output.assert_any_call(
-            "test_node", "[sessions/sess_123] Step 1\n"
-        )
-        mock_telemetry.log_output.assert_any_call(
-            "test_node", "[sessions/sess_123] Step 2: Doing work\n"
-        )
+        mock_telemetry.log_output.assert_any_call("test_node", "Step 1\n")
+        mock_telemetry.log_output.assert_any_call("test_node", "Step 2: Doing work\n")
 
         # Verify print calls
         assert mock_print.call_count == 2
-        mock_print.assert_any_call("[sessions/sess_123] Step 1")
-        mock_print.assert_any_call("[sessions/sess_123] Step 2: Doing work")
+        mock_print.assert_any_call("Step 1")
+        mock_print.assert_any_call("Step 2: Doing work")
 
 
 def test_jules_engine_sanitize_for_prompt():

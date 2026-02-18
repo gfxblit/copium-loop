@@ -201,7 +201,7 @@ class JulesEngine(LLMEngine):
                             if title == "Activity update" and not desc:
                                 pass
                             else:
-                                msg = f"[{session_name}] {title}"
+                                msg = f"{title}"
                                 if desc:
                                     msg += f": {desc}"
 
