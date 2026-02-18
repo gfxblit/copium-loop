@@ -34,7 +34,8 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="architect"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
 
-    safe_git_diff = git_diff  # We assume engine handles sanitization if needed, or we can sanitize here
+    engine = state["engine"]
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
@@ -96,7 +97,8 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="reviewer"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="reviewer")
 
-    safe_git_diff = git_diff
+    engine = state["engine"]
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
 
