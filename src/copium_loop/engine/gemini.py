@@ -80,7 +80,8 @@ class GeminiEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        jules_metadata: dict[str, str] | None = None,
+        jules_metadata: dict[str, str] | None = None,  # noqa: ARG002
+        session_manager: Any | None = None,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Gemini CLI with a prompt, supporting model fallback.

@@ -379,6 +379,7 @@ class JulesEngine(LLMEngine):
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
         jules_metadata: dict[str, str] | None = None,
+        session_manager: Any | None = None,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -415,55 +416,65 @@ class JulesEngine(LLMEngine):
         async with httpx.AsyncClient(timeout=30.0) as client:
             session_name = None
 
-            # Check for existing session if jules_metadata is provided
-            if jules_metadata and node:
+            # 1. Check for existing session
+            if session_manager and node:
+                session_name = session_manager.get_jules_session(node)
+            elif jules_metadata and node:
                 session_name = jules_metadata.get(node)
-                if session_name:
-                    if verbose:
-                        print(f"[{node}] Found existing Jules session: {session_name}")
 
-                    # Verify session is still valid/running
-                    try:
-                        resp = await self._request_with_retry(
-                            "Network error checking session status",
-                            client.get,
-                            f"{self.api_base_url}/{session_name}",
-                            headers=self._get_headers(),
-                        )
-                        if resp.status_code == 200:
-                            state = resp.json().get("state")
-                            if state in ["COMPLETED", "FAILED"]:
-                                # If completed or failed, we probably want to start a new one
-                                # UNLESS we are specifically continuing to get the result.
-                                # But invoke() implies we want to *do* something.
-                                # If it completed, we return the result.
-                                if verbose:
-                                    print(f"[{node}] Session {session_name} is {state}. Resuming to get results.")
-                            else:
-                                if verbose:
-                                    print(f"[{node}] Resuming active session: {session_name}")
-                        else:
-                            # Session might be gone or inaccessible
+            if session_name:
+                if verbose:
+                    print(f"[{node}] Found existing Jules session: {session_name}")
+
+                # Verify session is still valid/running
+                try:
+                    resp = await self._request_with_retry(
+                        "Network error checking session status",
+                        client.get,
+                        f"{self.api_base_url}/{session_name}",
+                        headers=self._get_headers(),
+                    )
+                    if resp.status_code == 200:
+                        state = resp.json().get("state")
+                        if state in ["COMPLETED", "FAILED"]:
                             if verbose:
-                                print(f"[{node}] Existing session invalid (status {resp.status_code}). Starting new one.")
-                            session_name = None
-                    except Exception as e:
+                                print(
+                                    f"[{node}] Session {session_name} is {state}. Resuming to get results."
+                                )
+                        else:
+                            if verbose:
+                                print(
+                                    f"[{node}] Resuming active session: {session_name}"
+                                )
+                    else:
                         if verbose:
-                            print(f"[{node}] Error checking existing session: {e}. Starting new one.")
+                            print(
+                                f"[{node}] Existing session invalid (status {resp.status_code}). Starting new one."
+                            )
                         session_name = None
+                except Exception as e:
+                    if verbose:
+                        print(
+                            f"[{node}] Error checking existing session: {e}. Starting new one."
+                        )
+                    session_name = None
 
             if not session_name:
-                # 1. Create session
-                session_name = await self._create_session(client, safe_prompt, repo, branch)
+                # 2. Create session
+                session_name = await self._create_session(
+                    client, safe_prompt, repo, branch
+                )
 
                 if verbose:
                     print(f"Jules session created: {session_name}")
 
-                # Persist session ID
-                if jules_metadata is not None and node:
+                # Persist session ID immediately
+                if session_manager and node:
+                    session_manager.update_jules_session(node, session_name)
+                elif jules_metadata is not None and node:
                     jules_metadata[node] = session_name
 
-            # 2. Poll for completion
+            # 3. Poll for completion
             status_data = await self._poll_session(
                 client, session_name, timeout, inactivity, node, verbose
             )

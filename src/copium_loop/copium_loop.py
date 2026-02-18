@@ -61,14 +61,16 @@ class WorkflowManager:
         async def wrapper(state: AgentState):
             telemetry = get_telemetry()
             try:
-                # Inject engine if the node expects it
+                # Inject engine and session_manager if the node expects it
                 if node_name in ["coder", "architect", "reviewer", "journaler"]:
                     result = await asyncio.wait_for(
-                        node_func(state, self.engine),
+                        node_func(state, self.engine, self.session_manager),
                         timeout=NODE_TIMEOUT,
                     )
                 else:
-                    result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
+                    result = await asyncio.wait_for(
+                        node_func(state), timeout=NODE_TIMEOUT
+                    )
 
                 # Persist jules_metadata if updated
                 if isinstance(result, dict) and "jules_metadata" in result:
@@ -77,7 +79,7 @@ class WorkflowManager:
                     for node_key, session_id in new_metadata.items():
                         if self.session_manager:
                             self.session_manager.update_jules_session(node_key, session_id)
-                
+
                 return result
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
@@ -159,9 +161,9 @@ class WorkflowManager:
         telemetry = get_telemetry()
         if not self.session_id:
             self.session_id = telemetry.session_id
-        
+
         self.session_manager = SessionManager(self.session_id)
-        
+
         # Determine engine
         self.engine = get_engine(self.engine_name)
         if initial_state and "engine" in initial_state and self.engine_name is None:

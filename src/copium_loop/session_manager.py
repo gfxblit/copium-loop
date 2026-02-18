@@ -3,7 +3,6 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
 
 
 @dataclass
@@ -11,8 +10,8 @@ class SessionData:
     """Data structure for a persistent session."""
 
     session_id: str
-    jules_sessions: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, str] = field(default_factory=dict)
+    jules_sessions: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -38,7 +37,7 @@ class SessionManager:
         self.state_dir = Path.home() / ".copium" / "sessions"
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.state_file = self.state_dir / f"{session_id}.json"
-        self._data: Optional[SessionData] = None
+        self._data: SessionData | None = None
         self._load()
 
     def _load(self):
@@ -82,13 +81,13 @@ class SessionManager:
         self._data.jules_sessions[node] = jules_session_id
         self._save()
 
-    def get_jules_session(self, node: str) -> Optional[str]:
+    def get_jules_session(self, node: str) -> str | None:
         """Retrieves the Jules session ID for a specific node."""
         if not self._data:
             self._load()
         return self._data.jules_sessions.get(node)
 
-    def get_all_jules_sessions(self) -> Dict[str, str]:
+    def get_all_jules_sessions(self) -> dict[str, str]:
         """Retrieves all Jules session IDs."""
         if not self._data:
             self._load()
@@ -101,7 +100,7 @@ class SessionManager:
         self._data.metadata[key] = value
         self._save()
 
-    def get_metadata(self, key: str) -> Optional[str]:
+    def get_metadata(self, key: str) -> str | None:
         """Retrieves metadata."""
         if not self._data:
             self._load()

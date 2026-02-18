@@ -199,7 +199,7 @@ class TestWorkflowRun:
 
     @pytest.mark.asyncio
     async def test_wrap_node_exception_handling(self, workflow):
-        async def failing_node(_state, *args, **kwargs):
+        async def failing_node(_state, *_args, **_kwargs):
             raise ValueError("node failed")
 
         wrapped = workflow._wrap_node("coder", failing_node)
@@ -358,7 +358,7 @@ class TestNodeTimeouts:
     ):
         """Test that nodes time out and update state accordingly."""
 
-        async def slow_node(_state, *args, **kwargs):
+        async def slow_node(_state, *_args, **_kwargs):
             await asyncio.sleep(2)  # Simulate a node taking too long
             return {
                 "arbitrary_key": "arbitrary_value"

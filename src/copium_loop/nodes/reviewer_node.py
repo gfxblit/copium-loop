@@ -3,7 +3,9 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import LLMEngine
 from copium_loop.nodes.utils import get_reviewer_prompt
+from copium_loop.session_manager import SessionManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -17,10 +19,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-from copium_loop.engine.base import LLMEngine
-
-
-async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
+async def reviewer_node(state: AgentState, engine: LLMEngine, session_manager: SessionManager | None = None) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
     telemetry.log_output("reviewer", "--- Reviewer Node ---\n")
@@ -61,7 +60,6 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
                 SystemMessage(content="No changes detected. Skipping review.")
             ],
             "retry_count": retry_count,
-            "jules_metadata": state.get("jules_metadata"),
         }
 
     try:
@@ -72,7 +70,7 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
-            jules_metadata=state.get("jules_metadata"),
+            session_manager=session_manager,
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
@@ -83,7 +81,6 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
             "retry_count": retry_count + 1,
-            "jules_metadata": state.get("jules_metadata"),
         }
 
     verdict = _parse_verdict(review_content)
@@ -96,7 +93,6 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=review_content)],
             "retry_count": retry_count + 1,
-            "jules_metadata": state.get("jules_metadata"),
         }
 
     is_approved = verdict == "APPROVED"
@@ -109,5 +105,4 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
         "review_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
-        "jules_metadata": state.get("jules_metadata"),
     }

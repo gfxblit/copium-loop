@@ -1,9 +1,8 @@
 import json
-import os
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 from copium_loop.session_manager import SessionManager
 
 
@@ -25,7 +24,8 @@ def test_session_manager_initialization(temp_session_dir):
     assert manager.state_file == temp_session_dir / "test_session.json"
 
 
-def test_save_and_load_session(temp_session_dir):
+@pytest.mark.usefixtures("temp_session_dir")
+def test_save_and_load_session():
     """Test saving and loading session data."""
     manager = SessionManager("test_session")
     manager.update_jules_session("node1", "session_123")
@@ -49,12 +49,13 @@ def test_save_and_load_session(temp_session_dir):
     assert new_manager.get_metadata("key1") == "value1"
 
 
-def test_atomic_write(temp_session_dir):
-    """Test that writes are atomic (using a mock to simulate failure during write if possible, 
+@pytest.mark.usefixtures("temp_session_dir")
+def test_atomic_write():
+    """Test that writes are atomic (using a mock to simulate failure during write if possible,
     or just ensuring the file is valid)."""
     manager = SessionManager("test_session")
     manager.update_jules_session("node1", "session_123")
-    
+
     # Check that temp file is cleaned up
     # This is hard to test directly without mocking NamedTemporaryFile or os.replace
     # But we can check that the final file is valid JSON
@@ -74,11 +75,11 @@ def test_corrupted_session_file(temp_session_dir):
     manager = SessionManager("corrupted_session")
     # Should initialize with empty state despite corruption
     assert manager.get_jules_session("node1") is None
-    
+
     # Should be able to save new data overwriting corruption
     manager.update_jules_session("node1", "new_session")
     assert manager.get_jules_session("node1") == "new_session"
-    
+
     with open(manager.state_file) as f:
         data = json.load(f)
         assert data["jules_sessions"]["node1"] == "new_session"

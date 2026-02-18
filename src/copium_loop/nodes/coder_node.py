@@ -1,15 +1,14 @@
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.engine.base import LLMEngine
 from copium_loop.nodes.utils import get_coder_prompt
+from copium_loop.session_manager import SessionManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-from copium_loop.engine.base import LLMEngine
-
-
-async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
+async def coder_node(state: AgentState, engine: LLMEngine, session_manager: SessionManager | None = None) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("coder", "active")
     telemetry.log_output("coder", "--- Coder Node ---\n")
@@ -26,7 +25,7 @@ async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
         verbose=state.get("verbose"),
         label="Coder System",
         node="coder",
-        jules_metadata=state.get("jules_metadata"),
+        session_manager=session_manager,
     )
     telemetry.log_output("coder", "\nCoding complete.\n")
     print("\nCoding complete.")
@@ -35,5 +34,4 @@ async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
     return {
         "code_status": "coded",
         "messages": [SystemMessage(content=code_content)],
-        "jules_metadata": state.get("jules_metadata"),
     }

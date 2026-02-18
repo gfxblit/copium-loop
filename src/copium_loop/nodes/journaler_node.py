@@ -1,11 +1,12 @@
 from copium_loop.constants import MODELS
 from copium_loop.engine.base import LLMEngine
 from copium_loop.memory import MemoryManager
+from copium_loop.session_manager import SessionManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
+async def journaler_node(state: AgentState, engine: LLMEngine, session_manager: SessionManager | None = None) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("journaler", "active")
     telemetry.log_output("journaler", "--- Journaling Node ---\n")
@@ -76,7 +77,7 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
             verbose=state.get("verbose"),
             label="Journaler System",
             node="journaler",
-            jules_metadata=state.get("jules_metadata"),
+            session_manager=session_manager,
         )
 
         lesson = lesson.strip().strip('"').strip("'")
@@ -93,7 +94,6 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
             return {
                 "journal_status": "no_lesson",
                 "review_status": new_review_status,
-                "jules_metadata": state.get("jules_metadata"),
             }
 
         memory_manager.log_learning(lesson)
@@ -105,7 +105,6 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
         return {
             "journal_status": "journaled",
             "review_status": new_review_status,
-            "jules_metadata": state.get("jules_metadata"),
         }
 
     except Exception as e:
@@ -120,5 +119,4 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
         return {
             "journal_status": "failed",
             "review_status": fallback_status,
-            "jules_metadata": state.get("jules_metadata"),
         }
