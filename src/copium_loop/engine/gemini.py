@@ -1,7 +1,7 @@
 import os
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT, MODELS
-from copium_loop.engine.base import LLMEngine, SyncStrategy
+from copium_loop.engine.base import LLMEngine
 from copium_loop.shell import stream_subprocess
 from copium_loop.telemetry import get_telemetry
 
@@ -79,7 +79,6 @@ class GeminiEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        sync_strategy: SyncStrategy | None = None,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Gemini CLI with a prompt, supporting model fallback.

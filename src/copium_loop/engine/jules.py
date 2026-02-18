@@ -9,9 +9,9 @@ from tenacity import (
     wait_exponential,
 )
 
+from copium_loop import git
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT
-from copium_loop.engine.base import LLMEngine, LLMError, SyncStrategy
-from copium_loop.git import get_current_branch, get_repo_name
+from copium_loop.engine.base import LLMEngine, LLMError
 from copium_loop.telemetry import get_telemetry
 
 
@@ -304,7 +304,6 @@ class JulesEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        sync_strategy: SyncStrategy | None = None,
     ) -> str:
         """
         Invokes the Jules API to create a remote session, polls for completion,
@@ -324,11 +323,11 @@ class JulesEngine(LLMEngine):
             print("-" * len(banner) + "\n")
 
         try:
-            repo = await get_repo_name(node=node)
+            repo = await git.get_repo_name(node=node)
         except ValueError as e:
             raise JulesRepoError(str(e)) from e
 
-        branch = await get_current_branch(node=node)
+        branch = await git.get_current_branch(node=node)
 
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
@@ -353,9 +352,14 @@ class JulesEngine(LLMEngine):
             # 3. Extract results
             summary = self._extract_summary(status_data)
 
-            # 4. Execute sync strategy if provided
-            if sync_strategy:
-                await sync_strategy.execute(node or "unknown", timeout)
+            # 4. Handle sync if necessary
+            # For coder node, we pull changes from Jules (remote commits)
+            if node == "coder":
+                if verbose:
+                    print(f"[{node}] Syncing changes from remote...")
+                res = await git.pull(node=node)
+                if res["exit_code"] != 0:
+                    raise LLMError(f"Failed to pull changes: {res['output']}")
 
             return summary
 

@@ -43,8 +43,8 @@ async def test_nodes_do_not_call_get_all_memories(mock_engine):
     assert "## Project-Specific Memory" not in prompt
 
     mock_engine.invoke.reset_mock()
-    with patch.object(
-        architect_module, "get_diff", new_callable=AsyncMock
+    with patch(
+        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
     ) as mock_arch_diff:
         mock_arch_diff.return_value = "diff"
         mock_engine.invoke.return_value = "VERDICT: OK"
@@ -54,8 +54,8 @@ async def test_nodes_do_not_call_get_all_memories(mock_engine):
         assert "## Project-Specific Memory" not in prompt
 
     mock_engine.invoke.reset_mock()
-    with patch.object(
-        reviewer_module, "get_diff", new_callable=AsyncMock
+    with patch(
+        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
     ) as mock_rev_diff:
         mock_rev_diff.return_value = "diff"
         mock_engine.invoke.return_value = "VERDICT: APPROVED"
