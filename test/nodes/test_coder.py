@@ -153,3 +153,18 @@ class TestCoderNode:
             in prompt
         )
         assert "Architecture needs improvement: file too large." in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_jules_prompt_includes_force_push(self, mock_engine):
+        """Test that coder node includes force push instruction when using jules engine."""
+        mock_engine.engine_type = "jules"
+        state = {
+            "messages": [HumanMessage(content="Test jules prompt")],
+            "engine": mock_engine,
+        }
+        await coder(state)
+
+        # Check that the prompt contains the force push instruction
+        call_args = mock_engine.invoke.call_args[0]
+        prompt = call_args[0]
+        assert "You MUST explicitly use 'git push --force'" in prompt
