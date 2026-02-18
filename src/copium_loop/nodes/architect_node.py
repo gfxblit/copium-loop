@@ -24,7 +24,6 @@ async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
     telemetry.log_output("architect", "--- Architect Node ---\n")
     print("--- Architect Node ---")
     retry_count = state.get("retry_count", 0)
-    jules_metadata = state.get("jules_metadata", {})
 
     try:
         system_prompt = await get_architect_prompt(engine.engine_type, state)
@@ -63,7 +62,6 @@ async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
             verbose=state.get("verbose"),
             label="Architect System",
             node="architect",
-            jules_metadata=jules_metadata,
         )
     except Exception as e:
         msg = f"Error during architectural evaluation: {e}\n"
@@ -98,5 +96,4 @@ async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
         "architect_status": "ok" if is_ok else "refactor",
         "messages": [SystemMessage(content=architect_content)],
         "retry_count": retry_count if is_ok else retry_count + 1,
-        "jules_metadata": jules_metadata,
     }

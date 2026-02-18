@@ -14,7 +14,6 @@ async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
     print("--- Coder Node ---")
 
     system_prompt = await get_coder_prompt(engine.engine_type, state, engine)
-    jules_metadata = state.get("jules_metadata", {})
 
     # Start with "auto" (None), then fallback to default models
     coder_models = [None] + MODELS
@@ -25,7 +24,6 @@ async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
         verbose=state.get("verbose"),
         label="Coder System",
         node="coder",
-        jules_metadata=jules_metadata,
     )
     telemetry.log_output("coder", "\nCoding complete.\n")
     print("\nCoding complete.")
@@ -34,5 +32,4 @@ async def coder_node(state: AgentState, engine: LLMEngine) -> dict:
     return {
         "code_status": "coded",
         "messages": [SystemMessage(content=code_content)],
-        "jules_metadata": jules_metadata,
     }

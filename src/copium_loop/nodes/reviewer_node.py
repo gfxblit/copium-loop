@@ -25,7 +25,6 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
     print("--- Reviewer Node ---")
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)
-    jules_metadata = state.get("jules_metadata", {})
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
@@ -70,7 +69,6 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
-            jules_metadata=jules_metadata,
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
@@ -105,5 +103,4 @@ async def reviewer_node(state: AgentState, engine: LLMEngine) -> dict:
         "review_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
-        "jules_metadata": jules_metadata,
     }

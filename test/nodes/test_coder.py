@@ -169,7 +169,7 @@ class TestCoderNode:
             "messages": [HumanMessage(content="Test gemini prompt")],
             "engine": mock_engine,
         }
-        await coder(state)
+        await coder(state, mock_engine)
 
         # Check that the prompt contains the tdd-guide skill instruction
         call_args = mock_engine.invoke.call_args[0]

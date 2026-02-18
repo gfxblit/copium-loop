@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from copium_loop.constants import COMMAND_TIMEOUT, INACTIVITY_TIMEOUT, MODELS
 from copium_loop.engine.base import LLMEngine
@@ -81,7 +82,7 @@ class GeminiEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        jules_metadata: dict[str, str] | None = None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> str:
         """
         Invokes the Gemini CLI with a prompt, supporting model fallback.

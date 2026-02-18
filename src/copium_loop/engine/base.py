@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any
+
+from copium_loop.session_manager import SessionManager
 
 
 class LLMError(Exception):
@@ -7,6 +10,13 @@ class LLMError(Exception):
 
 class LLMEngine(ABC):
     """Abstract base class for LLM engines."""
+
+    def __init__(self):
+        self.session_manager: SessionManager | None = None
+
+    def set_session_manager(self, session_manager: SessionManager):
+        """Sets the session manager for the engine."""
+        self.session_manager = session_manager
 
     @property
     @abstractmethod
@@ -25,7 +35,7 @@ class LLMEngine(ABC):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        jules_metadata: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> str:
         """Invokes the LLM with a prompt."""
         pass

@@ -72,16 +72,6 @@ class WorkflowManager:
                         node_func(state), timeout=NODE_TIMEOUT
                     )
 
-                # Persist jules_metadata if updated
-                if isinstance(result, dict) and "jules_metadata" in result:
-                    new_metadata = result["jules_metadata"]
-                    # Update session manager with new sessions
-                    for node_key, session_id in new_metadata.items():
-                        if self.session_manager:
-                            self.session_manager.update_jules_session(
-                                node_key, session_id
-                            )
-
                 return result
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
@@ -171,6 +161,9 @@ class WorkflowManager:
         if initial_state and "engine" in initial_state and self.engine_name is None:
             self.engine = initial_state["engine"]
 
+        if self.session_manager:
+            self.engine.set_session_manager(self.session_manager)
+
         if not await self.verify_environment(self.engine):
             return {"error": "Environment verification failed."}
 
@@ -258,9 +251,6 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
-            "jules_metadata": self.session_manager.get_all_jules_sessions()
-            if self.session_manager
-            else {},
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
