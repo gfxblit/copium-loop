@@ -38,6 +38,7 @@ API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 POLLING_INTERVAL = 10
 MAX_PROMPT_LENGTH = 12000
 MAX_API_RETRIES = 10
+MAX_ACTIVITY_DESC_LENGTH = 1000
 
 
 class JulesEngine(LLMEngine):
@@ -178,6 +179,8 @@ class JulesEngine(LLMEngine):
                                 args = tool_call.get("args")
                                 if args:
                                     desc = str(args)
+                                    if len(desc) > MAX_ACTIVITY_DESC_LENGTH:
+                                        desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
                             elif "toolCallCompleted" in activity:
                                 tool_resp = activity["toolCallCompleted"]
                                 title = (
@@ -191,6 +194,8 @@ class JulesEngine(LLMEngine):
                             elif "agentMessaged" in activity:
                                 title = "Agent message"
                                 desc = activity["agentMessaged"].get("message", "")
+                                if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
+                                    desc = desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
 
                             if not title:
                                 # Fallback to top-level fields
