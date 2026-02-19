@@ -175,7 +175,17 @@ class JulesEngine(LLMEngine):
                                 plan = activity["planGenerated"].get("plan", {})
                                 steps = plan.get("steps", [])
                                 if steps:
-                                    desc = f"{len(steps)} steps planned"
+                                    step_descs = []
+                                    for i, step in enumerate(steps, 1):
+                                        s_desc = (
+                                            step.get("description")
+                                            or step.get("text")
+                                            or "No description"
+                                        )
+                                        step_descs.append(f"{i}. {s_desc}")
+                                    desc = f"{len(steps)} steps planned:\n" + "\n".join(
+                                        step_descs
+                                    )
                             elif "toolCallStarted" in activity:
                                 tool_call = activity["toolCallStarted"]
                                 title = f"Tool Call: {tool_call.get('toolName')}"
