@@ -25,7 +25,9 @@ async def test_get_repo_name_parsing():
 
             repo = await get_repo_name()
             assert repo == expected
-            mock_run.assert_called_with("git", ["remote", "-v"], node=None, capture_stderr=False)
+            mock_run.assert_called_with(
+                "git", ["remote", "-v"], node=None, capture_stderr=False
+            )
 
 
 @pytest.mark.asyncio
@@ -49,6 +51,7 @@ async def test_get_repo_name_unsupported_url():
         ):
             await get_repo_name()
 
+
 @pytest.mark.asyncio
 async def test_get_repo_name_multiple_remotes():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
@@ -65,6 +68,7 @@ async def test_get_repo_name_multiple_remotes():
         repo = await get_repo_name()
         # Should pick origin
         assert repo == "myuser/myfork"
+
 
 @pytest.mark.asyncio
 async def test_get_repo_name_fallback_no_origin():
