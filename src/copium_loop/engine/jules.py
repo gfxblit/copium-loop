@@ -39,7 +39,7 @@ API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 POLLING_INTERVAL = 10
 MAX_PROMPT_LENGTH = 12000
 MAX_API_RETRIES = 10
-MAX_ACTIVITY_DESC_LENGTH = 1000
+MAX_TELEMETRY_LOG_LENGTH = 1000
 
 
 class JulesEngine(LLMEngine):
@@ -213,19 +213,24 @@ class JulesEngine(LLMEngine):
                                 # Fallback to top-level fields
                                 title = desc or "Activity update"
 
-                            # Consistently truncate description
-                            if desc and len(desc) > MAX_ACTIVITY_DESC_LENGTH:
-                                desc = (
-                                    desc[:MAX_ACTIVITY_DESC_LENGTH] + "... (truncated)"
+                            # Consistently truncate description for display
+                            display_desc = desc
+                            if (
+                                display_desc
+                                and len(display_desc) > MAX_TELEMETRY_LOG_LENGTH
+                            ):
+                                display_desc = (
+                                    display_desc[:MAX_TELEMETRY_LOG_LENGTH]
+                                    + "... (truncated)"
                                 )
 
                             # Filter out useless generic updates
-                            if title == "Activity update" and not desc:
+                            if title == "Activity update" and not display_desc:
                                 pass
                             else:
                                 msg = f"{title}"
-                                if desc:
-                                    msg += f": {desc}"
+                                if display_desc:
+                                    msg += f": {display_desc}"
 
                                 if verbose:
                                     print(msg)
