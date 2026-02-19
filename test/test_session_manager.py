@@ -28,7 +28,7 @@ def test_session_manager_initialization(temp_session_dir):
 def test_save_and_load_session():
     """Test saving and loading session data."""
     manager = SessionManager("test_session")
-    manager.update_jules_session("node1", "session_123")
+    manager.update_jules_session("node1", "session_123", prompt_hash="test_hash")
     manager.update_metadata("key1", "value1")
 
     # Verify data in memory
@@ -54,7 +54,7 @@ def test_atomic_write():
     """Test that writes are atomic (using a mock to simulate failure during write if possible,
     or just ensuring the file is valid)."""
     manager = SessionManager("test_session")
-    manager.update_jules_session("node1", "session_123")
+    manager.update_jules_session("node1", "session_123", prompt_hash="test_hash")
 
     # Check that temp file is cleaned up
     # This is hard to test directly without mocking NamedTemporaryFile or os.replace
@@ -77,7 +77,7 @@ def test_corrupted_session_file(temp_session_dir):
     assert manager.get_jules_session("node1") is None
 
     # Should be able to save new data overwriting corruption
-    manager.update_jules_session("node1", "new_session")
+    manager.update_jules_session("node1", "new_session", prompt_hash="new_hash")
     assert manager.get_jules_session("node1") == "new_session"
 
     with open(manager.state_file) as f:

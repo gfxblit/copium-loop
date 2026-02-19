@@ -1,4 +1,4 @@
-from copium_loop.session_manager import SessionData, SessionManager
+from copium_loop.session_manager import SessionManager
 
 
 def test_session_manager_engine_state(tmp_path):

@@ -97,7 +97,7 @@ class SessionManager:
 
         return None
 
-    def update_jules_session(self, node: str, jules_session_id: str, prompt_hash: str = "default_hash"):
+    def update_jules_session(self, node: str, jules_session_id: str, prompt_hash: str):
         """Updates the Jules session ID for a specific node."""
         self.update_engine_state("jules", node, {"session_id": jules_session_id, "prompt_hash": prompt_hash})
 
@@ -108,7 +108,7 @@ class SessionManager:
             return state.get("session_id")
         return None
 
-    def get_all_jules_sessions(self) -> dict[str, str]:
+    def get_all_jules_sessions(self) -> dict[str, str | None]:
         """Retrieves all Jules session IDs."""
         if not self._data:
             self._load()
@@ -116,10 +116,9 @@ class SessionManager:
         sessions = {}
         if "jules" in self._data.engine_state:
             for k, v in self._data.engine_state["jules"].items():
+                # No backward compatibility: only return dict with prompt_hash
                 if isinstance(v, dict) and v.get("prompt_hash"):
-                    session_id = v.get("session_id")
-                    if session_id:
-                        sessions[k] = session_id
+                    sessions[k] = v.get("session_id")
         return sessions
 
     def update_metadata(self, key: str, value: str):
