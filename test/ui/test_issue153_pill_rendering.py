@@ -16,18 +16,11 @@ def test_matrix_pillar_title_rendering_issue153():
     assert "◗" in plain
     assert " ▶ CODER " in plain
 
-    # Check styles (implementation detail: Text stores spans with styles)
-    # We expect 3 parts: left cap, middle text, right cap
-    # Text.assemble usually merges them into one Text object with spans if styled differently
-    # But here they share the same background color?
-    # Left: ("◖", status_color) -> fg=status_color
-    # Middle: (..., "bold black on {status_color}") -> fg=black, bg=status_color, bold
-    # Right: ("◗", status_color) -> fg=status_color
-
-    # Let's inspect spans to be sure
-    # Since we can't easily inspect internal rich structure without fragility, checking the plain text
-    # and ensuring no regression in the general shape is good.
-    # But we can check if the status color is used.
+    # Verify styles are present
+    assert len(title.spans) > 0
+    # At least one span should contain the status color in its style definition
+    status_color = pillar.get_status_color()
+    assert any(status_color in str(span.style) for span in title.spans)
 
     # 2. Success Status
     # Requirement: ◖ ... ✔ {name} ... ◗
