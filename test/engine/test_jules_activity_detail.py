@@ -31,7 +31,12 @@ async def test_poll_session_detailed_activities():
                         {
                             "id": "act1",
                             "planGenerated": {
-                                "plan": {"steps": [{"description": "Step 1"}]}
+                                "plan": {
+                                    "steps": [
+                                        {"description": "Step 1: Analyze"},
+                                        {"description": "Step 2: Implement"},
+                                    ]
+                                }
                             },
                         },
                         {
@@ -78,3 +83,9 @@ async def test_poll_session_detailed_activities():
             assert (
                 "Activity update" not in call or "ls" in call or "plan" in call.lower()
             )
+
+        # Specifically verify plan steps
+        plan_output = next(c for c in calls if "Plan generated" in c)
+        assert "2 steps planned" in plan_output
+        assert "1. Step 1: Analyze" in plan_output
+        assert "2. Step 2: Implement" in plan_output
