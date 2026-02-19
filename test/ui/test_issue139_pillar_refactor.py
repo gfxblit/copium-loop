@@ -18,13 +18,13 @@ def test_matrix_pillar_title_and_subtitle():
     # Test active state
     pillar.set_status("active", datetime.now().isoformat())
     title = pillar.get_title_text()
-    assert title.plain == "▶ CODER"
+    assert title.plain == "◖ ▶ CODER ◗"
 
     # Test success state
     pillar.set_status("success", datetime.now().isoformat())
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
-    assert title.plain == "✔ CODER"
+    assert title.plain == "◖ ✔ CODER ◗"
     assert "SUCCESS" in subtitle.plain
     assert "@" in subtitle.plain  # Should have completion time
 

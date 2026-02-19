@@ -152,3 +152,42 @@ def test_matrix_pillar_journaler_no_lesson_completion_status():
 
     assert "5s" in output
     assert "@" in output
+
+
+def test_matrix_pillar_title_pill_shape():
+    """Verify that get_title_text returns a pill-shaped title for active/success/failure statuses."""
+    pillar = MatrixPillar("Coder")
+
+    # Active
+    pillar.status = "active"
+    title = pillar.get_title_text()
+    plain = title.plain
+    assert "◖" in plain
+    assert "◗" in plain
+    assert " ▶ CODER " in plain
+    # Verify colors (roughly, by checking if spans exist)
+    assert len(title.spans) > 0
+
+    # Success
+    pillar.status = "success"
+    title = pillar.get_title_text()
+    plain = title.plain
+    assert "◖" in plain
+    assert "◗" in plain
+    assert " ✔ CODER " in plain
+
+    # Failure
+    pillar.status = "failed"
+    title = pillar.get_title_text()
+    plain = title.plain
+    assert "◖" in plain
+    assert "◗" in plain
+    assert " ✘ CODER " in plain
+
+    # Idle (should NOT have pills)
+    pillar.status = "idle"
+    title = pillar.get_title_text()
+    plain = title.plain
+    assert "◖" not in plain
+    assert "◗" not in plain
+    assert "○ CODER" in plain

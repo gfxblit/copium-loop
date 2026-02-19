@@ -84,28 +84,33 @@ class MatrixPillar:
     def get_title_text(self) -> Text:
         """Returns the title text for the pillar (icon + name)."""
         status_color = self.get_status_color()
+        name = self.name.upper()
+
         if self.status == "active":
-            return Text(
-                f"▶ {self.name.upper()}",
-                style=f"bold black on {status_color}",
+            return Text.assemble(
+                ("◖", status_color),
+                (f" ▶ {name} ", f"bold black on {status_color}"),
+                ("◗", status_color),
                 justify="center",
             )
         elif self.status in self.SUCCESS_STATUSES:
-            return Text(
-                f"✔ {self.name.upper()}",
-                style=f"bold black on {status_color}",
+            return Text.assemble(
+                ("◖", status_color),
+                (f" ✔ {name} ", f"bold black on {status_color}"),
+                ("◗", status_color),
                 justify="center",
             )
         elif self.status in self.FAILURE_STATUSES:
-            return Text(
-                f"✘ {self.name.upper()}",
-                style=f"bold white on {status_color}",
+            return Text.assemble(
+                ("◖", status_color),
+                (f" ✘ {name} ", f"bold white on {status_color}"),
+                ("◗", status_color),
                 justify="center",
             )
         elif len(self.buffer) > 0:
-            return Text(f"✔ {self.name.upper()}", style="dim cyan", justify="center")
+            return Text(f"✔ {name}", style="dim cyan", justify="center")
         else:
-            return Text(f"○ {self.name.upper()}", style="dim grey50", justify="center")
+            return Text(f"○ {name}", style="dim grey50", justify="center")
 
     def get_subtitle_text(self) -> Text:
         """Returns the subtitle text for the pillar (status + duration + completion time)."""
