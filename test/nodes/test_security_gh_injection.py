@@ -9,6 +9,7 @@ from copium_loop.nodes import architect_node, reviewer_node
 architect_module = sys.modules["copium_loop.nodes.architect_node"]
 reviewer_module = sys.modules["copium_loop.nodes.reviewer_node"]
 
+
 @pytest.fixture
 def mock_engine():
     engine = MagicMock()
@@ -17,6 +18,7 @@ def mock_engine():
     # Mock sanitize_for_prompt to track calls
     engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
     return engine
+
 
 class TestSecurityRepro:
     """Tests for security vulnerabilities."""
