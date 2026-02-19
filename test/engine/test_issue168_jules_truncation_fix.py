@@ -68,9 +68,7 @@ async def test_jules_truncation_telemetry_still_truncated():
     """
     engine = JulesEngine()
 
-    # Use a different constant name if we already renamed it, but for now use 1000
-    MAX_LOG_LENGTH = 1000
-    long_description = "B" * (MAX_LOG_LENGTH + 500)
+    long_description = "B" * (MAX_TELEMETRY_LOG_LENGTH + 500)
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
