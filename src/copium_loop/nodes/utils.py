@@ -209,7 +209,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     code_status = state.get("code_status", "")
 
     # Get current git HEAD hash to force cache-miss in Jules
-    head_hash = state.get("head_hash") or await get_head("coder")
+    head_hash = state.get("head_hash")
 
     initial_request = messages[0].content
     safe_request = engine.sanitize_for_prompt(initial_request)
