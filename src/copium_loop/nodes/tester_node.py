@@ -28,6 +28,8 @@ async def _run_stage(
         failure_patterns = [
             r"\b[1-9]\d* failed\b",
             r"\b[1-9]\d* errors?\b",
+            r"Found \d+ errors?",
+            r"\b[A-Z]\d{3}\b",
             r"\bFAILURES\b",
             r"\bERRORS\b",
             r"^\s*FAIL\b",

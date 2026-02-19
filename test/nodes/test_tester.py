@@ -283,3 +283,46 @@ class TestTesterNode:
 
             assert "FAIL (Coverage)" in result["test_output"]
             mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_detect_ruff_violations(self):
+        """Test that tester node detects ruff violations like F401 even if exit code is 0."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
+            # Ruff violation: F401 [*] 'os' imported but unused
+            mock_run.return_value = {
+                "output": "src/main.py:1:1: F401 [*] 'os' imported but unused",
+                "exit_code": 0,
+            }
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_detect_ruff_summary(self):
+        """Test that tester node detects ruff summary like 'Found 5 errors' even if exit code is 0."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
+            mock_run.return_value = {
+                "output": "Found 5 errors\n[*] 5 fixable with the --fix option.",
+                "exit_code": 0,
+            }
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "Found 5 errors" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")

@@ -1,3 +1,4 @@
+import glob
 import os
 
 from copium_loop.constants import DEFAULT_MIN_COVERAGE
@@ -28,6 +29,7 @@ def get_test_command() -> tuple[str, list[str]]:
         os.path.exists("pyproject.toml")
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
+        or any(glob.glob("*.py"))
     ):
         min_cov = os.environ.get("COPIUM_MIN_COVERAGE", str(DEFAULT_MIN_COVERAGE))
         test_cmd = "pytest"
@@ -56,6 +58,7 @@ def get_build_command() -> tuple[str, list[str]]:
         os.path.exists("pyproject.toml")
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
+        or any(glob.glob("*.py"))
     ):
         return "", []
 
@@ -78,6 +81,7 @@ def get_lint_command() -> tuple[str, list[str]]:
         os.path.exists("pyproject.toml")
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
+        or any(glob.glob("*.py"))
     ):
         lint_cmd = "sh"
         lint_args = ["-c", "ruff check . && ruff format --check ."]

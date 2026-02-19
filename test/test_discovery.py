@@ -146,3 +146,21 @@ def test_get_lint_command_env_override():
         cmd, args = discovery.get_lint_command()
         assert cmd == "mylint"
         assert args == ["--strict"]
+
+
+def test_get_lint_command_python_no_config():
+    """Test that get_lint_command returns ruff for python projects even if no config file exists."""
+
+    def side_effect(path):
+        # No standard config files, but some .py file exists
+        if path in ["pyproject.toml", "setup.py", "requirements.txt", "package.json"]:
+            return False
+        return path.endswith(".py")
+
+    with (
+        patch("os.path.exists", side_effect=side_effect),
+        patch("glob.glob", return_value=["main.py"]),
+    ):
+        cmd, args = discovery.get_lint_command()
+        assert cmd == "sh"
+        assert args == ["-c", "ruff check . && ruff format --check ."]
