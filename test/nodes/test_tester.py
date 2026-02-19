@@ -326,3 +326,49 @@ class TestTesterNode:
             assert "FAIL (Lint)" in result["test_output"]
             assert "Found 5 errors" in result["test_output"]
             mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_node_false_positive_regex_avoidance(self):
+        """Verify that generic strings like 'T100' or 'ORD123' don't trigger failures."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+        ):
+            # Scenario: Output contains "Order ID: ORD123" and "Status: T100"
+            # but the exit code is 0. These should NOT match the new specific regex.
+            mock_run.side_effect = [
+                {
+                    "output": "Linting passed. Processed Order ID: ORD123",
+                    "exit_code": 0,
+                },
+                {"output": "Tests passed. Status: T100", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert result["test_output"] == "PASS"
+
+    @pytest.mark.asyncio
+    async def test_tester_node_detect_ruff_violation_with_line_col(self):
+        """Verify that it STILL detects Ruff violations when formatted with line/col and a colon."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_telemetry"),
+        ):
+            # Violation: src/main.py:1:1: F401
+            mock_run.side_effect = [
+                {"output": "src/main.py:1:1: F401 imported but unused", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]

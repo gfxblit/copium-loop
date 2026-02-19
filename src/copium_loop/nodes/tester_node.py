@@ -29,7 +29,6 @@ async def _run_stage(
             r"\b[1-9]\d* failed\b",
             r"\b[1-9]\d* errors?\b",
             r"Found \d+ errors?",
-            r"\b[A-Z]\d{3}\b",
             r"\bFAILURES\b",
             r"\bERRORS\b",
             r"^\s*FAIL\b",
@@ -38,6 +37,13 @@ async def _run_stage(
             r"\berror:",
             r"\bUnreachable code\b",
         ]
+
+        # Linter specific codes (e.g. E401, F401, PLR0915)
+        # We only check these for the linting stage to avoid false positives in unit tests.
+        # We require a line/column prefix (e.g. :10:5: F401) to be very specific to linter output.
+        if stage_name == "linting":
+            failure_patterns.append(r":\d+:(\d+:)?\s+[A-Z]+\d{3,4}\b")
+
         for pattern in failure_patterns:
             if re.search(pattern, output, re.IGNORECASE | re.MULTILINE):
                 success = False
