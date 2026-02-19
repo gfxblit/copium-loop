@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,8 +13,11 @@ async def test_jules_architect_prompt_robustness():
         initial_commit_hash="sha123",
     )
 
+    engine = MagicMock()
+    engine.sanitize_for_prompt.side_effect = lambda x: x
+
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        prompt = await get_architect_prompt("jules", state)
+        prompt = await get_architect_prompt("jules", state, engine)
 
         # New requirements from Issue #170
         assert "SUMMARY: [Your detailed analysis here]" in prompt

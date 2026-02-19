@@ -16,9 +16,12 @@ async def test_get_architect_prompt():
         initial_commit_hash="sha123",
     )
 
+    engine = MagicMock()
+    engine.sanitize_for_prompt.side_effect = lambda x: x
+
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        jules_prompt = await get_architect_prompt("jules", state)
+        jules_prompt = await get_architect_prompt("jules", state, engine)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
@@ -30,7 +33,7 @@ async def test_get_architect_prompt():
             "copium_loop.nodes.utils.get_diff", return_value="some diff"
         ) as mock_get_diff,
     ):
-        gemini_prompt = await get_architect_prompt("gemini", state)
+        gemini_prompt = await get_architect_prompt("gemini", state, engine)
         assert "some diff" in gemini_prompt
         mock_get_diff.assert_called_with("sha123", head=None, node="architect")
 
@@ -42,10 +45,12 @@ async def test_get_reviewer_prompt():
         initial_commit_hash="sha123",
         test_output="PASS",
     )
+    engine = MagicMock()
+    engine.sanitize_for_prompt.side_effect = lambda x: x
 
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        jules_prompt = await get_reviewer_prompt("jules", state)
+        jules_prompt = await get_reviewer_prompt("jules", state, engine)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
@@ -57,7 +62,7 @@ async def test_get_reviewer_prompt():
             "copium_loop.nodes.utils.get_diff", return_value="some diff"
         ) as mock_get_diff,
     ):
-        gemini_prompt = await get_reviewer_prompt("gemini", state)
+        gemini_prompt = await get_reviewer_prompt("gemini", state, engine)
         assert "some diff" in gemini_prompt
         mock_get_diff.assert_called_with("sha123", head=None, node="reviewer")
 
