@@ -64,7 +64,7 @@ async def test_poll_session_truncates_large_outputs():
         calls = [call.args[1] for call in mock_telemetry.log_output.call_args_list]
 
         for call in calls:
-            # Each call should be reasonably short, around the MAX_ACTIVITY_DESC_LENGTH (1000)
+            # Each call should be reasonably short, around the MAX_TELEMETRY_LOG_LENGTH (1000)
             # plus some overhead for the title and suffix.
             assert len(call) < 1200
             assert "... (truncated)" in call
