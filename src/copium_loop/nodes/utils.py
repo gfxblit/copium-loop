@@ -1,12 +1,5 @@
-from copium_loop.git import get_current_branch, get_diff, is_git_repo, resolve_ref
+from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
-
-
-async def get_head_hash(node: str) -> str:
-    """Returns the current HEAD hash for prompt cache-busting."""
-    if await is_git_repo(node=node):
-        return await resolve_ref("HEAD", node=node) or "unknown"
-    return "unknown"
 
 
 async def get_architect_prompt(engine_type: str, state: dict) -> str:
@@ -15,7 +8,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
-    head_hash = await get_head_hash("architect")
+    head_hash = state.get("head_hash") or await get_head("architect")
 
     if engine_type == "jules":
         return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity. (Current HEAD: {head_hash})
@@ -94,7 +87,7 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
-    head_hash = await get_head_hash("reviewer")
+    head_hash = state.get("head_hash") or await get_head("reviewer")
 
     if engine_type == "jules":
         return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
@@ -216,7 +209,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     code_status = state.get("code_status", "")
 
     # Get current git HEAD hash to force cache-miss in Jules
-    head_hash = await get_head_hash("coder")
+    head_hash = state.get("head_hash") or await get_head("coder")
 
     initial_request = messages[0].content
     safe_request = engine.sanitize_for_prompt(initial_request)

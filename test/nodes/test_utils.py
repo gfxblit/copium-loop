@@ -63,21 +63,13 @@ class TestValidateGitContext:
 
 @pytest.mark.asyncio
 class TestGetCoderPrompt:
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_jules_tdd(self, mock_resolve_ref, mock_is_git):
+    async def test_get_coder_prompt_jules_tdd(self):
         # Setup state with jules engine
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc123"
-
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         message = MagicMock()
         message.content = "Implement feature X"
-        state = {
-            "messages": [message],
-            "engine": engine,
-        }
+        state = {"messages": [message], "engine": engine, "head_hash": "abc123"}
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
 
@@ -95,21 +87,13 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_gemini_tdd(self, mock_resolve_ref, mock_is_git):
+    async def test_get_coder_prompt_gemini_tdd(self):
         # Setup state with gemini engine
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc123"
-
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         message = MagicMock()
         message.content = "Implement feature X"
-        state = {
-            "messages": [message],
-            "engine": engine,
-        }
+        state = {"messages": [message], "engine": engine, "head_hash": "abc123"}
 
         prompt = await utils.get_coder_prompt("gemini", state, engine)
 
@@ -130,14 +114,7 @@ class TestGetCoderPrompt:
             not in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_with_git_hash_on_refactor(
-        self, mock_resolve_ref, mock_is_git
-    ):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_with_git_hash_on_refactor(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -147,6 +124,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message, architect_message],
             "architect_status": "refactor",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
@@ -161,14 +139,7 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_on_test_failure(
-        self, mock_resolve_ref, mock_is_git
-    ):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_on_test_failure(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -176,6 +147,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message],
             "test_output": "Tests failed: 1 error",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
@@ -187,14 +159,7 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_on_reviewer_rejection(
-        self, mock_resolve_ref, mock_is_git
-    ):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_on_reviewer_rejection(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -204,6 +169,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message, reviewer_message],
             "review_status": "rejected",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
@@ -215,14 +181,7 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_on_code_failure(
-        self, mock_resolve_ref, mock_is_git
-    ):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_on_code_failure(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -232,6 +191,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message, error_message],
             "code_status": "failed",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
@@ -243,12 +203,7 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_on_pr_failure(self, mock_resolve_ref, mock_is_git):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_on_pr_failure(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -258,6 +213,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message, error_message],
             "review_status": "pr_failed",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
@@ -269,14 +225,7 @@ class TestGetCoderPrompt:
             in prompt
         )
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "resolve_ref", new_callable=AsyncMock)
-    async def test_get_coder_prompt_on_needs_commit(
-        self, mock_resolve_ref, mock_is_git
-    ):
-        mock_is_git.return_value = True
-        mock_resolve_ref.return_value = "abc1234567890"
-
+    async def test_get_coder_prompt_on_needs_commit(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -284,6 +233,7 @@ class TestGetCoderPrompt:
         state = {
             "messages": [initial_message],
             "review_status": "needs_commit",
+            "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
