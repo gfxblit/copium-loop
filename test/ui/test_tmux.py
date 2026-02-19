@@ -1,5 +1,5 @@
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from copium_loop.ui.tmux import extract_tmux_session, switch_to_tmux_session
 
