@@ -23,8 +23,8 @@ async def _run_stage(
 
     success = exit_code == 0
 
-    # Special failure detection for unit tests
-    if stage_name == "unit tests" and success:
+    # Special failure detection for linting and unit tests
+    if (stage_name == "linting" or stage_name == "unit tests") and success:
         failure_patterns = [
             r"\b[1-9]\d* failed\b",
             r"\b[1-9]\d* errors?\b",
@@ -33,9 +33,11 @@ async def _run_stage(
             r"^\s*FAIL\b",
             r"^\s*FAILED\b",
             r"^\s*error:",
+            r"\berror:",
+            r"\bUnreachable code\b",
         ]
         for pattern in failure_patterns:
-            if re.search(pattern, output, re.MULTILINE):
+            if re.search(pattern, output, re.IGNORECASE | re.MULTILINE):
                 success = False
                 break
 
