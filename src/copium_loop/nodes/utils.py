@@ -32,7 +32,15 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     3. Evaluate technical trade-offs of the implemented design.
     4. Watch for Red Flags: Big Ball of Mud, Tight Coupling, God Objects, and Premature Optimization.
 
-    You MUST provide your final verdict in the format: "VERDICT: OK" or "VERDICT: REFACTOR".
+    ### Reporting Requirements
+    If your verdict is REFACTOR, you MUST provide a detailed, bulleted list of the specific architectural violations, technical debt, or "red flags" you identified. This explanation is CRITICAL for the developer to implement your requested changes.
+
+    You MUST provide your final response in a single, final message using the format:
+    "SUMMARY: [Your detailed analysis here]
+    VERDICT: OK"
+    OR
+    "SUMMARY: [Your detailed analysis here]
+    VERDICT: REFACTOR"
 
     Do not make any fixes or changes yourself. Based on your evaluation, determine the final status.
     If the changes are architecturally sound, respond with "VERDICT: OK".
