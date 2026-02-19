@@ -20,8 +20,8 @@ def mock_session_manager():
 
     mock_sm.get_engine_state.side_effect = get_engine_state
     mock_sm.update_engine_state.side_effect = update_engine_state
-    mock_sm.update_jules_session.side_effect = (
-        lambda node, session_id, prompt_hash: update_engine_state(
+    mock_sm.update_jules_session.side_effect = lambda node, session_id, prompt_hash: (
+        update_engine_state(
             "jules", node, {"session_id": session_id, "prompt_hash": prompt_hash}
         )
     )
