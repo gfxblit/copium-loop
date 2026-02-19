@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Static
@@ -7,16 +9,20 @@ from copium_loop.ui.widgets.pillar import PillarWidget
 from copium_loop.ui.widgets.session import SessionWidget
 
 
-class MockApp(App):
+class SessionWidgetMockApp(App):
+    def __init__(self, column=None):
+        super().__init__()
+        self.session_column = column or SessionColumn("test-session")
+        self.session_widget = None
+
     def compose(self) -> ComposeResult:
-        column = SessionColumn("test-session")
-        widget = SessionWidget(column)
-        yield widget
+        self.session_widget = SessionWidget(self.session_column)
+        yield self.session_widget
 
 
 @pytest.mark.asyncio
 async def test_session_widget_contains_pillars():
-    app = MockApp()
+    app = SessionWidgetMockApp()
     async with app.run_test() as pilot:
         session_widget = app.query_one(SessionWidget)
         assert session_widget.session_id == "test-session"
@@ -27,9 +33,7 @@ async def test_session_widget_contains_pillars():
 
         # Check if basic pillars are present
         pillars = session_widget.query(PillarWidget)
-        assert (
-            len(pillars) >= 6
-        )  # coder, tester, architect, reviewer, pr_pre_checker, pr_creator
+        assert len(pillars) >= 6
 
         coder_pillar = session_widget.query_one(
             "#pillar-test-session-coder", PillarWidget
@@ -39,7 +43,7 @@ async def test_session_widget_contains_pillars():
 
 @pytest.mark.asyncio
 async def test_session_widget_status_merging():
-    app = MockApp()
+    app = SessionWidgetMockApp()
     async with app.run_test() as pilot:
         session_widget = app.query_one(SessionWidget)
 
@@ -60,3 +64,38 @@ async def test_session_widget_status_merging():
         header = session_widget.query_one("#header-test-session", Static)
         assert "⚠" in str(header.render())
         assert "test-session" in str(header.render())
+
+
+@pytest.mark.asyncio
+async def test_session_widget_header_status_extended():
+    col = SessionColumn("test-session")
+    app = SessionWidgetMockApp(col)
+    async with app.run_test():
+        widget = app.session_widget
+
+        # Helper to get plain text from header content
+        def get_plain_content(h):
+            content = h.render()
+            if not content:
+                return ""
+            s = str(content.plain) if hasattr(content, "plain") else str(content)
+            return re.sub(r"\[.*?\]", "", s)
+
+        # Test running state
+        col.workflow_status = "running"
+        await widget.refresh_ui()
+        header = widget.query_one("#header-test-session", Static)
+        assert "SUCCESS" not in get_plain_content(header)
+        assert "FAILED" not in get_plain_content(header)
+        assert header.styles.border.top[1].rgb == (255, 255, 0)  # yellow
+
+        # Test success state
+        col.workflow_status = "success"
+        await widget.refresh_ui()
+        assert "✓ SUCCESS" in get_plain_content(header)
+
+        # Test failed state
+        col.workflow_status = "failed"
+        await widget.refresh_ui()
+        assert "⚠ FAILED" in get_plain_content(header)
+        assert header.styles.border.top[1].rgb == (255, 0, 0)  # red

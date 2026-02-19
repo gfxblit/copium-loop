@@ -24,3 +24,9 @@ def test_agent_state_has_architect_status():
 def test_models_defined():
     assert "gemini-3-pro-preview" in MODELS
     assert "gemini-3-flash-preview" in MODELS
+
+
+def test_agent_state_has_engine_and_no_jules_metadata():
+    """Verify that AgentState has 'engine' and no longer has 'jules_metadata'."""
+    assert "jules_metadata" not in AgentState.__annotations__
+    assert "engine" in AgentState.__annotations__

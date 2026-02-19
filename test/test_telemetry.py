@@ -1,5 +1,7 @@
 """Tests for telemetry log parsing and continuation features."""
 
+import os
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -108,8 +110,6 @@ class TestTelemetryLogReading:
 
         formatted_log = telemetry_with_temp_dir.get_formatted_log()
         # Verify timestamps are present in [HH:MM:SS] format
-        import re
-
         timestamp_pattern = r"\[\d{2}:\d{2}:\d{2}\]"
         assert re.search(timestamp_pattern + " coder: status: active", formatted_log)
         assert re.search(
@@ -270,6 +270,53 @@ class TestGetLastIncompleteNode:
         assert node == "pr_pre_checker"
         assert metadata["reason"] == "incomplete"
 
+    def test_tester_success_should_resume_at_architect_with_node_order(
+        self, telemetry_with_temp_dir
+    ):
+        """Test when tester succeeded, should resume at architect (with new node_order)."""
+        telemetry_with_temp_dir.log_status("coder", "active")
+        telemetry_with_temp_dir.log_status("coder", "idle")
+        telemetry_with_temp_dir.log_status("tester", "active")
+        telemetry_with_temp_dir.log_status("tester", "success")
+
+        node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
+        # Now it should be architect, not reviewer
+        assert node == "architect"
+        assert metadata["reason"] == "incomplete"
+
+    def test_architect_success_should_resume_at_reviewer(self, telemetry_with_temp_dir):
+        """Test when architect succeeded, should resume at reviewer."""
+        telemetry_with_temp_dir.log_status("coder", "active")
+        telemetry_with_temp_dir.log_status("coder", "idle")
+        telemetry_with_temp_dir.log_status("tester", "success")
+        telemetry_with_temp_dir.log_status("architect", "active")
+        telemetry_with_temp_dir.log_status("architect", "success")
+
+        node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
+        assert node == "reviewer"
+        assert metadata["reason"] == "incomplete"
+
+    def test_architect_failed_should_resume_at_architect(self, telemetry_with_temp_dir):
+        """Test when architect failed, should resume at architect."""
+        telemetry_with_temp_dir.log_status("coder", "active")
+        telemetry_with_temp_dir.log_status("coder", "idle")
+        telemetry_with_temp_dir.log_status("tester", "success")
+        telemetry_with_temp_dir.log_status("architect", "active")
+        telemetry_with_temp_dir.log_status("architect", "failed")
+
+        node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
+        assert node == "architect"
+        assert metadata["reason"] == "incomplete"
+
+    def test_get_last_incomplete_node_uncertain(self, telemetry_with_temp_dir):
+        """Test get_last_incomplete_node fallback to coder."""
+        # Add a status that doesn't fit the expected patterns
+        telemetry_with_temp_dir.log("unknown", "status", "weird")
+
+        node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
+        assert node == "coder"
+        assert metadata["reason"] == "uncertain"
+
 
 class TestReconstructState:
     """Tests for reconstructing workflow state from logs."""
@@ -375,6 +422,52 @@ class TestReconstructState:
         assert state["test_output"] == "PASS"
         assert state["review_status"] == "approved"
 
+    def test_reconstruct_state_pr_failed(self, telemetry_with_temp_dir):
+        """Test reconstructing state with pr_failed status."""
+        telemetry_with_temp_dir.log_status("pr_creator", "failed")
+
+        state = telemetry_with_temp_dir.reconstruct_state()
+        assert state["review_status"] == "pr_failed"
+
+
+class TestTelemetrySource:
+    """Tests for the source field in telemetry logs."""
+
+    def test_telemetry_log_includes_source(self, telemetry_with_temp_dir):
+        """Test that Telemetry.log includes a source field."""
+        telemetry_with_temp_dir.log("coder", "status", "active", source="system")
+
+        events = telemetry_with_temp_dir.read_log()
+        assert len(events) == 1
+        assert events[0]["source"] == "system"
+
+    def test_telemetry_log_output_sets_source_llm(self, telemetry_with_temp_dir):
+        """Test that Telemetry.log_output sets source to 'llm'."""
+        telemetry_with_temp_dir.log_output("coder", "LLM output")
+
+        events = telemetry_with_temp_dir.read_log()
+        assert len(events) == 1
+        assert events[0]["source"] == "llm"
+        assert events[0]["event_type"] == "output"
+
+    def test_telemetry_log_info_sets_source_system(self, telemetry_with_temp_dir):
+        """Test that Telemetry.log_info sets source to 'system'."""
+        telemetry_with_temp_dir.log_info("coder", "System info")
+
+        events = telemetry_with_temp_dir.read_log()
+        assert len(events) == 1
+        assert events[0]["source"] == "system"
+        assert events[0]["event_type"] == "info"
+
+    def test_telemetry_other_logs_default_to_system(self, telemetry_with_temp_dir):
+        """Test that other log methods default source to 'system'."""
+        telemetry_with_temp_dir.log_status("coder", "active")
+        telemetry_with_temp_dir.log_metric("coder", "tokens", 100)
+        telemetry_with_temp_dir.log_workflow_status("running")
+
+        events = telemetry_with_temp_dir.read_log()
+        assert all(e["source"] == "system" for e in events)
+
 
 class TestFindLatestSession:
     """Tests for finding the latest session."""
@@ -396,8 +489,6 @@ class TestFindLatestSession:
         monkeypatch.setattr(Path, "home", lambda: temp_log_dir.parent.parent)
 
         # Create multiple log files with different timestamps
-        import os
-
         session1 = temp_log_dir / "session1.jsonl"
         session1.write_text("{}\n")
         # Set mtime to 1000s
@@ -415,3 +506,19 @@ class TestFindLatestSession:
 
         session_id = find_latest_session()
         assert session_id == "session3"
+
+
+def test_telemetry_log_output_empty():
+    """Test log_output with empty chunk."""
+    t = Telemetry("test_empty")
+    # Should not raise exception or call log
+    t.log_output("node", "")
+
+
+def test_telemetry_log_metric(telemetry_with_temp_dir):
+    """Test log_metric."""
+    telemetry_with_temp_dir.log_metric("node", "latency", 1.5)
+    events = telemetry_with_temp_dir.read_log()
+    assert events[0]["event_type"] == "metric"
+    assert events[0]["data"]["name"] == "latency"
+    assert events[0]["data"]["value"] == 1.5

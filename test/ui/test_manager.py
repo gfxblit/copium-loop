@@ -136,3 +136,55 @@ def test_manager_update_from_logs(tmp_path):
     s = mgr.sessions["session1"]
     assert s.workflow_status == "running"
     assert s.pillars["coder"].status == "active"
+
+
+def test_session_manager_apply_event_source(tmp_path):
+    """Test that SessionManager._apply_event_to_session handles the new source field."""
+    manager = SessionManager(tmp_path)
+    session = SessionColumn("test_session")
+
+    # Test LLM output
+    event_llm = {
+        "node": "coder",
+        "event_type": "output",
+        "source": "llm",
+        "data": "LLM text",
+    }
+    manager._apply_event_to_session(session, event_llm)
+    pillar = session.get_pillar("coder")
+    assert len(pillar.buffer) == 1
+    assert pillar.buffer[0]["source"] == "llm"
+
+    # Test System info
+    event_system = {
+        "node": "coder",
+        "event_type": "info",
+        "source": "system",
+        "data": "System text",
+    }
+    manager._apply_event_to_session(session, event_system)
+    assert len(pillar.buffer) == 2
+    assert pillar.buffer[1]["source"] == "system"
+
+    # Test fallback for missing source
+    event_legacy = {"node": "coder", "event_type": "output", "data": "Legacy text"}
+    manager._apply_event_to_session(session, event_legacy)
+    assert len(pillar.buffer) == 3
+    # Default should be llm for output
+    assert pillar.buffer[2]["source"] == "llm"
+
+
+def test_session_manager_toggle_system_logs(tmp_path):
+    """Test that SessionManager.toggle_system_logs updates all sessions."""
+    manager = SessionManager(tmp_path)
+    # Manually add a session
+    manager.sessions["s1"] = SessionColumn("s1")
+    manager.sessions["s1"].show_system_logs = False
+
+    manager.toggle_system_logs()
+    assert manager.show_system_logs is True
+    assert manager.sessions["s1"].show_system_logs is True
+
+    manager.toggle_system_logs()
+    assert manager.show_system_logs is False
+    assert manager.sessions["s1"].show_system_logs is False

@@ -1,3 +1,4 @@
+import os
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -40,15 +41,12 @@ def test_extract_tmux_session_collision():
     """Test that a session named 'project_1' is preserved and not stripped to 'project'."""
     session_name = "project_1"
     extracted = extract_tmux_session(session_name)
-    # We expect it to be preserved because it's a valid session name
     assert extracted == "project_1"
 
 
 def test_extract_tmux_session_name_with_underscore():
     """Test that extract_tmux_session handles session names that contain underscores."""
-    # If the session name itself has an underscore and we use the new format
     session_id = "my_project_v2"
-    # It should return the whole thing because it doesn't end in a pane-like suffix
     assert extract_tmux_session(session_id) == "my_project_v2"
 
 
@@ -66,7 +64,6 @@ def test_switch_to_tmux_session_success():
     ):
         mock_run.return_value.returncode = 0
         switch_to_tmux_session("target_session")
-        # Should be called once because the first attempt (target_session) succeeds
         mock_run.assert_called_with(
             ["tmux", "switch-client", "-t", "target_session"],
             check=True,
@@ -81,7 +78,6 @@ def test_switch_to_tmux_session_fallback():
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
-        # Create a mock result for the successful second call
         mock_result = MagicMock()
         mock_result.returncode = 0
 
@@ -118,3 +114,37 @@ def test_switch_to_tmux_session_error_handling(capsys):
         "Unexpected error switching to tmux session 'target_session': Simulated tmux error"
         in captured.err
     )
+
+
+def test_switch_to_tmux_session_no_tmux_env():
+    """Test that switch_to_tmux_session returns early if TMUX env is not set."""
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch("subprocess.run") as mock_run,
+    ):
+        switch_to_tmux_session("my-session")
+        mock_run.assert_not_called()
+
+
+def test_switch_to_tmux_session_called_process_error():
+    """Test that switch_to_tmux_session handles subprocess.CalledProcessError."""
+    with (
+        patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default,123,0"}),
+        patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["tmux"])),
+    ):
+        # Should not raise an exception
+        switch_to_tmux_session("non-existent-session")
+
+
+def test_switch_to_tmux_session_unexpected_error_extended(capsys):
+    """Test that switch_to_tmux_session handles unexpected exceptions."""
+    with (
+        patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default,123,0"}),
+        patch("subprocess.run", side_effect=Exception("kaboom")),
+    ):
+        switch_to_tmux_session("my-session")
+        captured = capsys.readouterr()
+        assert (
+            "Unexpected error switching to tmux session 'my-session': kaboom"
+            in captured.err
+        )

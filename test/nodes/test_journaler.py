@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -258,3 +258,61 @@ async def test_journaler_prompt_bans_changelogs(agent_state):
             "Good: Deduplicate learnings by checking against existing memories before logging."
             in prompt
         )
+
+
+@pytest.mark.asyncio
+async def test_journaler_handles_engine_invoke_exception_gracefully(agent_state):
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "All tests passed"
+    agent_state["review_status"] = "pending"
+    agent_state["initial_commit_hash"] = "abc"
+    agent_state["git_diff"] = "diff content"
+
+    # Simulate an exception in engine.invoke
+    agent_state["engine"].invoke.side_effect = Exception("Gemini service unavailable")
+
+    # The function should NOT raise an exception
+    result = await journaler(agent_state)
+
+    # It should return a valid dict, ideally indicating failure or fallback
+    assert "journal_status" in result
+    assert result["journal_status"] == "failed"
+    # And ensure review_status is not lost or is set to a sensible default
+    assert result["review_status"] == "journaled"
+
+
+@pytest.mark.asyncio
+async def test_journaler_handles_memory_manager_exception_gracefully(agent_state):
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "All tests passed"
+    agent_state["review_status"] = "pending"
+    agent_state["initial_commit_hash"] = "abc"
+    agent_state["git_diff"] = "diff content"
+
+    agent_state["engine"].invoke.return_value = "Critical Lesson"
+
+    # Simulate exception in MemoryManager
+    with patch.object(journaler_module, "MemoryManager") as MockMemoryManager:
+        mock_instance = MockMemoryManager.return_value
+        mock_instance.log_learning.side_effect = Exception("Disk full")
+
+        result = await journaler(agent_state)
+
+        assert result["journal_status"] == "failed"
+        assert result["review_status"] == "journaled"
+
+
+@pytest.mark.asyncio
+@patch.object(journaler_module, "MemoryManager")
+@patch.object(journaler_module, "get_telemetry")
+async def test_journaler_prompt_contains_head_hash_from_state(
+    _mock_get_telemetry, _mock_memory_manager, agent_state
+):
+    agent_state["engine"].invoke = AsyncMock(return_value="NO_LESSON")
+    agent_state["head_hash"] = "deadbeef"
+
+    await journaler(agent_state)
+
+    args, _ = agent_state["engine"].invoke.call_args
+    prompt = args[0]
+    assert "(Current HEAD: deadbeef)" in prompt
