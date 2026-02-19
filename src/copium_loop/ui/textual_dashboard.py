@@ -48,6 +48,7 @@ class TextualDashboard(App):
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "refresh", "Refresh", show=True),
         Binding("v", "toggle_stats", "Toggle Stats", show=True),
+        Binding("l", "toggle_system_logs", "Toggle Logs", show=True),
         Binding("tab", "next_page", "Next Page", show=True, priority=True),
         Binding("shift+tab", "prev_page", "Prev Page", show=True, priority=True),
         Binding("right", "next_page", "Next Page", show=False),
@@ -208,3 +209,7 @@ class TextualDashboard(App):
 
     def action_toggle_stats(self) -> None:
         self.query_one("#stats-bar").toggle_class("hidden")
+
+    async def action_toggle_system_logs(self) -> None:
+        self.manager.toggle_system_logs()
+        await self.update_ui()

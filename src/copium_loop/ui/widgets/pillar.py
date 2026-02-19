@@ -23,7 +23,9 @@ class PillarWidget(Static):
         self.node_id = node_id
         self.pillar: MatrixPillar | None = None
 
-    def update_from_pillar(self, pillar: MatrixPillar) -> None:
+    def update_from_pillar(
+        self, pillar: MatrixPillar, show_system: bool = False
+    ) -> None:
         """Updates the widget content from the pillar state."""
         self.pillar = pillar
         self.styles.border_title_align = "center"
@@ -31,4 +33,4 @@ class PillarWidget(Static):
         self.border_title = pillar.get_title_text()
         self.border_subtitle = pillar.get_subtitle_text()
         self.styles.border = ("round", pillar.get_status_color())
-        self.update(pillar.get_content_renderable())
+        self.update(pillar.get_content_renderable(show_system=show_system))

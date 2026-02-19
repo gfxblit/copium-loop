@@ -63,8 +63,8 @@ def test_matrix_pillar_buffer_limit():
         pillar.add_line(f"line {i}")
 
     assert len(pillar.buffer) == 5
-    assert pillar.buffer[0] == "line 5"
-    assert pillar.buffer[-1] == "line 9"
+    assert pillar.buffer[0]["line"] == "line 5"
+    assert pillar.buffer[-1]["line"] == "line 9"
 
 
 def test_matrix_pillar_time_suffix():

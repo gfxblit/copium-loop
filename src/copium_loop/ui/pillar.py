@@ -42,14 +42,14 @@ class MatrixPillar:
         self.name = name
         self.buffer = []
         self.status = "idle"
-        self.max_buffer = 20
+        self.max_buffer = 100  # Larger buffer to accommodate system logs
         self.last_update = time.time()
         self.start_time = None
         self.duration = None
         self.completion_time = None
 
-    def add_line(self, line: str):
-        self.buffer.append(line)
+    def add_line(self, line: str, source: str = "llm"):
+        self.buffer.append({"line": line, "source": source})
         if len(self.buffer) > self.max_buffer:
             self.buffer.pop(0)
         self.last_update = time.time()
@@ -154,19 +154,21 @@ class MatrixPillar:
 
         return res
 
-    def get_header_text(self) -> Text:
-        """Returns the combined header text for the pillar (legacy support)."""
-        title = self.get_title_text()
-        subtitle = self.get_subtitle_text()
-        if subtitle.plain:
-            return Text.assemble(title, " ", subtitle)
-        return title
+    def get_content_renderable(self, show_system: bool = False) -> TailRenderable:
+        """Returns the content renderable for the pillar, optionally filtering system logs."""
+        filtered_buffer = []
+        for entry in self.buffer:
+            if isinstance(entry, dict):
+                if show_system or entry.get("source") == "llm":
+                    filtered_buffer.append(entry.get("line", ""))
+            else:
+                # Legacy support for string entries
+                filtered_buffer.append(entry)
 
-    def get_content_renderable(self) -> TailRenderable:
-        """Returns the content renderable for the pillar."""
-        return TailRenderable(self.buffer, self.status)
+        # Truncate to max visible lines for rendering performance
+        return TailRenderable(filtered_buffer[-20:], self.status)
 
-    def render(self) -> Panel:
+    def render(self, show_system: bool = False) -> Panel:
         # Visual Semantics:
         # active -> bright white header, pulsing
         # success/approved -> cyan checkmark
@@ -179,7 +181,7 @@ class MatrixPillar:
         border_style = self.get_status_color()
 
         return Panel(
-            self.get_content_renderable(),
+            self.get_content_renderable(show_system=show_system),
             title=title_text,
             subtitle=subtitle_text,
             title_align="center",

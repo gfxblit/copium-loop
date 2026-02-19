@@ -103,7 +103,9 @@ class SessionWidget(Vertical):
                     await container.mount(widget)
 
                 widget = self.pillars[node_id]
-                widget.update_from_pillar(pillar_data)
+                widget.update_from_pillar(
+                    pillar_data, show_system=self.session_column.show_system_logs
+                )
 
                 # Weighting logic:
                 # Active nodes should be very prominent.
