@@ -1,3 +1,4 @@
+import hashlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -646,8 +647,14 @@ async def test_jules_api_invoke_no_push_when_resuming():
     mock_session_manager = MagicMock()
     engine.session_manager = mock_session_manager
 
-    # Mock session manager to return an existing session
-    mock_session_manager.get_engine_state.return_value = "sessions/existing_sess"
+    # Mock session manager to return an existing session with matching prompt hash
+    prompt = "Test prompt"
+    safe_prompt = engine.sanitize_for_prompt(prompt)
+    prompt_hash = hashlib.sha256(safe_prompt.encode("utf-8")).hexdigest()
+    mock_session_manager.get_engine_state.return_value = {
+        "session_id": "sessions/existing_sess",
+        "prompt_hash": prompt_hash,
+    }
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
