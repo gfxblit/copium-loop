@@ -8,7 +8,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
-    head_hash = state.get("head_hash") or await get_head("architect")
+    head_hash = state.get("head_hash")
 
     if engine_type == "jules":
         return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity. (Current HEAD: {head_hash})
