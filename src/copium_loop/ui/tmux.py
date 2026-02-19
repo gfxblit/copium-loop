@@ -37,38 +37,32 @@ def extract_tmux_session(session_id: str) -> str | None:
 def switch_to_tmux_session(session_name: str):
     """Switches the current tmux client to the specified session, window, or pane.
 
-    Tries multiple variations of the target name if the initial attempt fails.
+    Utilizes extract_tmux_session to determine the best target.
     """
     if not session_name or not os.environ.get("TMUX"):
         return
 
-    # Potential targets to try in order of specificity
-    targets = [session_name]
+    target = extract_tmux_session(session_name)
+    if not target:
+        return
 
-    # If session_name has an underscore, it might be a session_pane separator we added.
-    # Try the prefix as a session name fallback.
-    if "_" in session_name and not session_name.startswith("%"):
-        targets.append(session_name.rsplit("_", 1)[0])
+    try:
+        # We use 'tmux switch-client' which is the standard way to switch sessions/panes.
+        # It works for sessions, windows, and panes (via %ID).
+        subprocess.run(
+            ["tmux", "switch-client", "-t", target],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # If the primary target fails, we stop. The architect deemed the previous
+        # fallback logic (stripping suffixes blindly) as inferior/incorrect.
+        pass
+    except Exception as e:
+        import sys
 
-    for t in targets:
-        try:
-            # We use 'tmux switch-client' which is the standard way to switch sessions/panes.
-            # It works for sessions, windows, and panes (via %ID).
-            result = subprocess.run(
-                ["tmux", "switch-client", "-t", t],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return  # Success!
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            continue
-        except Exception as e:
-            import sys
-
-            print(
-                f"Unexpected error switching to tmux session '{session_name}': {e}",
-                file=sys.stderr,
-            )
-            break
+        print(
+            f"Unexpected error switching to tmux session '{session_name}': {e}",
+            file=sys.stderr,
+        )

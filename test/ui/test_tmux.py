@@ -75,30 +75,39 @@ def test_switch_to_tmux_session_success():
         )
 
 
-def test_switch_to_tmux_session_fallback():
-    """Test switching tmux sessions with fallback (mocked)."""
+def test_switch_to_tmux_session_pane_id():
+    """Test switching to a pane ID extracted from the session name."""
     with (
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
-        # Create a mock result for the successful second call
-        mock_result = MagicMock()
-        mock_result.returncode = 0
+        mock_run.return_value.returncode = 0
+        switch_to_tmux_session("my_session_%10")
 
-        # First call fails, second succeeds
-        mock_run.side_effect = [subprocess.CalledProcessError(1, "tmux"), mock_result]
-
-        switch_to_tmux_session("target_session")
-
-        assert mock_run.call_count == 2
-        mock_run.assert_any_call(
-            ["tmux", "switch-client", "-t", "target_session"],
+        # It should identify %10 as the target
+        mock_run.assert_called_once_with(
+            ["tmux", "switch-client", "-t", "%10"],
             check=True,
             capture_output=True,
             text=True,
         )
-        mock_run.assert_any_call(
-            ["tmux", "switch-client", "-t", "target"],
+
+
+def test_switch_to_tmux_session_no_fallback():
+    """Test that switch_to_tmux_session does NOT fallback (per new architecture)."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
+    ):
+        # First call fails
+        mock_run.side_effect = subprocess.CalledProcessError(1, "tmux")
+
+        switch_to_tmux_session("target_session")
+
+        # Should only be called once with the extracted target
+        assert mock_run.call_count == 1
+        mock_run.assert_called_with(
+            ["tmux", "switch-client", "-t", "target_session"],
             check=True,
             capture_output=True,
             text=True,
