@@ -82,7 +82,10 @@ class MatrixPillar:
             return "#666666"
 
     def get_title_text(self) -> Text:
-        """Returns the title text for the pillar (icon + name)."""
+        """Returns the title text for the pillar (icon + name).
+
+        Implements 'pill' shape for active/success/failed statuses (Issue #153).
+        """
         status_color = self.get_status_color()
         name = self.name.upper()
 

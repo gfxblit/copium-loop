@@ -42,6 +42,7 @@ def switch_to_tmux_session(session_name: str):
     if not session_name or not os.environ.get("TMUX"):
         return
 
+    # Use the extracted target to ensure correct pane ID handling
     target = extract_tmux_session(session_name)
     if not target:
         return
@@ -56,8 +57,7 @@ def switch_to_tmux_session(session_name: str):
             text=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
-        # If the primary target fails, we stop. The architect deemed the previous
-        # fallback logic (stripping suffixes blindly) as inferior/incorrect.
+        # We intentionally do not fallback to stripping suffixes to avoid incorrect targets.
         pass
     except Exception as e:
         import sys
