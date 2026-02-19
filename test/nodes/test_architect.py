@@ -50,8 +50,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         assert result["architect_status"] == "ok"
         assert result["retry_count"] == 0
@@ -67,8 +68,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         assert result["architect_status"] == "refactor"
         assert result["retry_count"] == 1
@@ -84,8 +86,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         assert result["architect_status"] == "ok"
 
@@ -98,8 +101,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         assert result["architect_status"] == "error"
         assert result["retry_count"] == 1
@@ -113,8 +117,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         assert result["architect_status"] == "error"
         assert result["retry_count"] == 1
@@ -128,8 +133,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        await architect(state, mock_engine)
+        await architect(state)
 
         mock_engine.invoke.assert_called_once()
         args = mock_engine.invoke.call_args[0]
@@ -142,8 +148,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        await architect(state, mock_engine)
+        await architect(state)
 
         mock_engine.invoke.assert_called_once()
         args = mock_engine.invoke.call_args[0]
@@ -159,8 +166,9 @@ class TestArchitectNode:
             "test_output": "PASS",
             "retry_count": 0,
             "initial_commit_hash": "abc",
+            "engine": mock_engine,
         }
-        await architect(state, mock_engine)
+        await architect(state)
 
         mock_engine.invoke.assert_called_once()
         args = mock_engine.invoke.call_args[0]
@@ -181,10 +189,11 @@ class TestArchitectNode:
             "initial_commit_hash": "some_hash",
             "retry_count": 0,
             "verbose": False,
+            "engine": mock_engine,
         }
 
         # Run architect node
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         # Verify
         self.mock_get_diff.assert_called_once()
@@ -201,10 +210,11 @@ class TestArchitectNode:
             "initial_commit_hash": "some_hash",
             "retry_count": 0,
             "verbose": False,
+            "engine": mock_engine,
         }
 
         # Run architect node
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         # Verify
         assert result["architect_status"] == "error"
@@ -218,10 +228,11 @@ class TestArchitectNode:
             "initial_commit_hash": "",
             "retry_count": 0,
             "verbose": False,
+            "engine": mock_engine,
         }
 
         # Run architect node
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         # Verify
         assert result["architect_status"] == "error"
@@ -254,10 +265,11 @@ class TestArchitectNode:
             "initial_commit_hash": initial_commit,
             "retry_count": 0,
             "verbose": False,
+            "engine": mock_engine,
         }
 
         # Run architect node
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         # Verify call args
         args = mock_engine.invoke.call_args[0]

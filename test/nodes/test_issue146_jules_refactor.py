@@ -73,6 +73,7 @@ async def test_architect_node_engine_agnostic():
         "messages": [HumanMessage(content="test")],
         "initial_commit_hash": "sha123",
         "retry_count": 0,
+        "engine": mock_engine,
     }
 
     with (
@@ -81,7 +82,7 @@ async def test_architect_node_engine_agnostic():
             return_value="mock prompt",
         ) as mock_get_prompt,
     ):
-        result = await architect(state, mock_engine)
+        result = await architect(state)
 
         mock_get_prompt.assert_called_once()
         mock_engine.invoke.assert_called_once()
@@ -102,6 +103,7 @@ async def test_reviewer_node_engine_agnostic():
         "messages": [HumanMessage(content="test")],
         "initial_commit_hash": "sha123",
         "retry_count": 0,
+        "engine": mock_engine,
     }
 
     with (
@@ -110,7 +112,7 @@ async def test_reviewer_node_engine_agnostic():
             return_value="mock prompt",
         ) as mock_get_prompt,
     ):
-        result = await reviewer(state, mock_engine)
+        result = await reviewer(state)
 
         mock_get_prompt.assert_called_once()
         mock_engine.invoke.assert_called_once()

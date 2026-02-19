@@ -37,9 +37,10 @@ async def test_journaler_handles_engine_invoke_exception_gracefully(mock_engine)
 
     # Simulate an exception in engine.invoke
     mock_engine.invoke.side_effect = Exception("Gemini service unavailable")
+    state["engine"] = mock_engine
 
     # The function should NOT raise an exception
-    result = await journaler(state, mock_engine)
+    result = await journaler(state)
 
     # It should return a valid dict, ideally indicating failure or fallback
     assert "journal_status" in result
@@ -68,13 +69,14 @@ async def test_journaler_handles_memory_manager_exception_gracefully(mock_engine
     }
 
     mock_engine.invoke.return_value = "Critical Lesson"
+    state["engine"] = mock_engine
 
     # Simulate exception in MemoryManager
     with patch.object(journaler_module, "MemoryManager") as MockMemoryManager:
         mock_instance = MockMemoryManager.return_value
         mock_instance.log_learning.side_effect = Exception("Disk full")
 
-        result = await journaler(state, mock_engine)
+        result = await journaler(state)
 
         assert result["journal_status"] == "failed"
         assert result["review_status"] == "journaled"
