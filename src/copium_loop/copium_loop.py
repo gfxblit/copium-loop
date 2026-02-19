@@ -67,16 +67,7 @@ class WorkflowManager:
                 state["head_hash"] = "unknown"
 
             try:
-                # Inject engine if the node expects it
-                if node_name in ["coder", "architect", "reviewer", "journaler"]:
-                    result = await asyncio.wait_for(
-                        node_func(state, self.engine),
-                        timeout=NODE_TIMEOUT,
-                    )
-                else:
-                    result = await asyncio.wait_for(
-                        node_func(state), timeout=NODE_TIMEOUT
-                    )
+                result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
 
                 return result
             except asyncio.TimeoutError:
@@ -262,6 +253,7 @@ class WorkflowManager:
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
+            "engine": self.engine,
             "retry_count": 0,
             "issue_url": issue_match.group(0) if issue_match else "",
             "test_output": ""
