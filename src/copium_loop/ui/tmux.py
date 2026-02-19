@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 
 def extract_tmux_session(session_id: str) -> str | None:
@@ -7,7 +8,7 @@ def extract_tmux_session(session_id: str) -> str | None:
 
     Session IDs are typically formatted as {tmux_session}_{pane_id} (e.g., work_%1)
     or session_{timestamp} (e.g., session_123456789).
-    Returns the most specific target possible.
+    Returns the most specific target possible (e.g., %1 or session_123456789).
     """
     if not session_id:
         return None
@@ -25,9 +26,8 @@ def extract_tmux_session(session_id: str) -> str | None:
         if suffix.startswith("%") and suffix[1:].isdigit():
             return suffix
 
-        # Note: We used to treat session_timestamp as None, but existing tests
-        # require returning the full ID. We preserve it to allow potential
-        # matches if the user named their session thus.
+        # Case 2: suffix is a timestamp or part of the name
+        # We return the full ID as the session name.
         return session_id
 
     # Otherwise, it's likely just the session name
@@ -57,11 +57,9 @@ def switch_to_tmux_session(session_name: str):
             text=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
-        # We intentionally do not fallback to stripping suffixes to avoid incorrect targets.
+        # We intentionally do not fallback to avoid incorrect targets.
         pass
     except Exception as e:
-        import sys
-
         print(
             f"Unexpected error switching to tmux session '{session_name}': {e}",
             file=sys.stderr,
