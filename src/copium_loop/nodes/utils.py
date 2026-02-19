@@ -1,4 +1,4 @@
-from copium_loop.git import get_current_branch, get_diff, is_git_repo
+from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
 
 
@@ -9,6 +9,8 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
         raise ValueError("Missing initial commit hash.")
 
     head_hash = state.get("head_hash")
+    if not head_hash:
+        head_hash = await get_head(node="architect")
 
     if engine_type == "jules":
         return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity. (Current HEAD: {head_hash})
@@ -88,6 +90,8 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
         raise ValueError("Missing initial commit hash.")
 
     head_hash = state.get("head_hash")
+    if not head_hash:
+        head_hash = await get_head(node="reviewer")
 
     if engine_type == "jules":
         return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
@@ -178,7 +182,7 @@ async def validate_git_context(node: str) -> str | None:
 
     if not await is_git_repo(node=node):
         msg = "Not a git repository. Skipping PR creation.\n"
-        telemetry.log_output(node, msg)
+        telemetry.log_info(node, msg)
         print(msg, end="")
         telemetry.log_status(node, "success")
         return None
@@ -188,13 +192,13 @@ async def validate_git_context(node: str) -> str | None:
 
     if branch_name in ["main", "master", ""]:
         msg = "Not on a feature branch. Skipping PR creation.\n"
-        telemetry.log_output(node, msg)
+        telemetry.log_info(node, msg)
         print(msg, end="")
         telemetry.log_status(node, "success")
         return None
 
     msg = f"On feature branch: {branch_name}\n"
-    telemetry.log_output(node, msg)
+    telemetry.log_info(node, msg)
     print(msg, end="")
 
     return branch_name
@@ -210,6 +214,8 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     # Get current git HEAD hash to force cache-miss in Jules
     head_hash = state.get("head_hash")
+    if not head_hash:
+        head_hash = await get_head(node="coder")
 
     initial_request = messages[0].content
     safe_request = engine.sanitize_for_prompt(initial_request)

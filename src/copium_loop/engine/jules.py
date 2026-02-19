@@ -386,7 +386,7 @@ class JulesEngine(LLMEngine):
                     if "suggestedCommitMessage" in git_patch:
                         commit_message = git_patch["suggestedCommitMessage"]
                 else:
-                    get_telemetry().log_output(
+                    get_telemetry().log_info(
                         node or "jules", f"Failed to apply patch: {res['output']}\n"
                     )
             finally:
@@ -462,7 +462,7 @@ class JulesEngine(LLMEngine):
                 if verbose:
                     print(msg)
                 if node:
-                    get_telemetry().log_output(node, msg + "\n")
+                    get_telemetry().log_info(node, msg + "\n")
 
                 # Verify session is still valid/running
                 try:
@@ -519,7 +519,7 @@ class JulesEngine(LLMEngine):
                 if verbose:
                     print(msg)
                 if node:
-                    get_telemetry().log_output(node, msg + "\n")
+                    get_telemetry().log_info(node, msg + "\n")
 
                 # Persist session ID immediately via SessionManager
                 if self.session_manager and node:

@@ -51,7 +51,7 @@ async def test_jules_invoke_logs_url():
         mock_print.assert_any_call(f"Jules session created: {expected_url}")
 
         # Verify telemetry
-        mock_telemetry.log_output.assert_any_call(
+        mock_telemetry.log_info.assert_any_call(
             "architect", f"Jules session created: {expected_url}\n"
         )
 

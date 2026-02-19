@@ -60,6 +60,7 @@ class GeminiEngine(LLMEngine):
             command_timeout,
             inactivity_timeout=inactivity_timeout,
             capture_stderr=True,
+            source="llm",
         )
 
         if timed_out:

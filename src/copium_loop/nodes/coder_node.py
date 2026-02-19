@@ -9,7 +9,7 @@ from copium_loop.telemetry import get_telemetry
 async def coder_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("coder", "active")
-    telemetry.log_output("coder", "--- Coder Node ---\n")
+    telemetry.log_info("coder", "--- Coder Node ---\n")
     print("--- Coder Node ---")
 
     engine = state["engine"]
@@ -25,7 +25,7 @@ async def coder_node(state: AgentState) -> dict:
         label="Coder System",
         node="coder",
     )
-    telemetry.log_output("coder", "\nCoding complete.\n")
+    telemetry.log_info("coder", "\nCoding complete.\n")
     print("\nCoding complete.")
     telemetry.log_status("coder", "coded")
 

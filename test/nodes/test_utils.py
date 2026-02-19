@@ -20,7 +20,7 @@ class TestValidateGitContext:
         result = await utils.validate_git_context("test_node")
 
         assert result is None
-        mock_telemetry.log_output.assert_called_with(
+        mock_telemetry.log_info.assert_called_with(
             "test_node", "Not a git repository. Skipping PR creation.\n"
         )
         mock_telemetry.log_status.assert_called_with("test_node", "success")
@@ -38,7 +38,7 @@ class TestValidateGitContext:
         result = await utils.validate_git_context("test_node")
 
         assert result is None
-        mock_telemetry.log_output.assert_called_with(
+        mock_telemetry.log_info.assert_called_with(
             "test_node", "Not on a feature branch. Skipping PR creation.\n"
         )
         mock_telemetry.log_status.assert_called_with("test_node", "success")
@@ -56,7 +56,7 @@ class TestValidateGitContext:
         result = await utils.validate_git_context("test_node")
 
         assert result == "feature-branch"
-        mock_telemetry.log_output.assert_called_with(
+        mock_telemetry.log_info.assert_called_with(
             "test_node", "On feature branch: feature-branch\n"
         )
 

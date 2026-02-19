@@ -14,7 +14,7 @@ async def _run_stage(
 ) -> tuple[bool, str]:
     """Runs a single stage (lint, build, or test) and logs telemetry."""
     msg = f"Running {stage_name}: {cmd} {' '.join(args)}...\n"
-    telemetry.log_output("tester", msg)
+    telemetry.log_info("tester", msg)
     print(msg, end="")
 
     result = await run_command(cmd, args, node="tester")
@@ -42,7 +42,7 @@ async def _run_stage(
                 break
 
     if not success:
-        telemetry.log_output("tester", f"{stage_name.capitalize()} failed.\n")
+        telemetry.log_info("tester", f"{stage_name.capitalize()} failed.\n")
         print(f"{stage_name.capitalize()} failed.")
 
     return success, output
@@ -51,7 +51,7 @@ async def _run_stage(
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("tester", "active")
-    telemetry.log_output("tester", "--- Test Runner Node ---\n")
+    telemetry.log_info("tester", "--- Test Runner Node ---\n")
     print("--- Test Runner Node ---")
     retry_count = state.get("retry_count", 0)
 
@@ -119,7 +119,7 @@ async def tester_node(state: AgentState) -> dict:
                 else "Test coverage threshold not met. Returning to coder."
             )
 
-        telemetry.log_output("tester", f"{message}\n")
+        telemetry.log_info("tester", f"{message}\n")
         return {
             "test_output": f"{fail_prefix}\n" + output,
             "retry_count": retry_count + 1,

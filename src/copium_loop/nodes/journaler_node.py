@@ -7,7 +7,7 @@ from copium_loop.telemetry import get_telemetry
 async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("journaler", "active")
-    telemetry.log_output("journaler", "--- Journaling Node ---\n")
+    telemetry.log_info("journaler", "--- Journaling Node ---\n")
     print("--- Journaling Node ---")
 
     engine = state["engine"]
@@ -89,7 +89,7 @@ async def journaler_node(state: AgentState) -> dict:
         new_review_status = "journaled" if review_status == "pending" else review_status
 
         if lesson.upper() == "NO_LESSON" or not lesson:
-            telemetry.log_output("journaler", "\nNo lesson learned.\n")
+            telemetry.log_info("journaler", "\nNo lesson learned.\n")
             print("\nNo lesson learned.")
             telemetry.log_status("journaler", "no_lesson")
             return {
@@ -110,7 +110,7 @@ async def journaler_node(state: AgentState) -> dict:
 
     except Exception as e:
         error_msg = f"Journaling failed gracefully: {e}"
-        telemetry.log_output("journaler", f"\n{error_msg}\n")
+        telemetry.log_info("journaler", f"\n{error_msg}\n")
         print(f"\n{error_msg}")
         telemetry.log_status("journaler", "failed")
 

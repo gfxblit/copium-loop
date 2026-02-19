@@ -20,7 +20,7 @@ def _parse_verdict(content: str) -> str | None:
 async def architect_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
-    telemetry.log_output("architect", "--- Architect Node ---\n")
+    telemetry.log_info("architect", "--- Architect Node ---\n")
     print("--- Architect Node ---")
     engine = state["engine"]
     retry_count = state.get("retry_count", 0)
@@ -29,7 +29,7 @@ async def architect_node(state: AgentState) -> dict:
         system_prompt = await get_architect_prompt(engine.engine_type, state)
     except Exception as e:
         msg = f"Error generating architect prompt: {e}\n"
-        telemetry.log_output("architect", msg)
+        telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "error")
         return {
@@ -41,7 +41,7 @@ async def architect_node(state: AgentState) -> dict:
     # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
         msg = "\nArchitectural decision: OK (no changes to review)\n"
-        telemetry.log_output("architect", msg)
+        telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "ok")
         return {
@@ -65,7 +65,7 @@ async def architect_node(state: AgentState) -> dict:
         )
     except Exception as e:
         msg = f"Error during architectural evaluation: {e}\n"
-        telemetry.log_output("architect", msg)
+        telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "error")
         return {
@@ -77,7 +77,7 @@ async def architect_node(state: AgentState) -> dict:
     verdict = _parse_verdict(architect_content)
     if not verdict:
         msg = "\nArchitectural decision: Error (no verdict found)\n"
-        telemetry.log_output("architect", msg)
+        telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "error")
         return {
@@ -88,7 +88,7 @@ async def architect_node(state: AgentState) -> dict:
 
     is_ok = verdict == "OK"
     msg = f"\nArchitectural decision: {'OK' if is_ok else 'REFACTOR'}\n"
-    telemetry.log_output("architect", msg)
+    telemetry.log_info("architect", msg)
     print(msg, end="")
     telemetry.log_status("architect", "ok" if is_ok else "refactor")
 
