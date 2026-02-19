@@ -1,7 +1,10 @@
 import json
 from unittest.mock import patch
+
 import pytest
+
 from copium_loop.session_manager import SessionManager
+
 
 @pytest.fixture
 def temp_session_dir(tmp_path):
@@ -14,10 +17,10 @@ def temp_session_dir(tmp_path):
 def test_get_jules_session_no_backward_compatibility():
     """Verify that get_jules_session ignores old string-based sessions."""
     manager = SessionManager("test_session")
-    
+
     # Manually inject old-style state into engine_state
     manager.update_engine_state("jules", "node1", "old_session_id")
-    
+
     # Should return None because it's a string, not a dict with hash
     assert manager.get_jules_session("node1") is None
 
@@ -27,7 +30,7 @@ def test_get_all_jules_sessions_no_backward_compatibility(temp_session_dir):
     session_id = "test_old_session"
     state_file = temp_session_dir / f"{session_id}.json"
     temp_session_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create old-style session file on disk
     old_data = {
         "session_id": session_id,
@@ -42,10 +45,10 @@ def test_get_all_jules_sessions_no_backward_compatibility(temp_session_dir):
     }
     with open(state_file, "w") as f:
         json.dump(old_data, f)
-        
+
     manager = SessionManager(session_id)
     sessions = manager.get_all_jules_sessions()
-    
+
     # Should ONLY contain node_new
     assert sessions == {"node_new": "new_id"}
 

@@ -433,13 +433,9 @@ class JulesEngine(LLMEngine):
         )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            session_name = None
-
             # 1. Check for existing session via SessionManager
-            if self.session_manager and node:
-                state = self.session_manager.get_engine_state("jules", node)
-                if isinstance(state, dict) and state.get("prompt_hash") == prompt_hash:
-                    session_name = state.get("session_id")
+            state = self.session_manager.get_engine_state("jules", node) if self.session_manager and node else None
+            session_name = state.get("session_id") if isinstance(state, dict) and state.get("prompt_hash") == prompt_hash else None
 
             if session_name:
                 if verbose:
@@ -500,10 +496,8 @@ class JulesEngine(LLMEngine):
 
                 # Persist session ID immediately via SessionManager
                 if self.session_manager and node:
-                    self.session_manager.update_engine_state(
-                        "jules",
-                        node,
-                        {"session_id": session_name, "prompt_hash": prompt_hash},
+                    self.session_manager.update_jules_session(
+                        node, session_name, prompt_hash=prompt_hash
                     )
 
             # 3. Poll for completion

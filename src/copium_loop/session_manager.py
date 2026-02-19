@@ -104,7 +104,7 @@ class SessionManager:
     def get_jules_session(self, node: str) -> str | None:
         """Retrieves the Jules session ID for a specific node."""
         state = self.get_engine_state("jules", node)
-        if isinstance(state, dict):
+        if isinstance(state, dict) and state.get("prompt_hash"):
             return state.get("session_id")
         return None
 
@@ -116,7 +116,7 @@ class SessionManager:
         sessions = {}
         if "jules" in self._data.engine_state:
             for k, v in self._data.engine_state["jules"].items():
-                if isinstance(v, dict):
+                if isinstance(v, dict) and v.get("prompt_hash"):
                     session_id = v.get("session_id")
                     if session_id:
                         sessions[k] = session_id
