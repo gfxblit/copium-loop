@@ -40,11 +40,14 @@ class SessionWidget(Vertical):
     }
     """
 
-    def __init__(self, session_column: SessionColumn, **kwargs):
+    def __init__(
+        self, session_column: SessionColumn, index: int | None = None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.can_focus = True
         self.session_column = session_column
         self.session_id = session_column.session_id
+        self.index = index
         # We don't pre-populate self.pillars here because they need to be mounted in compose or refresh_ui
         self.pillars: dict[str, PillarWidget] = {}
 
@@ -87,7 +90,8 @@ class SessionWidget(Vertical):
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
 
-            header.update(f"{self.session_id}{status_suffix}")
+            prefix = f"[{self.index}] " if self.index is not None else ""
+            header.update(f"{prefix}{self.session_id}{status_suffix}")
             header.border_subtitle = ""
 
             container = self.query_one(
