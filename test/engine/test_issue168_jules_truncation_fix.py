@@ -3,7 +3,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from copium_loop.engine.jules import JulesEngine
+from copium_loop.engine.jules import MAX_TELEMETRY_LOG_LENGTH, JulesEngine
 
 
 @pytest.mark.asyncio
