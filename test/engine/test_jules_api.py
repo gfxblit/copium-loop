@@ -295,7 +295,8 @@ async def test_jules_api_failure_state():
         ]
 
         with pytest.raises(
-            JulesSessionError, match="Jules session sessions/sess_123 failed"
+            JulesSessionError,
+            match="Jules session https://jules.google.com/session/sess_123 failed",
         ):
             await engine.invoke("Test prompt")
 

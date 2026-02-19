@@ -54,6 +54,11 @@ class JulesEngine(LLMEngine):
         super().__init__()
         self.api_base_url = api_base_url
 
+    def _get_session_url(self, session_name: str) -> str:
+        """Parses the numeric ID from sessions/<id> and returns the Jules URL."""
+        session_id = session_name.split("/")[-1]
+        return f"https://jules.google.com/session/{session_id}"
+
     def _get_headers(self) -> dict[str, str]:
         """Returns the headers required for Jules API calls."""
         api_key = os.environ.get("JULES_API_KEY")
@@ -290,7 +295,8 @@ class JulesEngine(LLMEngine):
                     status_data["activities"] = [{"description": last_summary}]
                 return status_data
             if state == "FAILED":
-                raise JulesSessionError(f"Jules session {session_name} failed.")
+                session_url = self._get_session_url(session_name)
+                raise JulesSessionError(f"Jules session {session_url} failed.")
 
             await asyncio.sleep(POLLING_INTERVAL)
 
@@ -451,8 +457,12 @@ class JulesEngine(LLMEngine):
                     session_name = state.get("session_id")
 
             if session_name:
+                session_url = self._get_session_url(session_name)
+                msg = f"[{node}] Found existing Jules session: {session_url}"
                 if verbose:
-                    print(f"[{node}] Found existing Jules session: {session_name}")
+                    print(msg)
+                if node:
+                    get_telemetry().log_output(node, msg + "\n")
 
                 # Verify session is still valid/running
                 try:
@@ -504,8 +514,12 @@ class JulesEngine(LLMEngine):
                     client, safe_prompt, repo, branch
                 )
 
+                session_url = self._get_session_url(session_name)
+                msg = f"Jules session created: {session_url}"
                 if verbose:
-                    print(f"Jules session created: {session_name}")
+                    print(msg)
+                if node:
+                    get_telemetry().log_output(node, msg + "\n")
 
                 # Persist session ID immediately via SessionManager
                 if self.session_manager and node:

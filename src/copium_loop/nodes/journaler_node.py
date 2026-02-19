@@ -1,6 +1,5 @@
 from copium_loop.constants import MODELS
 from copium_loop.engine.base import LLMEngine
-from copium_loop.git import get_head
 from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry

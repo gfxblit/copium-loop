@@ -293,7 +293,7 @@ class TestReconstructState:
     def test_reconstruct_jules_engine(self, telemetry_with_temp_dir):
         """Test reconstructing state with jules engine."""
         telemetry_with_temp_dir.log_output(
-            "coder", "Jules session created: sessions/123"
+            "coder", "Jules session created: https://jules.google.com/session/123"
         )
         state = telemetry_with_temp_dir.reconstruct_state()
         assert state["engine_name"] == "jules"
