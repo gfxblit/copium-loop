@@ -438,19 +438,8 @@ class JulesEngine(LLMEngine):
             # 1. Check for existing session via SessionManager
             if self.session_manager and node:
                 state = self.session_manager.get_engine_state("jules", node)
-                if isinstance(state, dict):
-                    if state.get("prompt_hash") == prompt_hash:
-                        session_name = state.get("session_id")
-                elif isinstance(state, str):
-                    # Backward compatibility: if it's just a string, we don't know the hash,
-                    # so we assume it might be different and don't reuse it.
-                    # Or we could reuse it if we want to be conservative, but the issue
-                    # is that we ARE reusing when we shouldn't.
-                    if verbose:
-                        print(
-                            f"[{node}] Found old-style session state (no hash). Starting new session."
-                        )
-                    session_name = None
+                if isinstance(state, dict) and state.get("prompt_hash") == prompt_hash:
+                    session_name = state.get("session_id")
 
             if session_name:
                 if verbose:

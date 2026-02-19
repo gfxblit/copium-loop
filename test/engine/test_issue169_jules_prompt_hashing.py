@@ -6,17 +6,11 @@ import pytest
 from copium_loop.engine.jules import JulesEngine
 
 
-@pytest.mark.asyncio
-async def test_jules_prompt_hashing_creates_new_session_if_prompt_differs():
-    """
-    Verify that a new Jules session is created if the prompt changes,
-    even if an existing session for the same node is found in SessionManager.
-    """
+@pytest.fixture
+def mock_jules_engine_with_session():
+    """Fixture to create a JulesEngine with a mocked SessionManager and state."""
     engine = JulesEngine()
-
-    # Mock SessionManager
     mock_session_manager = MagicMock()
-    # Initial state: no session
     stored_state = {}
 
     def get_engine_state(engine_type, key):
@@ -28,6 +22,18 @@ async def test_jules_prompt_hashing_creates_new_session_if_prompt_differs():
     mock_session_manager.get_engine_state.side_effect = get_engine_state
     mock_session_manager.update_engine_state.side_effect = update_engine_state
     engine.session_manager = mock_session_manager
+    return engine
+
+
+@pytest.mark.asyncio
+async def test_jules_prompt_hashing_creates_new_session_if_prompt_differs(
+    mock_jules_engine_with_session,
+):
+    """
+    Verify that a new Jules session is created if the prompt changes,
+    even if an existing session for the same node is found in SessionManager.
+    """
+    engine = mock_jules_engine_with_session
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
@@ -69,25 +75,13 @@ async def test_jules_prompt_hashing_creates_new_session_if_prompt_differs():
 
 
 @pytest.mark.asyncio
-async def test_jules_prompt_hashing_reuses_session_if_prompt_identical():
+async def test_jules_prompt_hashing_reuses_session_if_prompt_identical(
+    mock_jules_engine_with_session,
+):
     """
     Verify that the same Jules session is reused if the prompt is identical.
     """
-    engine = JulesEngine()
-
-    # Mock SessionManager
-    mock_session_manager = MagicMock()
-    stored_state = {}
-
-    def get_engine_state(engine_type, key):
-        return stored_state.get(f"{engine_type}:{key}")
-
-    def update_engine_state(engine_type, key, value):
-        stored_state[f"{engine_type}:{key}"] = value
-
-    mock_session_manager.get_engine_state.side_effect = get_engine_state
-    mock_session_manager.update_engine_state.side_effect = update_engine_state
-    engine.session_manager = mock_session_manager
+    engine = mock_jules_engine_with_session
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),

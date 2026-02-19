@@ -13,16 +13,12 @@ class SessionData:
     session_id: str
     engine_state: dict[str, dict[str, Any]] = field(default_factory=dict)
     metadata: dict[str, str] = field(default_factory=dict)
-    jules_sessions: dict[str, str] = field(
-        default_factory=dict
-    )  # Deprecated but kept for migration
 
     def to_dict(self) -> dict:
         return {
             "session_id": self.session_id,
             "engine_state": self.engine_state,
             "metadata": self.metadata,
-            "jules_sessions": self.jules_sessions,
         }
 
     @classmethod
@@ -31,7 +27,6 @@ class SessionData:
             session_id=data["session_id"],
             engine_state=data.get("engine_state", {}),
             metadata=data.get("metadata", {}),
-            jules_sessions=data.get("jules_sessions", {}),
         )
 
 
@@ -94,43 +89,37 @@ class SessionManager:
         if not self._data:
             self._load()
 
-        # Check new structure first
         if (
             engine_type in self._data.engine_state
             and key in self._data.engine_state[engine_type]
         ):
             return self._data.engine_state[engine_type][key]
 
-        # Backward compatibility for Jules
-        if engine_type == "jules" and key in self._data.jules_sessions:
-            return self._data.jules_sessions[key]
-
         return None
 
-    def update_jules_session(self, node: str, jules_session_id: str):
+    def update_jules_session(self, node: str, jules_session_id: str, prompt_hash: str = "default_hash"):
         """Updates the Jules session ID for a specific node."""
-        self.update_engine_state("jules", node, jules_session_id)
+        self.update_engine_state("jules", node, {"session_id": jules_session_id, "prompt_hash": prompt_hash})
 
     def get_jules_session(self, node: str) -> str | None:
         """Retrieves the Jules session ID for a specific node."""
         state = self.get_engine_state("jules", node)
         if isinstance(state, dict):
             return state.get("session_id")
-        return state
+        return None
 
     def get_all_jules_sessions(self) -> dict[str, str]:
         """Retrieves all Jules session IDs."""
         if not self._data:
             self._load()
 
-        # Combine new and old for migration purposes
-        sessions = self._data.jules_sessions.copy()
+        sessions = {}
         if "jules" in self._data.engine_state:
             for k, v in self._data.engine_state["jules"].items():
                 if isinstance(v, dict):
-                    sessions[k] = v.get("session_id")
-                else:
-                    sessions[k] = v
+                    session_id = v.get("session_id")
+                    if session_id:
+                        sessions[k] = session_id
         return sessions
 
     def update_metadata(self, key: str, value: str):
