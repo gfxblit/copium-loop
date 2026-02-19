@@ -12,8 +12,11 @@ from copium_loop.state import AgentState
 @pytest.mark.asyncio
 async def test_get_architect_prompt():
     """Verify architect prompt generation for different engines."""
+    mock_engine = MagicMock()
+    mock_engine.sanitize_for_prompt = MagicMock(side_effect=lambda x: x)
     state = AgentState(
         initial_commit_hash="sha123",
+        engine=mock_engine,
     )
 
     # Test Jules prompt
@@ -38,9 +41,12 @@ async def test_get_architect_prompt():
 @pytest.mark.asyncio
 async def test_get_reviewer_prompt():
     """Verify reviewer prompt generation for different engines."""
+    mock_engine = MagicMock()
+    mock_engine.sanitize_for_prompt = MagicMock(side_effect=lambda x: x)
     state = AgentState(
         initial_commit_hash="sha123",
         test_output="PASS",
+        engine=mock_engine,
     )
 
     # Test Jules prompt
