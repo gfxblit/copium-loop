@@ -13,6 +13,7 @@ def temp_session_dir(tmp_path):
         mock_home.return_value = tmp_path
         yield tmp_path / ".copium" / "sessions"
 
+
 @pytest.mark.usefixtures("temp_session_dir")
 def test_get_jules_session_no_backward_compatibility():
     """Verify that get_jules_session ignores old string-based sessions."""
@@ -23,6 +24,7 @@ def test_get_jules_session_no_backward_compatibility():
 
     # Should return None because it's a string, not a dict with hash
     assert manager.get_jules_session("node1") is None
+
 
 @pytest.mark.usefixtures("temp_session_dir")
 def test_get_all_jules_sessions_no_backward_compatibility(temp_session_dir):
@@ -38,10 +40,10 @@ def test_get_all_jules_sessions_no_backward_compatibility(temp_session_dir):
         "engine_state": {
             "jules": {
                 "node_str": "old_id_2",
-                "node_new": {"session_id": "new_id", "prompt_hash": "abc"}
+                "node_new": {"session_id": "new_id", "prompt_hash": "abc"},
             }
         },
-        "metadata": {}
+        "metadata": {},
     }
     with open(state_file, "w") as f:
         json.dump(old_data, f)
@@ -51,6 +53,7 @@ def test_get_all_jules_sessions_no_backward_compatibility(temp_session_dir):
 
     # Should ONLY contain node_new
     assert sessions == {"node_new": "new_id"}
+
 
 @pytest.mark.usefixtures("temp_session_dir")
 def test_get_engine_state_no_backward_compatibility(temp_session_dir):
@@ -63,7 +66,7 @@ def test_get_engine_state_no_backward_compatibility(temp_session_dir):
         "session_id": session_id,
         "jules_sessions": {"node1": "old_id"},
         "engine_state": {},
-        "metadata": {}
+        "metadata": {},
     }
     with open(state_file, "w") as f:
         json.dump(old_data, f)

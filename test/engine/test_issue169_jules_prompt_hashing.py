@@ -140,9 +140,7 @@ async def test_jules_prompt_hashing_starts_new_session_for_old_string_state(
     mock_session_manager.get_engine_state.return_value = "sessions/old_sess"
 
     # First call: creates sess_new
-    client.post.return_value = httpx.Response(
-        201, json={"name": "sessions/sess_new"}
-    )
+    client.post.return_value = httpx.Response(201, json={"name": "sessions/sess_new"})
     client.get.side_effect = [
         # No session check for sess_old because we discarded it (now enforced in SessionManager)
         httpx.Response(200, json={"activities": []}),
