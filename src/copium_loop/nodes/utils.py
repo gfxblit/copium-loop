@@ -2,14 +2,23 @@ from copium_loop.git import get_current_branch, get_diff, is_git_repo, resolve_r
 from copium_loop.telemetry import get_telemetry
 
 
+async def get_head_hash(node: str) -> str:
+    """Returns the current HEAD hash for prompt cache-busting."""
+    if await is_git_repo(node=node):
+        return await resolve_ref("HEAD", node=node) or "unknown"
+    return "unknown"
+
+
 async def get_architect_prompt(engine_type: str, state: dict) -> str:
     """Generates the architect system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
+    head_hash = await get_head_hash("architect")
+
     if engine_type == "jules":
-        return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity.
+        return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity. (Current HEAD: {head_hash})
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
 
@@ -85,8 +94,10 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
+    head_hash = await get_head_hash("reviewer")
+
     if engine_type == "jules":
-        return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch.
+        return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
 
@@ -205,9 +216,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     code_status = state.get("code_status", "")
 
     # Get current git HEAD hash to force cache-miss in Jules
-    head_hash = "unknown"
-    if await is_git_repo(node="coder"):
-        head_hash = await resolve_ref("HEAD", node="coder") or "unknown"
+    head_hash = await get_head_hash("coder")
 
     initial_request = messages[0].content
     safe_request = engine.sanitize_for_prompt(initial_request)
@@ -256,7 +265,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     {push_instruction}
     When resolving conflicts or rebasing, ALWAYS use the '--no-edit' flag (e.g., 'git rebase --continue --no-edit' or 'git commit --no-edit') to avoid interactive editors."""
 
-    system_prompt = f"You are a software engineer. Implement the following request: {user_request_block}\n\n{mandatory_instructions}"
+    system_prompt = f"You are a software engineer. (Current HEAD: {head_hash}) Implement the following request: {user_request_block}\n\n{mandatory_instructions}"
 
     if code_status == "failed":
         last_message = messages[-1]
