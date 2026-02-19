@@ -35,11 +35,16 @@ async def is_dirty(node: str | None = None) -> bool:
 
 
 async def get_head(node: str | None = None) -> str:
-    """Returns the current HEAD commit hash."""
-    res = await run_command(
-        "git", ["rev-parse", "HEAD"], node=node, capture_stderr=False
-    )
-    return res["output"].strip()
+    """Returns the current HEAD commit hash, or 'unknown' if not a git repo."""
+    try:
+        res = await run_command(
+            "git", ["rev-parse", "HEAD"], node=node, capture_stderr=False
+        )
+        if res["exit_code"] == 0:
+            return res["output"].strip()
+    except Exception:
+        pass
+    return "unknown"
 
 
 async def resolve_ref(ref: str, node: str | None = None) -> str | None:

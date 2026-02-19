@@ -60,6 +60,12 @@ class WorkflowManager:
 
         async def wrapper(state: AgentState):
             telemetry = get_telemetry()
+            # Refresh head_hash before node execution for cache-busting accuracy
+            try:
+                state["head_hash"] = await get_head(node=node_name)
+            except Exception:
+                state["head_hash"] = "unknown"
+
             try:
                 # Inject engine if the node expects it
                 if node_name in ["coder", "architect", "reviewer", "journaler"]:
@@ -248,6 +254,11 @@ class WorkflowManager:
                 telemetry.log_output(self.start_node, msg)
                 print(msg, end="")
 
+        try:
+            current_head_hash = await get_head(node=self.start_node)
+        except Exception:
+            current_head_hash = ""
+
         # Build default initial state
         default_state = {
             "messages": [HumanMessage(content=input_prompt)],
@@ -263,6 +274,7 @@ class WorkflowManager:
             "architect_status": "pending",
             "pr_url": "",
             "initial_commit_hash": initial_commit_hash,
+            "head_hash": current_head_hash,
             "git_diff": "",
             "verbose": self.verbose,
             "last_error": "",

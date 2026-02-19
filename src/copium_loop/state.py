@@ -20,3 +20,4 @@ class AgentState(TypedDict):
     verbose: bool
     last_error: str
     journal_status: str
+    head_hash: str

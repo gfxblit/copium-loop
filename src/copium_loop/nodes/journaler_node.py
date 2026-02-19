@@ -1,5 +1,6 @@
 from copium_loop.constants import MODELS
 from copium_loop.engine.base import LLMEngine
+from copium_loop.git import get_head
 from copium_loop.memory import MemoryManager
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -21,8 +22,11 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
         git_diff = state.get("git_diff", "")
         telemetry_log = telemetry.get_formatted_log()
 
+        # Get current git HEAD hash to force cache-miss in Jules
+        head_hash = state.get("head_hash")
+
         # Construct a prompt to distill the session
-        prompt = f"""Analyze the following development session and distill key learnings.
+        prompt = f"""Analyze the following development session and distill key learnings. (Current HEAD: {head_hash})
 
     DECISION LOGIC:
     1. **Global/Experiential Memory**: If the lesson is about the user's preferences (e.g., "User hates async"), general coding patterns, or your own behavior that applies to ALL projects:
