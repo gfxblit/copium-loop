@@ -1,7 +1,7 @@
 import concurrent.futures
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -124,3 +124,38 @@ def temp_git_repo(tmp_path, monkeypatch):
     subprocess.run(["git", "branch", "-M", "main"], check=True)
 
     yield tmp_path
+
+
+@pytest.fixture
+def mock_engine():
+    """Mock LLMEngine for testing."""
+    engine = MagicMock()
+    engine.engine_type = "gemini"
+    engine.invoke = AsyncMock(return_value="VERDICT: OK")
+    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
+    return engine
+
+
+@pytest.fixture
+def agent_state(mock_engine):
+    """Provides a complete default AgentState for testing."""
+    from copium_loop.state import AgentState
+
+    state: AgentState = {
+        "messages": [],
+        "engine": mock_engine,
+        "code_status": "ok",
+        "test_output": "",
+        "review_status": "ok",
+        "architect_status": "ok",
+        "retry_count": 0,
+        "pr_url": "",
+        "issue_url": "",
+        "initial_commit_hash": "",
+        "git_diff": "",
+        "verbose": False,
+        "last_error": "",
+        "journal_status": "ok",
+        "head_hash": "",
+    }
+    return state

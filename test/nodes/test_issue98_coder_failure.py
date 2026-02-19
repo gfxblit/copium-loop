@@ -1,5 +1,4 @@
 import sys
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -9,14 +8,6 @@ from copium_loop.nodes import coder
 
 # Get the module object explicitly to avoid shadowing issues
 coder_module = sys.modules["copium_loop.nodes.coder_node"]
-
-
-@pytest.fixture
-def mock_engine():
-    engine = MagicMock()
-    engine.invoke = AsyncMock(return_value="Retrying after failure...")
-    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
-    return engine
 
 
 class TestIssue98CoderFailure:
@@ -48,28 +39,26 @@ class TestIssue98CoderFailure:
 
     @pytest.mark.asyncio
     async def test_coder_node_handles_failed_status_with_unexpected_failure_prompt(
-        self, mock_engine
+        self, agent_state
     ):
         """
 
         Test that coder node uses "unexpected failure" prompt when code_status is "failed".
 
         """
+        agent_state["engine"].invoke.return_value = "Retrying after failure..."
+        agent_state["messages"] = [
+            HumanMessage(content="Original request"),
+            SystemMessage(content="All models exhausted"),
+        ]
+        agent_state["code_status"] = "failed"
+        agent_state["retry_count"] = 1
 
-        state = {
-            "messages": [
-                HumanMessage(content="Original request"),
-                SystemMessage(content="All models exhausted"),
-            ],
-            "code_status": "failed",
-            "retry_count": 1,
-        }
-
-        await coder(state, mock_engine)
+        await coder(agent_state)
 
         # Check that the prompt contains the "unexpected failure" message
 
-        call_args = mock_engine.invoke.call_args[0]
+        call_args = agent_state["engine"].invoke.call_args[0]
 
         prompt = call_args[0]
 

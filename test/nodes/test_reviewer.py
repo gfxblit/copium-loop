@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -7,15 +7,6 @@ from copium_loop.nodes import reviewer
 
 # Get the module object explicitly to avoid shadowing issues
 reviewer_module = sys.modules["copium_loop.nodes.reviewer_node"]
-
-
-@pytest.fixture
-def mock_engine():
-    engine = MagicMock()
-    type(engine).engine_type = PropertyMock(return_value="gemini")
-    engine.invoke = AsyncMock(return_value="VERDICT: APPROVED")
-    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
-    return engine
 
 
 class TestReviewerNode:
@@ -42,143 +33,121 @@ class TestReviewerNode:
         self.mock_is_git_repo_patcher.stop()
 
     @pytest.mark.asyncio
-    async def test_reviewer_returns_approved(self, mock_engine):
+    async def test_reviewer_returns_approved(self, agent_state):
         """Test that reviewer returns approved status."""
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_reviewer_returns_rejected(self, mock_engine):
+    async def test_reviewer_returns_rejected(self, agent_state):
         """Test that reviewer returns rejected status."""
-        mock_engine.invoke.return_value = "VERDICT: REJECTED\nissues"
+        agent_state["engine"].invoke.return_value = "VERDICT: REJECTED\nissues"
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "rejected"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_reviewer_takes_last_verdict(self, mock_engine):
+    async def test_reviewer_takes_last_verdict(self, agent_state):
         """Test that reviewer takes the last verdict found in the content."""
-        mock_engine.invoke.return_value = (
+        agent_state[
+            "engine"
+        ].invoke.return_value = (
             "VERDICT: REJECTED\nWait, I changed my mind.\nVERDICT: APPROVED"
         )
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_reviewer_rejects_on_test_failure(self, mock_engine):
+    async def test_reviewer_rejects_on_test_failure(self, agent_state):
         """Test that reviewer rejects when tests fail."""
-        state = {"test_output": "FAIL", "retry_count": 0}
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "FAIL"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "rejected"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_reviewer_allows_empty_test_output(self, mock_engine):
+    async def test_reviewer_allows_empty_test_output(self, agent_state):
         """Test that reviewer proceeds with empty test output."""
-        mock_engine.invoke.return_value = "Thinking...\nVERDICT: APPROVED"
+        agent_state["engine"].invoke.return_value = "Thinking...\nVERDICT: APPROVED"
 
-        state = {
-            "test_output": "",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = ""
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_reviewer_returns_error_on_exception(self, mock_engine):
+    async def test_reviewer_returns_error_on_exception(self, agent_state):
         """Test that reviewer returns error status on exception."""
-        mock_engine.invoke.side_effect = Exception("API Error")
+        agent_state["engine"].invoke.side_effect = Exception("API Error")
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_reviewer_returns_error_on_missing_verdict(self, mock_engine):
+    async def test_reviewer_returns_error_on_missing_verdict(self, agent_state):
         """Test that reviewer returns error status when no verdict is found."""
-        mock_engine.invoke.return_value = "I am not sure what to do."
+        agent_state["engine"].invoke.return_value = "I am not sure what to do."
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_reviewer_no_notification_on_rejected(self, mock_engine):
+    async def test_reviewer_no_notification_on_rejected(self, agent_state):
         """Test that reviewer does not send notification on rejection."""
-        mock_engine.invoke.return_value = "VERDICT: REJECTED"
+        agent_state["engine"].invoke.return_value = "VERDICT: REJECTED"
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "rejected"
 
     @pytest.mark.asyncio
-    async def test_reviewer_false_rejection_repro(self, mock_engine):
+    async def test_reviewer_false_rejection_repro(self, agent_state):
         """Test that reviewer does not falsely reject on options string."""
         # This simulates the failure reported in issue #20
-        mock_engine.invoke.return_value = "I cannot determine the final status (APPROVED/REJECTED). I hit a quota limit."
+        agent_state[
+            "engine"
+        ].invoke.return_value = "I cannot determine the final status (APPROVED/REJECTED). I hit a quota limit."
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         # Expected: it should be "error" because no REAL verdict was given
         assert result["review_status"] == "error"
 
     @pytest.mark.asyncio
     @patch("copium_loop.nodes.utils.get_diff", new_callable=AsyncMock)
-    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, mock_engine):
+    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, agent_state):
         """Test that reviewer returns error status on git diff failure."""
         mock_get_diff.side_effect = Exception("git diff error")
 
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        result = await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        result = await reviewer(agent_state)
 
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
@@ -186,21 +155,17 @@ class TestReviewerNode:
         mock_get_diff.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_reviewer_handles_missing_initial_hash(self, mock_engine):
+    async def test_reviewer_handles_missing_initial_hash(self, agent_state):
         """Test that reviewer returns error status on missing initial hash in git repo."""
         with patch(
             "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
         ) as mock_is_git:
             mock_is_git.return_value = True
-            state = {
-                "test_output": "PASS",
-                "initial_commit_hash": "",
-                "retry_count": 0,
-                "verbose": False,
-            }
+            agent_state["test_output"] = "PASS"
+            agent_state["initial_commit_hash"] = ""
 
             # Run reviewer node
-            result = await reviewer(state, mock_engine)
+            result = await reviewer(agent_state)
 
             # Verify
             assert result["review_status"] == "error"
@@ -208,40 +173,33 @@ class TestReviewerNode:
             assert "Missing initial commit hash" in result["messages"][0].content
 
     @pytest.mark.asyncio
-    async def test_reviewer_skips_llm_on_empty_diff(self, mock_engine):
+    async def test_reviewer_skips_llm_on_empty_diff(self, agent_state):
         """Test that reviewer returns approved immediately if git diff is empty, without invoking LLM."""
         with patch(
             "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
         ) as mock_get_diff:
             mock_get_diff.return_value = ""  # Force empty diff
 
-            state = {
-                "test_output": "PASS",
-                "initial_commit_hash": "some_hash",
-                "retry_count": 0,
-                "verbose": False,
-            }
+            agent_state["test_output"] = "PASS"
+            agent_state["initial_commit_hash"] = "some_hash"
 
             # Run reviewer node
-            result = await reviewer(state, mock_engine)
+            result = await reviewer(agent_state)
 
             # Verify
             mock_get_diff.assert_called_once()
-            mock_engine.invoke.assert_not_called()
+            agent_state["engine"].invoke.assert_not_called()
             assert result["review_status"] == "approved"
             assert result["retry_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_reviewer_prompt_contains_example(self, mock_engine):
+    async def test_reviewer_prompt_contains_example(self, agent_state):
         """Test that the reviewer system prompt contains an example block."""
-        state = {
-            "test_output": "PASS",
-            "retry_count": 0,
-            "initial_commit_hash": "abc",
-        }
-        await reviewer(state, mock_engine)
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+        await reviewer(agent_state)
 
-        args, kwargs = mock_engine.invoke.call_args
+        args, kwargs = agent_state["engine"].invoke.call_args
         system_prompt = args[0]
         assert "EXAMPLE:" in system_prompt
         assert system_prompt.count("VERDICT: APPROVED") == 2
