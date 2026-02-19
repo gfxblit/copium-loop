@@ -1,13 +1,12 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Static
-from rich.text import Text
-from rich.panel import Panel
 
 from copium_loop.ui.pillar import MatrixPillar
 
+
 class PillTestApp(App):
     """Test app to render MatrixPillar titles (pills)."""
-    
+
     CSS = """
     Static {
         margin: 1 2;
@@ -53,6 +52,7 @@ class PillTestApp(App):
 
     def on_mount(self) -> None:
         self.call_after_refresh(self.exit)
+
 
 if __name__ == "__main__":
     app = PillTestApp()
