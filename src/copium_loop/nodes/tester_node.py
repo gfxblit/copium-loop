@@ -42,7 +42,7 @@ async def _run_stage(
         # We only check these for the linting stage to avoid false positives in unit tests.
         # We require a line/column prefix (e.g. :10:5: F401) to be very specific to linter output.
         if stage_name == "linting":
-            failure_patterns.append(r":\d+:(\d+:)?\s+[A-Z]+\d{3,4}\b")
+            failure_patterns.append(r":\d+:(\d+:)?\s*[A-Z]+\d{3,4}\b")
 
         for pattern in failure_patterns:
             if re.search(pattern, output, re.IGNORECASE | re.MULTILINE):

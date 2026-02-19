@@ -307,6 +307,28 @@ class TestTesterNode:
             mock_log_status.assert_any_call("tester", "failed")
 
     @pytest.mark.asyncio
+    async def test_tester_node_detect_ruff_violation_with_colon_relaxed_space(self):
+        """Verify that it detects Ruff violations even with no space after the colon."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_telemetry"),
+        ):
+            # Violation: main.py:1:1:F401 (no space)
+            mock_run.side_effect = [
+                {"output": "main.py:1:1:F401 imported but unused", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]
+
+    @pytest.mark.asyncio
     async def test_tester_detect_ruff_summary(self):
         """Test that tester node detects ruff summary like 'Found 5 errors' even if exit code is 0."""
         with (
