@@ -165,8 +165,11 @@ def test_matrix_pillar_title_pill_shape():
     assert "◖" in plain
     assert "◗" in plain
     assert " ▶ CODER " in plain
-    # Verify colors (roughly, by checking if spans exist)
+    # Verify styles are present
     assert len(title.spans) > 0
+    # At least one span should contain the status color in its style definition
+    status_color = pillar.get_status_color()
+    assert any(status_color in str(span.style) for span in title.spans)
 
     # Success
     pillar.status = "success"

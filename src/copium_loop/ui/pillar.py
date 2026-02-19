@@ -7,6 +7,22 @@ from rich.text import Text
 
 from .renderable import TailRenderable
 
+# Pillar Status Colors
+PILLAR_COLOR_ACTIVE = "#00FF41"
+PILLAR_COLOR_SUCCESS = "cyan"
+PILLAR_COLOR_FAILURE = "red"
+PILLAR_COLOR_DEFAULT = "#666666"
+PILLAR_COLOR_IDLE_TEXT = "dim grey50"
+PILLAR_COLOR_IDLE_WITH_CONTENT = "dim cyan"
+
+# Pillar Icons
+PILLAR_ICON_PILL_LEFT = "◖"
+PILLAR_ICON_PILL_RIGHT = "◗"
+PILLAR_ICON_ACTIVE = "▶"
+PILLAR_ICON_SUCCESS = "✔"
+PILLAR_ICON_FAILURE = "✘"
+PILLAR_ICON_IDLE = "○"
+
 
 class MatrixPillar:
     """Manages the buffer and rendering for a single agent phase."""
@@ -73,13 +89,13 @@ class MatrixPillar:
     def get_status_color(self) -> str:
         """Returns the base color hex or name for the current status."""
         if self.status == "active":
-            return "#00FF41"
+            return PILLAR_COLOR_ACTIVE
         elif self.status in self.SUCCESS_STATUSES:
-            return "cyan"
+            return PILLAR_COLOR_SUCCESS
         elif self.status in self.FAILURE_STATUSES:
-            return "red"
+            return PILLAR_COLOR_FAILURE
         else:
-            return "#666666"
+            return PILLAR_COLOR_DEFAULT
 
     def get_title_text(self) -> Text:
         """Returns the title text for the pillar (icon + name).
@@ -91,29 +107,37 @@ class MatrixPillar:
 
         if self.status == "active":
             return Text.assemble(
-                ("◖", status_color),
-                (f" ▶ {name} ", f"bold black on {status_color}"),
-                ("◗", status_color),
+                (PILLAR_ICON_PILL_LEFT, status_color),
+                (f" {PILLAR_ICON_ACTIVE} {name} ", f"bold black on {status_color}"),
+                (PILLAR_ICON_PILL_RIGHT, status_color),
                 justify="center",
             )
         elif self.status in self.SUCCESS_STATUSES:
             return Text.assemble(
-                ("◖", status_color),
-                (f" ✔ {name} ", f"bold black on {status_color}"),
-                ("◗", status_color),
+                (PILLAR_ICON_PILL_LEFT, status_color),
+                (f" {PILLAR_ICON_SUCCESS} {name} ", f"bold black on {status_color}"),
+                (PILLAR_ICON_PILL_RIGHT, status_color),
                 justify="center",
             )
         elif self.status in self.FAILURE_STATUSES:
             return Text.assemble(
-                ("◖", status_color),
-                (f" ✘ {name} ", f"bold white on {status_color}"),
-                ("◗", status_color),
+                (PILLAR_ICON_PILL_LEFT, status_color),
+                (f" {PILLAR_ICON_FAILURE} {name} ", f"bold white on {status_color}"),
+                (PILLAR_ICON_PILL_RIGHT, status_color),
                 justify="center",
             )
         elif len(self.buffer) > 0:
-            return Text(f"✔ {name}", style="dim cyan", justify="center")
+            return Text(
+                f"{PILLAR_ICON_SUCCESS} {name}",
+                style=PILLAR_COLOR_IDLE_WITH_CONTENT,
+                justify="center",
+            )
         else:
-            return Text(f"○ {name}", style="dim grey50", justify="center")
+            return Text(
+                f"{PILLAR_ICON_IDLE} {name}",
+                style=PILLAR_COLOR_IDLE_TEXT,
+                justify="center",
+            )
 
     def get_subtitle_text(self) -> Text:
         """Returns the subtitle text for the pillar (status + duration + completion time)."""
