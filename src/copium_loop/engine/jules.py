@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import os
 import tempfile
 from typing import Any
@@ -423,6 +424,9 @@ class JulesEngine(LLMEngine):
         # Sanitize prompt to prevent injection
         safe_prompt = self.sanitize_for_prompt(prompt)
 
+        # Calculate prompt hash for session reuse logic
+        prompt_hash = hashlib.sha256(safe_prompt.encode("utf-8")).hexdigest()
+
         timeout = command_timeout if command_timeout is not None else COMMAND_TIMEOUT
         inactivity = (
             inactivity_timeout if inactivity_timeout is not None else INACTIVITY_TIMEOUT
@@ -433,7 +437,20 @@ class JulesEngine(LLMEngine):
 
             # 1. Check for existing session via SessionManager
             if self.session_manager and node:
-                session_name = self.session_manager.get_engine_state("jules", node)
+                state = self.session_manager.get_engine_state("jules", node)
+                if isinstance(state, dict):
+                    if state.get("prompt_hash") == prompt_hash:
+                        session_name = state.get("session_id")
+                elif isinstance(state, str):
+                    # Backward compatibility: if it's just a string, we don't know the hash,
+                    # so we assume it might be different and don't reuse it.
+                    # Or we could reuse it if we want to be conservative, but the issue
+                    # is that we ARE reusing when we shouldn't.
+                    if verbose:
+                        print(
+                            f"[{node}] Found old-style session state (no hash). Starting new session."
+                        )
+                    session_name = None
 
             if session_name:
                 if verbose:
@@ -495,7 +512,9 @@ class JulesEngine(LLMEngine):
                 # Persist session ID immediately via SessionManager
                 if self.session_manager and node:
                     self.session_manager.update_engine_state(
-                        "jules", node, session_name
+                        "jules",
+                        node,
+                        {"session_id": session_name, "prompt_hash": prompt_hash},
                     )
 
             # 3. Poll for completion

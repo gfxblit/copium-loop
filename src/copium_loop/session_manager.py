@@ -113,7 +113,10 @@ class SessionManager:
 
     def get_jules_session(self, node: str) -> str | None:
         """Retrieves the Jules session ID for a specific node."""
-        return self.get_engine_state("jules", node)
+        state = self.get_engine_state("jules", node)
+        if isinstance(state, dict):
+            return state.get("session_id")
+        return state
 
     def get_all_jules_sessions(self) -> dict[str, str]:
         """Retrieves all Jules session IDs."""
@@ -123,7 +126,11 @@ class SessionManager:
         # Combine new and old for migration purposes
         sessions = self._data.jules_sessions.copy()
         if "jules" in self._data.engine_state:
-            sessions.update(self._data.engine_state["jules"])
+            for k, v in self._data.engine_state["jules"].items():
+                if isinstance(v, dict):
+                    sessions[k] = v.get("session_id")
+                else:
+                    sessions[k] = v
         return sessions
 
     def update_metadata(self, key: str, value: str):
