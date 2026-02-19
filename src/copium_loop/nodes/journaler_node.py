@@ -23,7 +23,7 @@ async def journaler_node(state: AgentState, engine: LLMEngine) -> dict:
         telemetry_log = telemetry.get_formatted_log()
 
         # Get current git HEAD hash to force cache-miss in Jules
-        head_hash = state.get("head_hash") or await get_head("journaler")
+        head_hash = state.get("head_hash")
 
         # Construct a prompt to distill the session
         prompt = f"""Analyze the following development session and distill key learnings. (Current HEAD: {head_hash})
