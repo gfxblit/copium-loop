@@ -27,6 +27,7 @@ class TestPrCreatorNode:
         mock_add,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         """Test that PR creator creates a PR successfully."""
         mock_validate_git.return_value = "feature-branch"
@@ -37,8 +38,8 @@ class TestPrCreatorNode:
             "exit_code": 0,
         }
 
-        state = {"retry_count": 0}
-        result = await pr_creator(state)
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
 
         assert result["review_status"] == "pr_created"
         assert "PR Created" in result["messages"][0].content
@@ -63,6 +64,7 @@ class TestPrCreatorNode:
         mock_add,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         """Test that PR creator commits dirty files (from journaler)."""
         mock_validate_git.return_value = "feature-branch"
@@ -75,8 +77,8 @@ class TestPrCreatorNode:
             "exit_code": 0,
         }
 
-        state = {"retry_count": 0}
-        result = await pr_creator(state)
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
 
         assert result["review_status"] == "pr_created"
         mock_add.assert_called_once_with(".", node="pr_creator")
@@ -96,6 +98,7 @@ class TestPrCreatorNode:
         mock_push,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         """Test that PR creator handles existing PR."""
         mock_validate_git.return_value = "feature-branch"
@@ -106,29 +109,32 @@ class TestPrCreatorNode:
             "exit_code": 1,
         }
 
-        state = {"retry_count": 0}
-        result = await pr_creator(state)
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
 
         assert result["review_status"] == "pr_created"
         assert "already exists" in result["messages"][0].content
 
     @pytest.mark.asyncio
     @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    async def test_pr_creator_skips_on_main_branch(self, mock_validate_git):
+    async def test_pr_creator_skips_on_main_branch(
+        self, mock_validate_git, agent_state
+    ):
         """Test that PR creator skips on main branch."""
         mock_validate_git.return_value = None
 
-        state = {"retry_count": 0}
-        result = await pr_creator(state)
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
 
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
     @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    async def test_pr_creator_no_git(self, mock_validate_git):
+    async def test_pr_creator_no_git(self, mock_validate_git, agent_state):
         """Test that PR creator skips if not a git repository."""
         mock_validate_git.return_value = None
-        result = await pr_creator({"retry_count": 0})
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
@@ -140,12 +146,14 @@ class TestPrCreatorNode:
         mock_push,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         """Test that PR creator handles push failure."""
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 1, "output": "push failed"}
 
-        result = await pr_creator({"retry_count": 0})
+        agent_state["retry_count"] = 0
+        result = await pr_creator(agent_state)
         assert result["review_status"] == "pr_failed"
         assert "Git push failed" in result["messages"][0].content

@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from copium_loop.nodes import pr_pre_checker
-from copium_loop.state import AgentState
 
 # Get the module object explicitly to avoid shadowing issues
 pr_pre_checker_module = sys.modules["copium_loop.nodes.pr_pre_checker_node"]
@@ -17,14 +16,14 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "fetch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase", new_callable=AsyncMock)
     async def test_pr_pre_checker_success(
-        self, mock_rebase, mock_fetch, mock_is_dirty, mock_validate_git
+        self, mock_rebase, mock_fetch, mock_is_dirty, mock_validate_git, agent_state
     ):
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_rebase.return_value = {"exit_code": 0, "output": "Successfully rebased"}
 
-        state: AgentState = {"retry_count": 0}
-        result = await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        result = await pr_pre_checker(agent_state)
 
         assert result["review_status"] == "pre_check_passed"
         mock_fetch.assert_called_once_with(node="pr_pre_checker")
@@ -42,14 +41,15 @@ class TestPRPreChecker:
         _mock_fetch,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_rebase.return_value = {"exit_code": 0, "output": "Successfully rebased"}
         mock_telemetry = mock_get_telemetry.return_value
 
-        state: AgentState = {"retry_count": 0}
-        await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        await pr_pre_checker(agent_state)
 
         mock_telemetry.log_status.assert_any_call("pr_pre_checker", "active")
         mock_telemetry.log_output.assert_any_call(
@@ -58,26 +58,28 @@ class TestPRPreChecker:
         mock_telemetry.log_status.assert_any_call("pr_pre_checker", "success")
 
     @patch.object(pr_pre_checker_module, "validate_git_context", new_callable=AsyncMock)
-    async def test_pr_pre_checker_no_git(self, mock_validate_git):
+    async def test_pr_pre_checker_no_git(self, mock_validate_git, agent_state):
         mock_validate_git.return_value = None
-        state: AgentState = {"retry_count": 0}
-        result = await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        result = await pr_pre_checker(agent_state)
         assert result["review_status"] == "pr_skipped"
 
     @patch.object(pr_pre_checker_module, "validate_git_context", new_callable=AsyncMock)
-    async def test_pr_pre_checker_on_main(self, mock_validate_git):
+    async def test_pr_pre_checker_on_main(self, mock_validate_git, agent_state):
         mock_validate_git.return_value = None
-        state: AgentState = {"retry_count": 0}
-        result = await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        result = await pr_pre_checker(agent_state)
         assert result["review_status"] == "pr_skipped"
 
     @patch.object(pr_pre_checker_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
-    async def test_pr_pre_checker_dirty(self, mock_is_dirty, mock_validate_git):
+    async def test_pr_pre_checker_dirty(
+        self, mock_is_dirty, mock_validate_git, agent_state
+    ):
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = True
-        state: AgentState = {"retry_count": 0}
-        result = await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        result = await pr_pre_checker(agent_state)
         assert result["review_status"] == "needs_commit"
 
     @patch.object(pr_pre_checker_module, "validate_git_context", new_callable=AsyncMock)
@@ -92,13 +94,14 @@ class TestPRPreChecker:
         mock_fetch,
         mock_is_dirty,
         mock_validate_git,
+        agent_state,
     ):
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_rebase.return_value = {"exit_code": 1, "output": "Conflict"}
 
-        state: AgentState = {"retry_count": 0}
-        result = await pr_pre_checker(state)
+        agent_state["retry_count"] = 0
+        result = await pr_pre_checker(agent_state)
 
         assert result["review_status"] == "pr_failed"
         mock_fetch.assert_called_once_with(node="pr_pre_checker")
