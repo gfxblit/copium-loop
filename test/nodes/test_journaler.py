@@ -1,45 +1,29 @@
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from copium_loop.nodes import journaler
-from copium_loop.state import AgentState
 
 # Get the module object explicitly to avoid shadowing issues
 journaler_module = sys.modules["copium_loop.nodes.journaler_node"]
 
 
-@pytest.fixture
-def mock_engine():
-    engine = MagicMock()
-    engine.invoke = AsyncMock(return_value="Always ensure memory is persisted.")
-    engine.sanitize_for_prompt = MagicMock(side_effect=lambda x, _max_length=12000: x)
-    return engine
-
-
 @pytest.mark.asyncio
-async def test_journaler_success(mock_engine):
-    state: AgentState = {
-        "messages": [],
-        "engine": mock_engine,
-        "code_status": "coded",
-        "test_output": "All tests passed",
-        "review_status": "approved",
-        "architect_status": "",
-        "retry_count": 0,
-        "pr_url": "http://github.com/pr/1",
-        "issue_url": "http://github.com/issue/37",
-        "initial_commit_hash": "abc",
-        "git_diff": "diff content",
-        "verbose": False,
-        "last_error": "",
-    }
+async def test_journaler_success(agent_state):
+    agent_state["engine"].invoke.return_value = "Always ensure memory is persisted."
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "All tests passed"
+    agent_state["review_status"] = "approved"
+    agent_state["initial_commit_hash"] = "abc"
+    agent_state["git_diff"] = "diff content"
+    agent_state["pr_url"] = "http://github.com/pr/1"
+    agent_state["issue_url"] = "http://github.com/issue/37"
 
     with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
         instance = mock_memory_manager.return_value
 
-        result = await journaler(state)
+        result = await journaler(agent_state)
 
         assert result["journal_status"] == "journaled"
         assert result["review_status"] == "approved"  # Preserved
@@ -49,52 +33,34 @@ async def test_journaler_success(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_updates_pending_status(mock_engine):
-    state: AgentState = {
-        "messages": [],
-        "engine": mock_engine,
-        "code_status": "coded",
-        "test_output": "All tests passed",
-        "review_status": "pending",  # Initial status
-        "architect_status": "",
-        "retry_count": 0,
-        "pr_url": "",
-        "issue_url": "",
-        "initial_commit_hash": "abc",
-        "git_diff": "diff content",
-        "verbose": False,
-        "last_error": "",
-    }
+async def test_journaler_updates_pending_status(agent_state):
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "All tests passed"
+    agent_state["review_status"] = "pending"  # Initial status
+    agent_state["initial_commit_hash"] = "abc"
+    agent_state["git_diff"] = "diff content"
 
-    mock_engine.invoke.return_value = "A lesson"
+    agent_state["engine"].invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager"):
-        result = await journaler(state)
+        result = await journaler(agent_state)
         assert result["review_status"] == "journaled"
-        mock_engine.invoke.assert_called_once()
+        agent_state["engine"].invoke.assert_called_once()
         # Verify that the prompt contains some relevant info
-        args, kwargs = mock_engine.invoke.call_args
+        args, kwargs = agent_state["engine"].invoke.call_args
         prompt = args[0]
         assert "diff content" in prompt
         assert "All tests passed" in prompt
 
 
 @pytest.mark.asyncio
-async def test_journaler_includes_telemetry_log(mock_engine):
-    state: AgentState = {
-        "messages": [],
-        "engine": mock_engine,
-        "code_status": "coded",
-        "test_output": "All tests passed",
-        "review_status": "approved",
-        "architect_status": "",
-        "retry_count": 0,
-        "pr_url": "http://github.com/pr/1",
-        "issue_url": "http://github.com/issue/37",
-        "initial_commit_hash": "abc",
-        "git_diff": "diff content",
-        "verbose": False,
-        "last_error": "",
-    }
+async def test_journaler_includes_telemetry_log(agent_state):
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "All tests passed"
+    agent_state["review_status"] = "approved"
+    agent_state["initial_commit_hash"] = "abc"
+    agent_state["git_diff"] = "diff content"
+    agent_state["pr_url"] = "http://github.com/pr/1"
+    agent_state["issue_url"] = "http://github.com/issue/37"
 
     with (
         patch.object(journaler_module, "MemoryManager"),
@@ -111,10 +77,10 @@ async def test_journaler_includes_telemetry_log(mock_engine):
             "tester: output: Running tests..."
         )
 
-        await journaler(state)
+        await journaler(agent_state)
 
         # Verify that the prompt contains telemetry information
-        args, _ = mock_engine.invoke.call_args
+        args, _ = agent_state["engine"].invoke.call_args
         prompt = args[0]
 
         assert "TELEMETRY LOG:" in prompt
@@ -125,14 +91,12 @@ async def test_journaler_includes_telemetry_log(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_verbosity_and_filtering(mock_engine):
+async def test_journaler_verbosity_and_filtering(agent_state):
     # Setup
-    state = {}
-    state["test_output"] = "Tests passed"
-    state["review_status"] = "Approved"
-    state["git_diff"] = "diff"
-    state["verbose"] = False
-    state["engine"] = mock_engine
+    agent_state["test_output"] = "Tests passed"
+    agent_state["review_status"] = "Approved"
+    agent_state["git_diff"] = "diff"
+    agent_state["verbose"] = False
 
     # Mock dependencies
     with patch.object(journaler_module, "MemoryManager") as MockMemoryManager:
@@ -141,9 +105,9 @@ async def test_journaler_verbosity_and_filtering(mock_engine):
 
         # Case 1: Generic/useless lesson (Simulated)
         # If the LLM returns something that is NOT "NO_LESSON", it SHOULD be logged.
-        mock_engine.invoke.return_value = "No significant lesson learned."
+        agent_state["engine"].invoke.return_value = "No significant lesson learned."
 
-        await journaler(state)
+        await journaler(agent_state)
 
         mock_mem_instance.log_learning.assert_called_once_with(
             "No significant lesson learned."
@@ -153,36 +117,36 @@ async def test_journaler_verbosity_and_filtering(mock_engine):
         mock_mem_instance.reset_mock()
 
         # Case 2: LLM explicitly returns NO_LESSON
-        mock_engine.invoke.return_value = "NO_LESSON"
+        agent_state["engine"].invoke.return_value = "NO_LESSON"
 
-        await journaler(state)
+        await journaler(agent_state)
 
         # Expectation: log_learning should NOT be called for NO_LESSON
         mock_mem_instance.log_learning.assert_not_called()
 
         # Case 3: Empty string
-        mock_engine.invoke.return_value = ""
-        await journaler(state)
+        agent_state["engine"].invoke.return_value = ""
+        await journaler(agent_state)
         mock_mem_instance.log_learning.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_journaler_prompt_content(mock_engine):
+async def test_journaler_prompt_content(agent_state):
     # We want to verify that the prompt sent to Gemini includes instructions about
     # being concise, not being a status report, and the context about tracking overall experience.
 
-    state = {}
-    state["test_output"] = "out"
-    state["review_status"] = "rev"
-    state["git_diff"] = "diff"
-    state["verbose"] = False
-    state["engine"] = mock_engine
+    agent_state["test_output"] = "out"
+    agent_state["review_status"] = "rev"
+    agent_state["git_diff"] = "diff"
+    agent_state["verbose"] = False
 
-    mock_engine.invoke.return_value = "A lesson"  # Needed so lesson.strip() works
+    agent_state[
+        "engine"
+    ].invoke.return_value = "A lesson"  # Needed so lesson.strip() works
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(agent_state)
 
-        call_args = mock_engine.invoke.call_args
+        call_args = agent_state["engine"].invoke.call_args
         prompt = call_args[0][0]
 
         # Assertions based on requirements
@@ -193,22 +157,20 @@ async def test_journaler_prompt_content(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_prompt_includes_timestamp_instruction(mock_engine):
+async def test_journaler_prompt_includes_timestamp_instruction(agent_state):
     # We want to verify that the prompt sent to Gemini includes instructions about
     # including a timestamp when using save_memory.
 
-    state = {}
-    state["test_output"] = "out"
-    state["review_status"] = "rev"
-    state["git_diff"] = "diff"
-    state["verbose"] = False
-    state["engine"] = mock_engine
+    agent_state["test_output"] = "out"
+    agent_state["review_status"] = "rev"
+    agent_state["git_diff"] = "diff"
+    agent_state["verbose"] = False
 
-    mock_engine.invoke.return_value = "A lesson"
+    agent_state["engine"].invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(agent_state)
 
-        call_args = mock_engine.invoke.call_args
+        call_args = agent_state["engine"].invoke.call_args
         prompt = call_args[0][0]
 
         # Assertions for the new requirement
@@ -222,15 +184,13 @@ async def test_journaler_prompt_includes_timestamp_instruction(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_prompt_includes_existing_memories(mock_engine):
-    state = {}
-    state["test_output"] = "out"
-    state["review_status"] = "rev"
-    state["git_diff"] = "diff"
-    state["verbose"] = False
-    state["engine"] = mock_engine
+async def test_journaler_prompt_includes_existing_memories(agent_state):
+    agent_state["test_output"] = "out"
+    agent_state["review_status"] = "rev"
+    agent_state["git_diff"] = "diff"
+    agent_state["verbose"] = False
 
-    mock_engine.invoke.return_value = "A lesson"
+    agent_state["engine"].invoke.return_value = "A lesson"
     with patch.object(journaler_module, "MemoryManager") as mock_memory_manager:
         instance = mock_memory_manager.return_value
         instance.get_project_memories.return_value = [
@@ -238,9 +198,9 @@ async def test_journaler_prompt_includes_existing_memories(mock_engine):
             "Existing Memory 2",
         ]
 
-        await journaler(state)
+        await journaler(agent_state)
 
-        call_args = mock_engine.invoke.call_args
+        call_args = agent_state["engine"].invoke.call_args
         prompt = call_args[0][0]
 
         assert "EXISTING PROJECT MEMORIES:" in prompt
@@ -251,7 +211,7 @@ async def test_journaler_prompt_includes_existing_memories(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_telemetry(mock_engine):
+async def test_journaler_telemetry(agent_state):
     with (
         patch.object(journaler_module, "get_telemetry") as mock_get_telemetry,
         patch.object(journaler_module, "MemoryManager") as mock_mm,
@@ -259,15 +219,13 @@ async def test_journaler_telemetry(mock_engine):
         mock_telemetry = mock_get_telemetry.return_value
         mock_mm_instance = mock_mm.return_value
         mock_mm_instance.get_project_memories.return_value = []
-        mock_engine.invoke.return_value = "Remember this."
+        agent_state["engine"].invoke.return_value = "Remember this."
 
-        state: AgentState = {
-            "review_status": "pending",
-            "git_diff": "diff",
-            "test_output": "PASS",
-            "engine": mock_engine,
-        }
-        await journaler(state)
+        agent_state["review_status"] = "pending"
+        agent_state["git_diff"] = "diff"
+        agent_state["test_output"] = "PASS"
+
+        await journaler(agent_state)
 
         mock_telemetry.log_status.assert_any_call("journaler", "active")
         mock_telemetry.log_output.assert_any_call(
@@ -277,29 +235,17 @@ async def test_journaler_telemetry(mock_engine):
 
 
 @pytest.mark.asyncio
-async def test_journaler_prompt_bans_changelogs(mock_engine):
-    state: AgentState = {
-        "messages": [],
-        "engine": mock_engine,
-        "code_status": "coded",
-        "test_output": "out",
-        "review_status": "rev",
-        "architect_status": "",
-        "retry_count": 0,
-        "pr_url": "",
-        "issue_url": "",
-        "initial_commit_hash": "",
-        "git_diff": "diff",
-        "verbose": False,
-        "last_error": "",
-        "journal_status": "",
-    }
+async def test_journaler_prompt_bans_changelogs(agent_state):
+    agent_state["code_status"] = "coded"
+    agent_state["test_output"] = "out"
+    agent_state["review_status"] = "rev"
+    agent_state["git_diff"] = "diff"
 
-    mock_engine.invoke.return_value = "NO_LESSON"
+    agent_state["engine"].invoke.return_value = "NO_LESSON"
     with patch.object(journaler_module, "MemoryManager"):
-        await journaler(state)
+        await journaler(agent_state)
 
-        call_args = mock_engine.invoke.call_args
+        call_args = agent_state["engine"].invoke.call_args
         prompt = call_args[0][0]
 
         # Assertions for the new sections

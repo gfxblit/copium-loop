@@ -3,18 +3,15 @@ from unittest.mock import patch
 import pytest
 
 from copium_loop.nodes.utils import get_architect_prompt
-from copium_loop.state import AgentState
 
 
 @pytest.mark.asyncio
-async def test_jules_architect_prompt_robustness():
+async def test_jules_architect_prompt_robustness(agent_state):
     """Verify that the Jules architect prompt requires a SUMMARY and specific format."""
-    state = AgentState(
-        initial_commit_hash="sha123",
-    )
+    agent_state["initial_commit_hash"] = "sha123"
 
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        prompt = await get_architect_prompt("jules", state)
+        prompt = await get_architect_prompt("jules", agent_state)
 
         # New requirements from Issue #170
         assert "SUMMARY: [Your detailed analysis here]" in prompt
@@ -27,16 +24,15 @@ async def test_jules_architect_prompt_robustness():
 
 
 @pytest.mark.asyncio
-async def test_coder_receives_consolidated_architect_feedback():
+async def test_coder_receives_consolidated_architect_feedback(agent_state):
     """Verify that the coder node's prompt includes the full architect feedback."""
-    from unittest.mock import MagicMock
-
     from langchain_core.messages import HumanMessage, SystemMessage
 
     from copium_loop.nodes.utils import get_coder_prompt
 
-    engine = MagicMock()
-    engine.sanitize_for_prompt.side_effect = lambda x: x
+    agent_state["engine"].sanitize_for_prompt.side_effect = (
+        lambda x, _max_length=12000: x
+    )
 
     architect_feedback = """SUMMARY:
 - Duplicate SessionManager classes identified in src/engine/base.py and src/session.py.
@@ -45,18 +41,16 @@ async def test_coder_receives_consolidated_architect_feedback():
 
 VERDICT: REFACTOR"""
 
-    state = {
-        "messages": [
-            HumanMessage(content="Original request"),
-            SystemMessage(content=architect_feedback),
-        ],
-        "architect_status": "refactor",
-        "code_status": "ok",
-        "review_status": "ok",
-        "test_output": "PASS",
-    }
+    agent_state["messages"] = [
+        HumanMessage(content="Original request"),
+        SystemMessage(content=architect_feedback),
+    ]
+    agent_state["architect_status"] = "refactor"
+    agent_state["code_status"] = "ok"
+    agent_state["review_status"] = "ok"
+    agent_state["test_output"] = "PASS"
 
-    prompt = await get_coder_prompt("jules", state, engine)
+    prompt = await get_coder_prompt("jules", agent_state, agent_state["engine"])
 
     assert "<architect_feedback>" in prompt
     assert architect_feedback in prompt
