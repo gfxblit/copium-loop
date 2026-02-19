@@ -148,6 +148,28 @@ class TestTesterNode:
             assert result["test_output"] == "PASS"
 
     @pytest.mark.asyncio
+    async def test_tester_detects_lint_failure_with_exit_0(self):
+        """Test that tester node detects lint failures even if exit code is 0."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
+            # Linting prints "error:" but exits with 0
+            mock_run.return_value = {
+                "output": "ruff check found error: unreachable code",
+                "exit_code": 0,
+            }
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert result["retry_count"] == 1
+            mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
     async def test_tester_still_detects_failure_with_exit_0(self):
         """Test that explicit failure indicators still trigger failure even if exit code is 0."""
         with (

@@ -330,5 +330,3 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     {mandatory_instructions}"""
 
     return system_prompt
-
-    return system_prompt

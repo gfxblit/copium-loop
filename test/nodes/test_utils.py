@@ -87,6 +87,8 @@ class TestGetCoderPrompt:
             in prompt
         )
         assert "1. Write tests FIRST (Red):" in prompt
+        assert "2. Run tests to verify they fail:" in prompt
+        assert "3. Write minimal implementation (Green):" in prompt
         assert "### Mandatory Test Types" in prompt
         assert (
             "You MUST explicitly use 'git push --force' to push your changes to the feature branch."
@@ -117,6 +119,9 @@ class TestGetCoderPrompt:
             in prompt
         )
         assert "To do this, you MUST activate the 'tdd-guide' skill" in prompt
+        assert "1. Write tests FIRST (they should fail initially)" in prompt
+        assert "2. Run tests to verify they fail" in prompt
+        assert "3. Write minimal implementation to make tests pass" in prompt
 
         # Assert Jules-specific TDD prompt is NOT in Gemini prompt
         assert "1. Write tests FIRST (Red):" not in prompt
