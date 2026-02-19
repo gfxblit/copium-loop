@@ -26,7 +26,7 @@ async def architect_node(state: AgentState, engine: LLMEngine) -> dict:
     retry_count = state.get("retry_count", 0)
 
     try:
-        system_prompt = await get_architect_prompt(engine.engine_type, state)
+        system_prompt = await get_architect_prompt(engine.engine_type, state, engine)
     except Exception as e:
         msg = f"Error generating architect prompt: {e}\n"
         telemetry.log_output("architect", msg)
