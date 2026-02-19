@@ -87,7 +87,7 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if not initial_commit_hash:
         raise ValueError("Missing initial commit hash.")
 
-    head_hash = state.get("head_hash") or await get_head("reviewer")
+    head_hash = state.get("head_hash")
 
     if engine_type == "jules":
         return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
