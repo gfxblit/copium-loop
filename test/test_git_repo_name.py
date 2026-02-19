@@ -19,10 +19,11 @@ async def test_get_repo_name_parsing():
 
     for url, expected in urls:
         with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [
-                {"exit_code": 0, "output": "origin\n"},
-                {"exit_code": 0, "output": url + "\n"},
-            ]
+            # Simulate 'git remote -v' output
+            mock_run.return_value = {
+                "exit_code": 0,
+                "output": f"origin\t{url} (fetch)\norigin\t{url} (push)\n",
+            }
             repo = await get_repo_name()
             assert repo == expected
 
@@ -38,11 +39,41 @@ async def test_get_repo_name_no_remote():
 @pytest.mark.asyncio
 async def test_get_repo_name_unsupported_url():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-        mock_run.side_effect = [
-            {"exit_code": 0, "output": "origin\n"},
-            {"exit_code": 0, "output": "https://example.com/not-a-repo\n"},
-        ]
+        url = "https://example.com/not-a-repo"
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": f"origin\t{url} (fetch)\norigin\t{url} (push)\n",
+        }
         with pytest.raises(
-            ValueError, match="Could not parse repo name from remote URL"
+            ValueError, match=f"Could not parse repo name from remote URL: {url}"
         ):
             await get_repo_name()
+
+
+@pytest.mark.asyncio
+async def test_get_repo_name_priority():
+    # Test that 'origin' is prioritized over other remotes
+    other_url = "https://github.com/other/repo.git"
+    origin_url = "https://github.com/origin/repo.git"
+
+    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": f"upstream\t{other_url} (fetch)\norigin\t{origin_url} (fetch)\norigin\t{origin_url} (push)\nupstream\t{other_url} (push)\n",
+        }
+        repo = await get_repo_name()
+        assert repo == "origin/repo"
+
+
+@pytest.mark.asyncio
+async def test_get_repo_name_fallback():
+    # Test fallback to first available remote if origin is missing
+    other_url = "https://github.com/other/repo.git"
+
+    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": f"upstream\t{other_url} (fetch)\nupstream\t{other_url} (push)\n",
+        }
+        repo = await get_repo_name()
+        assert repo == "other/repo"
