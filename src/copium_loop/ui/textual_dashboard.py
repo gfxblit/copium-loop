@@ -6,7 +6,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Static
+from textual.widgets import Label, Static
 
 from ..codexbar import CodexbarClient
 from .footer_stats import CodexStatsStrategy
@@ -33,6 +33,14 @@ class TextualDashboard(App):
 
     #stats-bar.hidden {
         display: none;
+    }
+
+    #empty-state-label {
+        width: 100%;
+        height: 100%;
+        content-align: center middle;
+        text-align: center;
+        color: $text-muted;
     }
     """
 
@@ -149,7 +157,21 @@ class TextualDashboard(App):
             current_widgets = list(container.query(SessionWidget))
             current_sids = [w.session_id for w in current_widgets]
 
-            if current_sids == visible_sids:
+            if not visible_sessions:
+                if not container.query("#empty-state-label"):
+                    await container.remove_children()
+                    await container.mount(
+                        Label(
+                            "No active sessions found.\nWaiting for workflow to start...",
+                            id="empty-state-label",
+                        )
+                    )
+                return
+
+            # If we have sessions, ensure empty state is gone
+            has_empty_label = bool(container.query("#empty-state-label"))
+
+            if current_sids == visible_sids and not has_empty_label:
                 # Just refresh existing
                 for widget in current_widgets:
                     await widget.refresh_ui()
