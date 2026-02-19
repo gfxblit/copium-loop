@@ -21,6 +21,7 @@ class SessionManager:
         self.log_offsets: dict[str, int] = {}
         self.current_page = 0
         self.file_stats: dict[str, tuple[float, int]] = {}
+        self.show_system_logs = False
 
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
@@ -84,6 +85,7 @@ class SessionManager:
 
             if sid not in self.sessions:
                 self.sessions[sid] = SessionColumn(sid)
+                self.sessions[sid].show_system_logs = self.show_system_logs
 
             # Optimization: If this is the first time we're reading this file,
             # and it's large (> 1MB), seek to 1MB from the end to avoid parsing everything.
@@ -150,10 +152,15 @@ class SessionManager:
                     pass
         elif node and node != "workflow":
             pillar = session.get_pillar(node)
-            if etype == "output":
+            if etype in ["output", "info"]:
+                # Default source based on etype if not present
+                source = event.get("source")
+                if not source:
+                    source = "llm" if etype == "output" else "system"
+
                 for line in data.splitlines():
                     if line.strip():
-                        pillar.add_line(line)
+                        pillar.add_line(line, source=source)
             elif etype == "status":
                 pillar.set_status(data, event.get("timestamp"))
 
@@ -207,3 +214,9 @@ class SessionManager:
         """Moves to the previous page, wrapping around."""
         num_pages = self.total_pages
         self.current_page = (self.current_page - 1) % num_pages
+
+    def toggle_system_logs(self):
+        """Toggles visibility of system logs for all sessions."""
+        self.show_system_logs = not self.show_system_logs
+        for session in self.sessions.values():
+            session.show_system_logs = self.show_system_logs

@@ -73,14 +73,14 @@ class WorkflowManager:
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
                 print(f"\n[TIMEOUT] {msg}")
-                telemetry.log_output(node_name, f"\n[TIMEOUT] {msg}\n")
+                telemetry.log_info(node_name, f"\n[TIMEOUT] {msg}\n")
                 telemetry.log_status(node_name, "failed")
                 return self._handle_error(state, node_name, msg)
             except Exception as e:
                 error_trace = traceback.format_exc()
                 msg = f"Node '{node_name}' failed with error: {str(e)}"
                 print(f"\n[ERROR] {msg}")
-                telemetry.log_output(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
+                telemetry.log_info(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
                 telemetry.log_status(node_name, "failed")
                 return self._handle_error(state, node_name, msg, error_trace)
 
@@ -172,7 +172,7 @@ class WorkflowManager:
         print(f"Starting workflow at node: {self.start_node}")
         telemetry.log_workflow_status("running")
         telemetry.log_status(self.start_node, "active")
-        telemetry.log_output(
+        telemetry.log_info(
             self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}"
         )
 
@@ -214,35 +214,35 @@ class WorkflowManager:
                     initial_commit_hash = await get_head(node=self.start_node)
                     msg = f"Initial commit hash: {initial_commit_hash}\n"
 
-                telemetry.log_output(self.start_node, msg)
+                telemetry.log_info(self.start_node, msg)
                 print(msg, end="")
             except Exception as e:
                 msg = f"Warning: Failed to capture initial commit hash: {e}\n"
-                telemetry.log_output(self.start_node, msg)
+                telemetry.log_info(self.start_node, msg)
                 print(msg, end="")
 
         # Ensure existing tests run successfully if starting from coder
         if self.start_node == "coder":
             msg = "Verifying baseline tests...\n"
-            telemetry.log_output(self.start_node, msg)
+            telemetry.log_info(self.start_node, msg)
             print(msg, end="")
             test_cmd, test_args = get_test_command()
             try:
                 msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
-                telemetry.log_output(self.start_node, msg)
+                telemetry.log_info(self.start_node, msg)
                 print(msg, end="")
                 res = await run_command(test_cmd, test_args, node=self.start_node)
                 if res["exit_code"] != 0:
                     msg = "Warning: Baseline tests failed. Proceeding anyway, but be aware.\n"
-                    telemetry.log_output(self.start_node, msg)
+                    telemetry.log_info(self.start_node, msg)
                     print(msg, end="")
                 else:
                     msg = "Baseline tests passed.\n"
-                    telemetry.log_output(self.start_node, msg)
+                    telemetry.log_info(self.start_node, msg)
                     print(msg, end="")
             except Exception as e:
                 msg = f"Warning: Could not run baseline tests: {e}\n"
-                telemetry.log_output(self.start_node, msg)
+                telemetry.log_info(self.start_node, msg)
                 print(msg, end="")
 
         try:

@@ -20,7 +20,7 @@ def _parse_verdict(content: str) -> str | None:
 async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("reviewer", "active")
-    telemetry.log_output("reviewer", "--- Reviewer Node ---\n")
+    telemetry.log_info("reviewer", "--- Reviewer Node ---\n")
     print("--- Reviewer Node ---")
     engine = state["engine"]
     test_output = state.get("test_output", "")
@@ -38,7 +38,7 @@ async def reviewer_node(state: AgentState) -> dict:
         system_prompt = await get_reviewer_prompt(engine.engine_type, state)
     except Exception as e:
         msg = f"Error generating reviewer prompt: {e}\n"
-        telemetry.log_output("reviewer", msg)
+        telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "error")
         return {
@@ -50,7 +50,7 @@ async def reviewer_node(state: AgentState) -> dict:
     # Check for empty diff
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
         msg = "\nReview decision: Approved (no changes to review)\n"
-        telemetry.log_output("reviewer", msg)
+        telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "approved")
         return {
@@ -72,7 +72,7 @@ async def reviewer_node(state: AgentState) -> dict:
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
-        telemetry.log_output("reviewer", msg)
+        telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "error")
         return {
@@ -84,7 +84,7 @@ async def reviewer_node(state: AgentState) -> dict:
     verdict = _parse_verdict(review_content)
     if not verdict:
         msg = "\nReview decision: Error (no verdict found)\n"
-        telemetry.log_output("reviewer", msg)
+        telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "error")
         return {
@@ -95,7 +95,7 @@ async def reviewer_node(state: AgentState) -> dict:
 
     is_approved = verdict == "APPROVED"
     msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
-    telemetry.log_output("reviewer", msg)
+    telemetry.log_info("reviewer", msg)
     print(msg, end="")
     telemetry.log_status("reviewer", "approved" if is_approved else "rejected")
 

@@ -15,6 +15,7 @@ class SessionColumn:
         self.created_at = 0
         self.activated_at = 0
         self.completed_at = 0
+        self.show_system_logs = False
         self.workflow_status = "running"  # Track workflow-level status
         self.pillars = {
             "coder": MatrixPillar("coder"),
@@ -106,6 +107,6 @@ class SessionColumn:
             )
         )
         for node, pillar in self.pillars.items():
-            col_layout[node].update(pillar.render())
+            col_layout[node].update(pillar.render(show_system=self.show_system_logs))
 
         return col_layout

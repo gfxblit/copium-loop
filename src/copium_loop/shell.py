@@ -17,8 +17,9 @@ from copium_loop.telemetry import get_telemetry
 class StreamLogger:
     """Helper to buffer output for line-based logging while streaming to stdout."""
 
-    def __init__(self, node: str | None):
+    def __init__(self, node: str | None, source: str = "llm"):
         self.node = node
+        self.source = source
         self.buffer = ""
         self.telemetry = get_telemetry() if node else None
 
@@ -34,12 +35,12 @@ class StreamLogger:
             self.buffer += chunk
             while "\n" in self.buffer:
                 line, self.buffer = self.buffer.split("\n", 1)
-                self.telemetry.log_output(self.node, line + "\n")
+                self.telemetry.log(self.node, "output", line + "\n", source=self.source)
 
     def flush(self):
         """Flushes any remaining buffered output to telemetry."""
         if self.telemetry and self.buffer:
-            self.telemetry.log_output(self.node, self.buffer)
+            self.telemetry.log(self.node, "output", self.buffer, source=self.source)
             self.buffer = ""
 
 
@@ -54,6 +55,7 @@ class ProcessMonitor:
         inactivity_timeout: float | None,
         node: str | None,
         on_timeout_callback=None,
+        source: str = "system",
     ):
         self.process = process
         self.start_time = start_time
@@ -61,6 +63,7 @@ class ProcessMonitor:
         self.inactivity_timeout = inactivity_timeout
         self.node = node
         self.on_timeout_callback = on_timeout_callback
+        self.source = source
         self.last_activity = time.monotonic()
         self.timed_out = False
         self.timeout_message = ""
@@ -101,7 +104,7 @@ class ProcessMonitor:
             print(msg)
             telemetry = get_telemetry()
             if telemetry and self.node:
-                telemetry.log_output(self.node, msg)
+                telemetry.log(self.node, "info", msg, source="system")
 
             if self.on_timeout_callback:
                 if asyncio.iscoroutinefunction(self.on_timeout_callback):
@@ -151,6 +154,7 @@ async def stream_subprocess(
     inactivity_timeout: int | None = None,
     capture_stderr: bool = True,
     on_timeout_callback=None,
+    source: str = "system",
 ) -> tuple[str, int, bool, str]:
     """
     Common helper to execute a subprocess and stream its output.
@@ -166,7 +170,7 @@ async def stream_subprocess(
     output_chunks = []
     current_output_size = 0
     truncated = False
-    logger = StreamLogger(node)
+    logger = StreamLogger(node, source=source)
     start_time = time.monotonic()
 
     monitor = ProcessMonitor(
@@ -176,6 +180,7 @@ async def stream_subprocess(
         inactivity_timeout=inactivity_timeout,
         node=node,
         on_timeout_callback=on_timeout_callback,
+        source=source,
     )
 
     async def read_stream(stream, is_stderr):
@@ -269,6 +274,7 @@ async def run_command(
     node: str | None = None,
     command_timeout: int | None = None,
     capture_stderr: bool = True,
+    source: str = "system",
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -310,6 +316,7 @@ async def run_command(
         inactivity_timeout=INACTIVITY_TIMEOUT,
         capture_stderr=capture_stderr,
         on_timeout_callback=on_timeout,
+        source=source,
     )
 
     # Combine streamed output with any timeout message

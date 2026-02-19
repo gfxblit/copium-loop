@@ -30,11 +30,13 @@ async def test_stream_logger_with_telemetry():
         logger = StreamLogger(node="test")
         logger.process_chunk("line1\nline2")
 
-        mock_telemetry.log_output.assert_called_once_with("test", "line1\n")
+        mock_telemetry.log.assert_called_once_with(
+            "test", "output", "line1\n", source="llm"
+        )
         assert logger.buffer == "line2"
 
         logger.flush()
-        mock_telemetry.log_output.assert_called_with("test", "line2")
+        mock_telemetry.log.assert_called_with("test", "output", "line2", source="llm")
         assert logger.buffer == ""
 
 

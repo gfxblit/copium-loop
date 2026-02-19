@@ -21,13 +21,14 @@ class Telemetry:
         """Waits for all pending log writes to complete."""
         self._executor.submit(lambda: None).result()
 
-    def log(self, node: str, event_type: str, data: str | dict):
+    def log(self, node: str, event_type: str, data: str | dict, source: str = "system"):
         """Logs an event to the session's .jsonl file."""
         event = {
             "timestamp": datetime.now().isoformat(),
             "session_id": self.session_id,
             "node": node,
             "event_type": event_type,  # 'status', 'output', 'metric'
+            "source": source,  # 'system' or 'llm'
             "data": data,
         }
         self._executor.submit(self._write_event, event)
@@ -41,19 +42,25 @@ class Telemetry:
         """Logs a chunk of output from an agent."""
         if not chunk:
             return
-        self.log(node, "output", chunk)
+        self.log(node, "output", chunk, source="llm")
+
+    def log_info(self, node: str, info: str):
+        """Logs system-level info from an agent."""
+        if not info:
+            return
+        self.log(node, "info", info, source="system")
 
     def log_status(self, node: str, status: str):
         """Logs a status change for a node (e.g., 'active', 'idle', 'error', 'success')."""
-        self.log(node, "status", status)
+        self.log(node, "status", status, source="system")
 
     def log_metric(self, node: str, metric_name: str, value: float):
         """Logs a metric for a node (e.g., 'latency', 'tokens')."""
-        self.log(node, "metric", {"name": metric_name, "value": value})
+        self.log(node, "metric", {"name": metric_name, "value": value}, source="system")
 
     def log_workflow_status(self, status: str):
         """Logs a workflow-level status change (e.g., 'running', 'success', 'failed')."""
-        self.log("workflow", "workflow_status", status)
+        self.log("workflow", "workflow_status", status, source="system")
 
     def read_log(self) -> list[dict]:
         """Reads all events from the session's log file."""
@@ -117,8 +124,8 @@ class Telemetry:
             data = event.get("data", "")
             timestamp = event.get("timestamp", "")
 
-            # Truncate output and prompts
-            if event_type in ["output", "prompt"] and isinstance(data, str):
+            # Truncate output, prompts and info
+            if event_type in ["output", "prompt", "info"] and isinstance(data, str):
                 if len(data) > max_output_chars:
                     data = data[:max_output_chars] + "... (truncated)"
                 # Clean up newlines for compact log
