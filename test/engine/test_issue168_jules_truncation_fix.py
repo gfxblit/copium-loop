@@ -17,7 +17,7 @@ async def test_jules_truncation_fix_repro():
     # 1500 characters followed by a verdict.
     # The total length is > 1000, so it should be truncated if the bug exists.
     verdict = "VERDICT: REJECTED"
-    long_description = "A" * 1500 + " " + verdict
+    long_description = "A" * (MAX_TELEMETRY_LOG_LENGTH + 500) + " " + verdict
 
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
