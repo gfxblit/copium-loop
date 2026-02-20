@@ -160,9 +160,17 @@ def test_get_lint_command_python_no_config():
             return False
         return path.endswith(".py")
 
+    class MockEntry:
+        def __init__(self, name):
+            self.name = name
+            self.is_file_val = True
+
+        def is_file(self):
+            return self.is_file_val
+
     with (
         patch("os.path.exists", side_effect=side_effect),
-        patch("glob.glob", return_value=["main.py"]),
+        patch("os.scandir", return_value=[MockEntry("main.py")]),
     ):
         cmd, args = discovery.get_lint_command()
         assert cmd == "sh"
