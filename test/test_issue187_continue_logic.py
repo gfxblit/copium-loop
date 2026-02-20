@@ -40,13 +40,17 @@ async def test_implicit_resumption():
                 with patch("copium_loop.copium_loop.WorkflowManager") as mock_wm_cls:
                     mock_wm = MagicMock()
                     mock_wm.run = MagicMock()
+
                     async def mock_run(_prompt, _initial_state=None):
                         return {"review_status": "approved", "test_output": "PASS"}
+
                     mock_wm.run.side_effect = mock_run
                     mock_wm.notify = AsyncMock()
                     mock_wm_cls.return_value = mock_wm
 
-                    with patch("copium_loop.git.get_current_branch", new_callable=AsyncMock) as mock_branch:
+                    with patch(
+                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                    ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
                         with contextlib.suppress(SystemExit):
@@ -60,6 +64,7 @@ async def test_implicit_resumption():
                         # Verify run was called with old prompt
                         args_run, _ = mock_wm.run.call_args
                         assert args_run[0] == "old prompt"
+
 
 @pytest.mark.asyncio
 async def test_branch_mismatch_error():
@@ -87,13 +92,16 @@ async def test_branch_mismatch_error():
                 mock_sm.get_agent_state.return_value = {"prompt": "foo"}
                 mock_sm_cls.return_value = mock_sm
 
-                with patch("copium_loop.git.get_current_branch", new_callable=AsyncMock) as mock_branch:
+                with patch(
+                    "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
                     # Expect SystemExit(1)
                     with pytest.raises(SystemExit) as excinfo:
                         await async_main()
                     assert excinfo.value.code == 1
+
 
 @pytest.mark.asyncio
 async def test_explicit_continue_override():
@@ -127,12 +135,16 @@ async def test_explicit_continue_override():
                     mock_wm = MagicMock()
                     mock_wm.run = MagicMock()
                     mock_wm.notify = AsyncMock()
+
                     async def mock_run(_prompt, _initial_state=None):
                         return {"review_status": "approved", "test_output": "PASS"}
+
                     mock_wm.run.side_effect = mock_run
                     mock_wm_cls.return_value = mock_wm
 
-                    with patch("copium_loop.git.get_current_branch", new_callable=AsyncMock) as mock_branch:
+                    with patch(
+                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                    ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
                         with contextlib.suppress(SystemExit):

@@ -81,7 +81,9 @@ async def async_main():
         print(f"Attempting to continue session: {session_id}")
 
         # Verify sticky environment (branch)
-        stored_branch = session_manager.get_branch_name() or session_manager.get_metadata("branch")
+        stored_branch = (
+            session_manager.get_branch_name() or session_manager.get_metadata("branch")
+        )
         from copium_loop.git import get_current_branch
 
         current_branch = await get_current_branch()
@@ -96,7 +98,9 @@ async def async_main():
 
         if not reconstructed_state:
             # Fallback to telemetry reconstruction if AgentState is missing (legacy)
-            print("Warning: No persisted AgentState found, falling back to telemetry...")
+            print(
+                "Warning: No persisted AgentState found, falling back to telemetry..."
+            )
             reconstructed_state = telemetry.reconstruct_state()
 
         # Determine where to resume from
@@ -133,7 +137,10 @@ async def async_main():
 
         # Use reconstructed engine if not explicitly provided
         if args.engine is None:
-            args.engine = session_manager.get_engine_name() or session_manager.get_metadata("engine_name")
+            args.engine = (
+                session_manager.get_engine_name()
+                or session_manager.get_metadata("engine_name")
+            )
             if args.engine is None and "engine_name" in reconstructed_state:
                 args.engine = reconstructed_state["engine_name"]
     else:

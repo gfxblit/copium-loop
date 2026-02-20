@@ -406,7 +406,21 @@ def get_telemetry() -> Telemetry:
             pass
 
         if not session_id:
-            # Fallback to a timestamp-based session ID if not in a git repo
+            # Try to get tmux session name
+            try:
+                res = subprocess.run(
+                    ["tmux", "display-message", "-p", "#S"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    session_id = res.stdout.strip()
+            except Exception:
+                pass
+
+        if not session_id:
+            # Fallback to a timestamp-based session ID
             session_id = f"session_{int(time.time())}"
         _telemetry_instance = Telemetry(session_id)
     return _telemetry_instance

@@ -12,9 +12,11 @@ def reset_telemetry():
     yield
     _telemetry_instance = None
 
+
 def test_session_id_derivation():
     """Verify session ID is derived from git repo and branch."""
     with patch("subprocess.run") as mock_run:
+
         def side_effect(cmd, **_kwargs):
             mock = MagicMock()
             mock.returncode = 0
@@ -28,6 +30,7 @@ def test_session_id_derivation():
 
         telemetry = get_telemetry()
         assert telemetry.session_id == "owner-repo/feature-branch"
+
 
 def test_session_id_fallback():
     """Verify session ID fallback when not in a git repo."""

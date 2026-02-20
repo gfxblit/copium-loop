@@ -3,6 +3,7 @@
 import asyncio
 import re
 import traceback
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -66,45 +67,47 @@ class WorkflowManager:
             except Exception:
                 state["head_hash"] = "unknown"
 
-                        try:
-                            result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
-                            self._persist_state(state, result)
-                            return result
-                        except asyncio.TimeoutError:
-                            msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
-                            print(f"\n[TIMEOUT] {msg}")
-                            telemetry.log_info(node_name, f"\n[TIMEOUT] {msg}\n")
-                            telemetry.log_status(node_name, "failed")
-                            result = self._handle_error(state, node_name, msg)
-                            self._persist_state(state, result)
-                            return result
-                        except Exception as e:
-                            error_trace = traceback.format_exc()
-                            msg = f"Node '{node_name}' failed with error: {str(e)}"
-                            print(f"\n[ERROR] {msg}")
-                            telemetry.log_info(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
-                            telemetry.log_status(node_name, "failed")
-                            result = self._handle_error(state, node_name, msg, error_trace)
-                            self._persist_state(state, result)
-                            return result
-            
-                    return wrapper
-            
-                def _persist_state(self, state: AgentState, result: Any):
-                    """Persists the agent state to the session manager."""
-                    if self.session_manager:
-                        # Merge result into state to persist the full updated state
-                        updated_state = state.copy()
-                        if isinstance(result, dict):
-                            updated_state.update(result)
-            
-                        # Remove non-serializable objects like the engine
-                        serializable_state = {
-                            k: v for k, v in updated_state.items()
-                            if k not in ["engine", "messages"]
-                        }
-                        self.session_manager.update_agent_state(serializable_state)
-                def _handle_error(
+            try:
+                result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
+                self._persist_state(state, result)
+                return result
+            except asyncio.TimeoutError:
+                msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
+                print(f"\n[TIMEOUT] {msg}")
+                telemetry.log_info(node_name, f"\n[TIMEOUT] {msg}\n")
+                telemetry.log_status(node_name, "failed")
+                result = self._handle_error(state, node_name, msg)
+                self._persist_state(state, result)
+                return result
+            except Exception as e:
+                error_trace = traceback.format_exc()
+                msg = f"Node '{node_name}' failed with error: {str(e)}"
+                print(f"\n[ERROR] {msg}")
+                telemetry.log_info(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
+                telemetry.log_status(node_name, "failed")
+                result = self._handle_error(state, node_name, msg, error_trace)
+                self._persist_state(state, result)
+                return result
+
+        return wrapper
+
+    def _persist_state(self, state: AgentState, result: Any):
+        """Persists the agent state to the session manager."""
+        if self.session_manager:
+            # Merge result into state to persist the full updated state
+            updated_state = state.copy()
+            if isinstance(result, dict):
+                updated_state.update(result)
+
+            # Remove non-serializable objects like the engine
+            serializable_state = {
+                k: v
+                for k, v in updated_state.items()
+                if k not in ["engine", "messages"]
+            }
+            self.session_manager.update_agent_state(serializable_state)
+
+    def _handle_error(
         self, state: AgentState, node_name: str, msg: str, trace: str | None = None
     ):
         """Handles node errors by updating state and retry counts."""
@@ -177,19 +180,24 @@ class WorkflowManager:
                 branch = await get_current_branch(node=self.start_node)
 
                 from copium_loop.shell import run_command
-                res = await run_command("git", ["rev-parse", "--show-toplevel"], node=self.start_node)
+
+                res = await run_command(
+                    "git", ["rev-parse", "--show-toplevel"], node=self.start_node
+                )
                 repo_root = res["output"].strip() if res["exit_code"] == 0 else None
 
                 self.session_manager.update_session_info(
                     branch_name=branch,
                     repo_root=repo_root,
                     engine_name=self.engine_name,
-                    original_prompt=input_prompt
+                    original_prompt=input_prompt,
                 )
             except Exception:
                 pass
         elif self.engine_name:
-             self.session_manager.update_session_info(engine_name=self.engine_name, original_prompt=input_prompt)
+            self.session_manager.update_session_info(
+                engine_name=self.engine_name, original_prompt=input_prompt
+            )
 
         # Determine engine
         self.engine = get_engine(self.engine_name)

@@ -18,6 +18,7 @@ async def test_session_id_auto_derivation():
     copium_loop.telemetry._telemetry_instance = None
 
     with patch("subprocess.run") as mock_run:
+
         def side_effect(cmd, **_kwargs):
             if cmd == ["git", "remote", "get-url", "origin"]:
                 m = MagicMock()
@@ -35,6 +36,7 @@ async def test_session_id_auto_derivation():
 
         telemetry = get_telemetry()
         assert telemetry.session_id == "owner-repo/feature-branch"
+
 
 def test_cli_parser_new_flags():
     """Test that the CLI has the new flags and removed the old ones."""
@@ -58,6 +60,7 @@ def test_cli_parser_new_flags():
     # Old flags removed
     assert "--session" not in result.stdout
     assert "--start" not in result.stdout
+
 
 @pytest.mark.asyncio
 async def test_agent_state_persistence():
@@ -86,6 +89,7 @@ async def test_agent_state_persistence():
     assert called_state["code_status"] == "success"
     assert called_state["prompt"] == "test"
 
+
 def test_session_data_v3_fields():
     """Verify SessionData has the new required fields."""
     data = SessionData(
@@ -93,13 +97,14 @@ def test_session_data_v3_fields():
         branch_name="branch",
         repo_root="/tmp/repo",
         engine_name="gemini",
-        original_prompt="hello world"
+        original_prompt="hello world",
     )
     assert data.session_id == "test/branch"
     assert data.branch_name == "branch"
     assert data.repo_root == "/tmp/repo"
     assert data.engine_name == "gemini"
     assert data.original_prompt == "hello world"
+
 
 def test_session_data_serialization_v3():
     """Verify SessionData serialization includes new fields."""
@@ -109,7 +114,7 @@ def test_session_data_serialization_v3():
         repo_root="/tmp/repo",
         engine_name="gemini",
         original_prompt="hello world",
-        agent_state={"foo": "bar"}
+        agent_state={"foo": "bar"},
     )
     d = data.to_dict()
     assert d["branch_name"] == "branch"
@@ -125,6 +130,7 @@ def test_session_data_serialization_v3():
     assert data2.original_prompt == "hello world"
     assert data2.agent_state == {"foo": "bar"}
 
+
 def test_session_manager_update_info(tmp_path):
     """Verify SessionManager.update_session_info works."""
     with patch("pathlib.Path.home", return_value=tmp_path):
@@ -133,7 +139,7 @@ def test_session_manager_update_info(tmp_path):
             branch_name="feat/new",
             repo_root="/home/user/repo",
             engine_name="jules",
-            original_prompt="fix bugs"
+            original_prompt="fix bugs",
         )
 
         # Reload to verify persistence
