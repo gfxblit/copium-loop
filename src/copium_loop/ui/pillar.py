@@ -88,26 +88,28 @@ class MatrixPillar:
         status_color = self.get_status_color()
         if self.status == "active":
             return Text(
-                f"▶ {self.name.upper()}",
+                f" ▶ {self.name.upper()} ",
                 style=f"bold black on {status_color}",
                 justify="center",
             )
         elif self.status in self.SUCCESS_STATUSES:
             return Text(
-                f"✔ {self.name.upper()}",
+                f" ✔ {self.name.upper()} ",
                 style=f"bold black on {status_color}",
                 justify="center",
             )
         elif self.status in self.FAILURE_STATUSES:
             return Text(
-                f"✘ {self.name.upper()}",
+                f" ✘ {self.name.upper()} ",
                 style=f"bold white on {status_color}",
                 justify="center",
             )
         elif len(self.buffer) > 0:
-            return Text(f"✔ {self.name.upper()}", style="dim cyan", justify="center")
+            return Text(f" ✔ {self.name.upper()} ", style="dim cyan", justify="center")
         else:
-            return Text(f"○ {self.name.upper()}", style="dim grey50", justify="center")
+            return Text(
+                f" ○ {self.name.upper()} ", style="dim grey50", justify="center"
+            )
 
     def get_subtitle_text(self) -> Text:
         """Returns the subtitle text for the pillar (status + duration + completion time)."""
@@ -160,11 +162,43 @@ class MatrixPillar:
         """Returns True if this is a 'lean' node that should occupy minimal space."""
         return self.name in LEAN_NODES
 
-    def get_content_renderable(self, show_system: bool = False) -> TailRenderable:
+    def get_lean_content(self) -> Text:
+        """Returns a simple title with status for lean nodes."""
+        status_color = self.get_status_color()
+        status_text = self.status.upper()
+
+        # Map internal status codes to more user-friendly labels if needed
+        if status_text == "IDLE" and len(self.buffer) > 0:
+            status_text = "COMPLETE"
+
+        icon = "○"
+        fg_color = "black"
+        if self.status == "active":
+            icon = "▶"
+        elif self.status in self.SUCCESS_STATUSES:
+            icon = "✔"
+        elif self.status in self.FAILURE_STATUSES:
+            icon = "✘"
+            fg_color = "white"
+        elif self.status == "idle" and len(self.buffer) == 0:
+            # Idle empty state: dim text, no background padding needed really but keeping it consistent
+            return Text(
+                f" ○ {self.name.upper()}: {status_text} ",
+                style="dim grey50",
+                justify="center",
+            )
+
+        return Text(
+            f" {icon} {self.name.upper()}: {status_text} ",
+            style=f"bold {fg_color} on {status_color}",
+            justify="center",
+        )
+
+    def get_content_renderable(self, show_system: bool = False):
         """Returns the content renderable for the pillar, optionally filtering system logs."""
-        # For lean nodes, we suppress content completely
+        # For lean nodes, we show a simplified status line
         if self.is_lean_node():
-            return TailRenderable([], self.status)
+            return self.get_lean_content()
 
         filtered_buffer = []
         for entry in self.buffer:

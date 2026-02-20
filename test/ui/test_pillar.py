@@ -93,6 +93,30 @@ def test_matrix_pillar_filtering():
     renderable_all = pillar.get_content_renderable(show_system=True)
     assert len(renderable_all.buffer) == 3
 
+    # Lean node should return Text instead of TailRenderable
+    pillar_lean = MatrixPillar("tester")
+    renderable_lean = pillar_lean.get_content_renderable()
+    assert isinstance(renderable_lean, Text)
+
+
+def test_matrix_pillar_lean_content():
+    """Test that lean nodes return a simple title with status."""
+    pillar = MatrixPillar("tester")
+    pillar.status = "active"
+
+    content = pillar.get_lean_content()
+    assert isinstance(content, Text)
+    assert "▶ TESTER: ACTIVE" in content.plain
+    assert content.justify == "center"
+
+    pillar.status = "success"
+    content = pillar.get_lean_content()
+    assert "✔ TESTER: SUCCESS" in content.plain
+
+    pillar.status = "failed"
+    content = pillar.get_lean_content()
+    assert "✘ TESTER: FAILED" in content.plain
+
 
 def test_matrix_pillar_time_suffix():
     """Test time suffix rendering in MatrixPillar."""
@@ -188,19 +212,19 @@ def test_matrix_pillar_title_and_subtitle():
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
     assert isinstance(title, Text)
-    assert title.plain == "○ CODER"
+    assert title.plain == " ○ CODER "
     assert subtitle.plain == ""
 
     # Test active state
     pillar.set_status("active", datetime.now().isoformat())
     title = pillar.get_title_text()
-    assert title.plain == "▶ CODER"
+    assert title.plain == " ▶ CODER "
 
     # Test success state
     pillar.set_status("success", datetime.now().isoformat())
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
-    assert title.plain == "✔ CODER"
+    assert title.plain == " ✔ CODER "
     assert "SUCCESS" in subtitle.plain
     assert "@" in subtitle.plain
 
