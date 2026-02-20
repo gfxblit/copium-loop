@@ -154,7 +154,7 @@ class TestPrCreatorNode:
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_push.return_value = {"exit_code": 0}
-        
+
         # Mock responses for gh pr create, gh pr view, and gh pr edit
         mock_run.side_effect = [
             {"output": "https://github.com/org/repo/pull/1\n", "exit_code": 0}, # gh pr create
@@ -167,12 +167,12 @@ class TestPrCreatorNode:
         result = await pr_creator(agent_state)
 
         assert result["review_status"] == "pr_created"
-        
+
         # Check that gh pr view was called with the PR URL
         view_call = mock_run.call_args_list[1]
         assert "view" in view_call.args[1]
         assert any("https://github.com/org/repo/pull/1" in str(arg) for arg in view_call.args[1])
-        
+
         # Check that gh pr edit was called with the new body
         edit_call = mock_run.call_args_list[2]
         assert "edit" in edit_call.args[1]
