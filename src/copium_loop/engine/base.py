@@ -35,6 +35,7 @@ class LLMEngine(ABC):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
+        state: Any = None,
         **kwargs: Any,
     ) -> str:
         """Invokes the LLM with a prompt."""

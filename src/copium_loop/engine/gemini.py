@@ -83,6 +83,7 @@ class GeminiEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
+        state: Any = None,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> str:
         """

@@ -79,6 +79,7 @@ async def journaler_node(state: AgentState) -> dict:
             verbose=state.get("verbose"),
             label="Journaler System",
             node="journaler",
+            state=state,
         )
 
         lesson = lesson.strip().strip('"').strip("'")
