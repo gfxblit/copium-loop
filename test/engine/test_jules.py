@@ -651,7 +651,7 @@ async def test_jules_api_invoke_apply_artifacts():
 
         result = await engine.invoke("Test prompt", node="coder")
 
-        assert result == "Jules task completed, but no summary was found."
+        assert result == "IMPLICIT_VERDICT: APPROVED"
         mock_run_command.assert_called_once()
         args, kwargs = mock_run_command.call_args
         assert args[0] == "git"

@@ -204,3 +204,41 @@ class TestReviewerNode:
         assert "EXAMPLE:" in system_prompt
         assert system_prompt.count("VERDICT: APPROVED") == 2
         assert system_prompt.count("VERDICT: REJECTED") == 2
+
+    @pytest.mark.asyncio
+    async def test_reviewer_prompt_jules_expert(self, agent_state):
+        """Test that the Jules reviewer prompt contains expert instructions."""
+        agent_state["engine"].engine_type = "jules"
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+
+        await reviewer(agent_state)
+
+        args, kwargs = agent_state["engine"].invoke.call_args
+        system_prompt = args[0]
+
+        assert (
+            "Principal Software Engineer and Meticulous Code Review Architect"
+            in system_prompt
+        )
+        assert "Establish context by reading relevant files" in system_prompt
+        assert "Prioritize logic over style" in system_prompt
+        assert 'DO NOT tell the author to "check"' in system_prompt
+        assert "VERDICT: APPROVED" in system_prompt
+        assert "VERDICT: REJECTED" in system_prompt
+        assert "(Current HEAD:" in system_prompt
+        assert "starting from commit abc to HEAD" in system_prompt
+
+    @pytest.mark.asyncio
+    async def test_reviewer_implicit_approval(self, agent_state):
+        """Test that reviewer recognizes implicit approval signals."""
+        agent_state[
+            "engine"
+        ].invoke.return_value = "All plan steps completed. Ready for submission."
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "abc"
+
+        result = await reviewer(agent_state)
+
+        assert result["review_status"] == "approved"
+        assert "Ready for submission" in result["messages"][0].content
