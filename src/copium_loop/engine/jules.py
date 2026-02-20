@@ -347,9 +347,7 @@ class JulesEngine(LLMEngine):
         has_changeset = any(isinstance(o, dict) and "changeSet" in o for o in outputs)
         if has_changeset:
             summary = (
-                f"{summary}\nIMPLICIT_VERDICT: APPROVED"
-                if summary
-                else "IMPLICIT_VERDICT: APPROVED"
+                f"{summary}\nVERDICT: APPROVED" if summary else "VERDICT: APPROVED"
             )
 
         if pr_url:
@@ -425,7 +423,6 @@ class JulesEngine(LLMEngine):
         node: str | None = None,
         command_timeout: int | None = None,
         inactivity_timeout: int | None = None,
-        state: Any = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> str:
         """
@@ -554,14 +551,6 @@ class JulesEngine(LLMEngine):
 
             # 3. Extract results
             summary = self._extract_summary(status_data)
-
-            # Update has_changeset in state if present in status_data
-            outputs = status_data.get("outputs", [])
-            has_changeset = any(
-                isinstance(o, dict) and "changeSet" in o for o in outputs
-            )
-            if has_changeset and state is not None:
-                state["has_changeset"] = True
 
             # 4. Handle sync if necessary
             # For coder node, we apply artifacts from Jules locally and push

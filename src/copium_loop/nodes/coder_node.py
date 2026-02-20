@@ -22,7 +22,6 @@ async def coder_node(state: AgentState) -> dict:
         verbose=state.get("verbose"),
         label="Coder System",
         node="coder",
-        state=state,
     )
     telemetry.log_info("coder", "\nCoding complete.\n")
     print("\nCoding complete.")

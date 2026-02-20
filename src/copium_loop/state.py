@@ -24,4 +24,3 @@ class AgentState(TypedDict):
     last_error: str
     journal_status: str
     head_hash: str
-    has_changeset: bool

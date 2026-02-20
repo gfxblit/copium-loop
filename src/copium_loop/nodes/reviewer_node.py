@@ -79,7 +79,6 @@ async def reviewer_node(state: AgentState) -> dict:
             verbose=state.get("verbose"),
             label="Reviewer System",
             node="reviewer",
-            state=state,
         )
     except Exception as e:
         msg = f"Error during review: {e}\n"
@@ -93,11 +92,6 @@ async def reviewer_node(state: AgentState) -> dict:
         }
 
     verdict = _parse_verdict(review_content)
-
-    # State-based check: if Jules (or another engine) produced a changeset,
-    # it's considered approved by default if no explicit verdict is found.
-    if not verdict and state.get("has_changeset"):
-        verdict = "APPROVED"
 
     if not verdict:
         msg = "\nReview decision: Error (no verdict found)\n"

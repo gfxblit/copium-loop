@@ -62,7 +62,6 @@ async def architect_node(state: AgentState) -> dict:
             verbose=state.get("verbose"),
             label="Architect System",
             node="architect",
-            state=state,
         )
     except Exception as e:
         msg = f"Error during architectural evaluation: {e}\n"

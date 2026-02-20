@@ -56,4 +56,4 @@ def test_extract_summary_with_changeset():
     }
 
     summary = engine._extract_summary(status_data)
-    assert "IMPLICIT_VERDICT: APPROVED" in summary
+    assert "VERDICT: APPROVED" in summary
