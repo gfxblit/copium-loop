@@ -659,6 +659,12 @@ async def test_jules_api_invoke_apply_artifacts():
         mock_add.assert_called_once()
         mock_commit.assert_called_once_with("fix: bug", node="coder")
         assert mock_push.call_count == 2
+        # Check first push
+        mock_push.assert_any_call(
+            force=True, remote="origin", branch="main", node="coder"
+        )
+        # Check second push
+        mock_push.assert_any_call(force=True, node="coder")
 
 
 @pytest.mark.asyncio
@@ -1049,7 +1055,7 @@ async def test_jules_api_invoke_pushes_branch_for_coder():
         await engine.invoke("Test prompt", node="coder")
 
         mock_push.assert_called_with(
-            remote="origin", branch="feature-branch", node="coder"
+            force=True, remote="origin", branch="feature-branch", node="coder"
         )
 
 
