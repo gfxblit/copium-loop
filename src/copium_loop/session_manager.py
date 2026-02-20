@@ -13,12 +13,22 @@ class SessionData:
     session_id: str
     engine_state: dict[str, dict[str, Any]] = field(default_factory=dict)
     metadata: dict[str, str] = field(default_factory=dict)
+    agent_state: dict[str, Any] = field(default_factory=dict)
+    branch_name: str | None = None
+    repo_root: str | None = None
+    engine_name: str | None = None
+    original_prompt: str | None = None
 
     def to_dict(self) -> dict:
         return {
             "session_id": self.session_id,
             "engine_state": self.engine_state,
             "metadata": self.metadata,
+            "agent_state": self.agent_state,
+            "branch_name": self.branch_name,
+            "repo_root": self.repo_root,
+            "engine_name": self.engine_name,
+            "original_prompt": self.original_prompt,
         }
 
     @classmethod
@@ -27,6 +37,11 @@ class SessionData:
             session_id=data["session_id"],
             engine_state=data.get("engine_state", {}),
             metadata=data.get("metadata", {}),
+            agent_state=data.get("agent_state", {}),
+            branch_name=data.get("branch_name"),
+            repo_root=data.get("repo_root"),
+            engine_name=data.get("engine_name"),
+            original_prompt=data.get("original_prompt"),
         )
 
 
@@ -135,3 +150,60 @@ class SessionManager:
         if not self._data:
             self._load()
         return self._data.metadata.get(key)
+
+    def update_agent_state(self, state: dict[str, Any]):
+        """Updates the full AgentState."""
+        if not self._data:
+            self._load()
+        self._data.agent_state = state
+        self._save()
+
+    def get_agent_state(self) -> dict[str, Any]:
+        """Retrieves the full AgentState."""
+        if not self._data:
+            self._load()
+        return self._data.agent_state
+
+    def get_branch_name(self) -> str | None:
+        """Retrieves the branch name."""
+        if not self._data:
+            self._load()
+        return self._data.branch_name
+
+    def get_repo_root(self) -> str | None:
+        """Retrieves the repo root."""
+        if not self._data:
+            self._load()
+        return self._data.repo_root
+
+    def get_engine_name(self) -> str | None:
+        """Retrieves the engine name."""
+        if not self._data:
+            self._load()
+        return self._data.engine_name
+
+    def get_original_prompt(self) -> str | None:
+        """Retrieves the original prompt."""
+        if not self._data:
+            self._load()
+        return self._data.original_prompt
+
+    def update_session_info(
+        self,
+        branch_name: str | None = None,
+        repo_root: str | None = None,
+        engine_name: str | None = None,
+        original_prompt: str | None = None,
+    ):
+        """Updates sticky session information."""
+        if not self._data:
+            self._load()
+        if branch_name is not None:
+            self._data.branch_name = branch_name
+        if repo_root is not None:
+            self._data.repo_root = repo_root
+        if engine_name is not None:
+            self._data.engine_name = engine_name
+        if original_prompt is not None:
+            self._data.original_prompt = original_prompt
+        self._save()

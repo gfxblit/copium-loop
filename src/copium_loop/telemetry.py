@@ -341,39 +341,72 @@ def find_latest_session() -> str | None:
     if not log_dir.exists():
         return None
 
-    # Find all .jsonl files
-    log_files = list(log_dir.glob("*.jsonl"))
+    # Find all .jsonl files recursively
+    log_files = list(log_dir.glob("**/*.jsonl"))
     if not log_files:
         return None
 
     # Sort by modification time, most recent first
     log_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
-    # Return the session ID (filename without extension)
-    return log_files[0].stem
+    # Return the session ID (path relative to log_dir without extension)
+    latest_file = log_files[0]
+    return str(latest_file.relative_to(log_dir).with_suffix(""))
 
 
 def get_telemetry() -> Telemetry:
     """Returns the global telemetry instance."""
     global _telemetry_instance
     if _telemetry_instance is None:
-        # Fallback to a timestamp-based session ID
-        session_id = f"session_{int(time.time())}"
-        # Try to get actual tmux session name if possible
-        try:
-            import subprocess
+        import subprocess
 
+        # Try to get repo/branch name for session ID
+        session_id = None
+        try:
+            # Get repo name
             res = subprocess.run(
-                ["tmux", "display-message", "-p", "#S"],
+                ["git", "remote", "get-url", "origin"],
                 capture_output=True,
                 text=True,
                 check=False,
             )
+            if res.returncode != 0:
+                # Try any remote
+                res = subprocess.run(
+                    ["git", "remote"], capture_output=True, text=True, check=False
+                )
+                remotes = res.stdout.strip().splitlines()
+                if remotes:
+                    res = subprocess.run(
+                        ["git", "remote", "get-url", remotes[0]],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+
             if res.returncode == 0:
-                name = res.stdout.strip()
-                if name:
-                    session_id = name
+                url = res.stdout.strip()
+                import re
+
+                match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
+                if match:
+                    repo_name = match.group(1).replace("/", "-")
+                    # Get branch name
+                    res = subprocess.run(
+                        ["git", "branch", "--show-current"],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if res.returncode == 0:
+                        branch_name = res.stdout.strip()
+                        if branch_name:
+                            session_id = f"{repo_name}/{branch_name}"
         except Exception:
             pass
+
+        if not session_id:
+            # Fallback to a timestamp-based session ID if not in a git repo
+            session_id = f"session_{int(time.time())}"
         _telemetry_instance = Telemetry(session_id)
     return _telemetry_instance

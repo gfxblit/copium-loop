@@ -69,6 +69,21 @@ class WorkflowManager:
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
 
+                # Persist state after successful node execution
+                if self.session_manager:
+                    # Merge result into state to persist the full updated state
+                    updated_state = state.copy()
+                    if isinstance(result, dict):
+                        updated_state.update(result)
+                    
+                    # Remove non-serializable objects like the engine
+                    serializable_state = {
+                        k: v for k, v in updated_state.items() 
+                        if k not in ["engine", "messages"]
+                    }
+                    # Handle messages separately if needed, but for now let's just save metadata
+                    self.session_manager.update_agent_state(serializable_state)
+
                 return result
             except asyncio.TimeoutError:
                 msg = f"Node '{node_name}' timed out after {NODE_TIMEOUT}s."
@@ -152,6 +167,26 @@ class WorkflowManager:
             self.session_id = telemetry.session_id
 
         self.session_manager = SessionManager(self.session_id)
+
+        # Store sticky environment metadata
+        if await is_git_repo(node=self.start_node):
+            try:
+                branch = await get_current_branch(node=self.start_node)
+                
+                from copium_loop.shell import run_command
+                res = await run_command("git", ["rev-parse", "--show-toplevel"], node=self.start_node)
+                repo_root = res["output"].strip() if res["exit_code"] == 0 else None
+                
+                self.session_manager.update_session_info(
+                    branch_name=branch,
+                    repo_root=repo_root,
+                    engine_name=self.engine_name,
+                    original_prompt=input_prompt
+                )
+            except Exception:
+                pass
+        elif self.engine_name:
+             self.session_manager.update_session_info(engine_name=self.engine_name, original_prompt=input_prompt)
 
         # Determine engine
         self.engine = get_engine(self.engine_name)
