@@ -7,10 +7,10 @@ from copium_loop.telemetry import get_telemetry
 
 @pytest.fixture(autouse=True)
 def reset_telemetry():
-    global _telemetry_instance
-    _telemetry_instance = None
+    import copium_loop.telemetry
+    copium_loop.telemetry._telemetry_instance = None
     yield
-    _telemetry_instance = None
+    copium_loop.telemetry._telemetry_instance = None
 
 
 def test_session_id_derivation():

@@ -359,20 +359,36 @@ def find_latest_session() -> str | None:
 def get_telemetry() -> Telemetry:
     """Returns the global telemetry instance with a session ID derived from the git repo and branch."""
     global _telemetry_instance
+    print(f"DEBUG: _telemetry_instance is {_telemetry_instance}")
     if _telemetry_instance is None:
         import subprocess
         import re
 
-        # Strictly derive session ID from repo and branch
+        session_id = None
+        repo_name = None
+
+        # 1. Try to derive from Git
         try:
-            # 1. Get repo name (from remote origin if possible, else from local directory)
-            repo_name = None
+            # Get repo name (from remote origin if possible, else from any remote)
             res = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
                 capture_output=True,
                 text=True,
                 check=False,
             )
+            if res.returncode != 0:
+                # Try any remote
+                res = subprocess.run(
+                    ["git", "remote"], capture_output=True, text=True, check=False
+                )
+                remotes = res.stdout.strip().splitlines()
+                if remotes:
+                    res = subprocess.run(
+                        ["git", "remote", "get-url", remotes[0]],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
 
             if res.returncode == 0:
                 url = res.stdout.strip()
@@ -391,40 +407,49 @@ def get_telemetry() -> Telemetry:
                 )
                 if res.returncode == 0:
                     repo_name = Path(res.stdout.strip()).name
-                else:
-                    raise RuntimeError(
-                        "Not a git repository: Could not determine repository root."
-                    )
 
-            # 2. Get branch name
-            res = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if res.returncode == 0:
-                branch_name = res.stdout.strip()
-                if not branch_name:
-                    # Detached HEAD? Fallback to commit hash
-                    res = subprocess.run(
-                        ["git", "rev-parse", "--short", "HEAD"],
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                    )
-                    branch_name = res.stdout.strip() if res.returncode == 0 else "unknown"
-            else:
-                raise RuntimeError(
-                    "Not a git repository: Could not determine branch name."
+            if repo_name:
+                # Get branch name
+                res = subprocess.run(
+                    ["git", "branch", "--show-current"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
+                if res.returncode == 0:
+                    branch_name = res.stdout.strip()
+                    if not branch_name:
+                        # Detached HEAD? Fallback to commit hash
+                        res = subprocess.run(
+                            ["git", "rev-parse", "--short", "HEAD"],
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        branch_name = res.stdout.strip() if res.returncode == 0 else "unknown"
+                    
+                    session_id = f"{repo_name}/{branch_name}"
+        except Exception:
+            pass
 
-            session_id = f"{repo_name}/{branch_name}"
-            _telemetry_instance = Telemetry(session_id)
+        # 2. Fallback to tmux session name
+        if not session_id:
+            try:
+                res = subprocess.run(
+                    ["tmux", "display-message", "-p", "#S"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    session_id = res.stdout.strip()
+            except Exception:
+                pass
 
-        except RuntimeError as e:
-            raise e
-        except Exception as e:
-            raise RuntimeError(f"Failed to derive session ID: {e}")
+        # 3. Final fallback to timestamp
+        if not session_id:
+            session_id = f"session_{int(time.time())}"
 
+        _telemetry_instance = Telemetry(session_id)
     return _telemetry_instance
+
