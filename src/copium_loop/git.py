@@ -72,7 +72,7 @@ async def rebase_abort(node: str | None = None) -> dict:
     return await run_command("git", ["rebase", "--abort"], node=node)
 
 
-PROTECTED_BRANCHES = ["main", "master", "develop", "release"]
+PROTECTED_BRANCHES = {"main", "master", "develop", "release"}
 
 
 async def push(
