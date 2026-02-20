@@ -5,6 +5,8 @@ from rich import box
 from rich.panel import Panel
 from rich.text import Text
 
+from copium_loop.constants import LEAN_NODES
+
 from .renderable import TailRenderable
 
 
@@ -156,7 +158,7 @@ class MatrixPillar:
 
     def is_lean_node(self) -> bool:
         """Returns True if this is a 'lean' node that should occupy minimal space."""
-        return self.name in {"tester", "pr_pre_checker", "pr_creator"}
+        return self.name in LEAN_NODES
 
     def get_content_renderable(self, show_system: bool = False) -> TailRenderable:
         """Returns the content renderable for the pillar, optionally filtering system logs."""

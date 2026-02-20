@@ -160,17 +160,15 @@ def test_get_lint_command_python_no_config():
             return False
         return path.endswith(".py")
 
-    class MockEntry:
-        def __init__(self, name):
-            self.name = name
-            self.is_file_val = True
+    from unittest.mock import MagicMock
 
-        def is_file(self):
-            return self.is_file_val
+    mock_entry = MagicMock()
+    mock_entry.name = "main.py"
+    mock_entry.is_file.return_value = True
 
     with (
         patch("os.path.exists", side_effect=side_effect),
-        patch("os.scandir", return_value=[MockEntry("main.py")]),
+        patch("os.scandir", return_value=[mock_entry]),
     ):
         cmd, args = discovery.get_lint_command()
         assert cmd == "sh"
