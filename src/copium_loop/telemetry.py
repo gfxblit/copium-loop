@@ -35,6 +35,8 @@ class Telemetry:
 
     def _write_event(self, event: dict):
         """Writes an event to disk. Called by the thread executor."""
+        # Ensure parent directory exists for session ID with slashes
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
 
@@ -362,6 +364,7 @@ def get_telemetry() -> Telemetry:
 
         # Try to get repo/branch name for session ID
         session_id = None
+        repo_name = None
         try:
             # Get repo name
             res = subprocess.run(
@@ -391,17 +394,39 @@ def get_telemetry() -> Telemetry:
                 match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
                 if match:
                     repo_name = match.group(1).replace("/", "-")
-                    # Get branch name
+                else:
+                    # Fallback to local directory name if remote doesn't match expected pattern
                     res = subprocess.run(
-                        ["git", "branch", "--show-current"],
+                        ["git", "rev-parse", "--show-toplevel"],
                         capture_output=True,
                         text=True,
                         check=False,
                     )
                     if res.returncode == 0:
-                        branch_name = res.stdout.strip()
-                        if branch_name:
-                            session_id = f"{repo_name}/{branch_name}"
+                        repo_name = Path(res.stdout.strip()).name
+            else:
+                # Fallback to local directory name if no remote at all
+                res = subprocess.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    repo_name = Path(res.stdout.strip()).name
+
+            if repo_name:
+                # Get branch name
+                res = subprocess.run(
+                    ["git", "branch", "--show-current"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    branch_name = res.stdout.strip()
+                    if branch_name:
+                        session_id = f"{repo_name}/{branch_name}"
         except Exception:
             pass
 

@@ -31,29 +31,27 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        try:
-            with os.scandir(self.log_dir) as entries:
-                log_entries = [
-                    entry
-                    for entry in entries
-                    if entry.name.endswith(".jsonl") and entry.is_file()
-                ]
-        except OSError:
-            return []
-
+        # Find all .jsonl files recursively
+        log_files = list(self.log_dir.rglob("*.jsonl"))
+        
         # Sort by mtime to preserve consistent processing order
-        # Fallback if stat fails (e.g. file deleted during scan)
-        with contextlib.suppress(OSError):
-            log_entries.sort(key=lambda e: e.stat().st_mtime)
+        try:
+            log_files.sort(key=lambda f: f.stat().st_mtime)
+        except OSError:
+            # Fallback if file deleted during scan
+            pass
 
         # Apply session limit: keep only the most recent files
-        if len(log_entries) > self.max_sessions:
-            log_entries = log_entries[-self.max_sessions :]
+        if len(log_files) > self.max_sessions:
+            log_files = log_files[-self.max_sessions :]
 
         active_sids = set()
-        for entry in log_entries:
-            sid = entry.name[:-6]  # Remove .jsonl
+        log_entries_map = {}
+        for fpath in log_files:
+            # Derive session ID from relative path
+            sid = str(fpath.relative_to(self.log_dir).with_suffix(""))
             active_sids.add(sid)
+            log_entries_map[sid] = fpath
 
         # Remove stale sessions
         stale_sids = [sid for sid in self.sessions if sid not in active_sids]
@@ -66,11 +64,9 @@ class SessionManager:
 
         updates = []
 
-        for entry in log_entries:
-            sid = entry.name[:-6]
-
+        for sid, fpath in log_entries_map.items():
             try:
-                stat = entry.stat()
+                stat = fpath.stat()
                 mtime = stat.st_mtime
                 size = stat.st_size
             except OSError:
@@ -100,8 +96,7 @@ class SessionManager:
             offset = self.log_offsets.get(sid, 0)
             events = []
             try:
-                # Use entry.path (string) or Path(entry.path)
-                with open(entry.path) as f:
+                with open(fpath) as f:
                     if offset > 0:
                         f.seek(offset)
                         # If we seeked into the middle of a file (initial read of a large file),

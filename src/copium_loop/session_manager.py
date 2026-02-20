@@ -75,6 +75,9 @@ class SessionManager:
         if not self._data:
             return
 
+        # Ensure parent directory exists for session ID with slashes
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+
         # Write to temp file first
         with tempfile.NamedTemporaryFile(
             mode="w", dir=self.state_dir, delete=False

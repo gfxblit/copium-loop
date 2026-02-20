@@ -180,8 +180,11 @@ class TextualDashboard(App):
             else:
                 # Rebuild
                 await container.remove_children()
+                import re
+
                 for session in visible_sessions:
-                    w = SessionWidget(session, id=f"session-{session.session_id}")
+                    safe_sid = re.sub(r"[^a-zA-Z0-9_\-]", "_", session.session_id)
+                    w = SessionWidget(session, id=f"session-{safe_sid}")
                     await container.mount(w)
                     await w.refresh_ui()
 

@@ -179,8 +179,6 @@ class WorkflowManager:
             try:
                 branch = await get_current_branch(node=self.start_node)
 
-                from copium_loop.shell import run_command
-
                 res = await run_command(
                     "git", ["rev-parse", "--show-toplevel"], node=self.start_node
                 )

@@ -64,11 +64,15 @@ async def async_main():
     session_manager = SessionManager(session_id)
 
     # Determine if we should continue
-    # Implicit continue if no prompt provided and session exists
+    # Implicit continue if no prompt provided and session exists (has original prompt or agent state)
     is_resuming = args.continue_session
     prompt_provided = bool(args.prompt)
 
-    if not is_resuming and not prompt_provided and session_manager.get_agent_state():
+    if (
+        not is_resuming
+        and not prompt_provided
+        and (session_manager.get_agent_state() or session_manager.get_original_prompt())
+    ):
         print(f"Existing session found for this branch: {session_id}")
         print("No prompt provided, implicitly resuming...")
         is_resuming = True
