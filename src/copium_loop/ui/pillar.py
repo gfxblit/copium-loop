@@ -154,8 +154,16 @@ class MatrixPillar:
 
         return res
 
+    def is_lean_node(self) -> bool:
+        """Returns True if this is a 'lean' node that should occupy minimal space."""
+        return self.name in {"tester", "pr_pre_checker", "pr_creator"}
+
     def get_content_renderable(self, show_system: bool = False) -> TailRenderable:
         """Returns the content renderable for the pillar, optionally filtering system logs."""
+        # For lean nodes, we suppress content completely
+        if self.is_lean_node():
+            return TailRenderable([], self.status)
+
         filtered_buffer = []
         for entry in self.buffer:
             if isinstance(entry, dict):

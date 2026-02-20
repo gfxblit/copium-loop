@@ -462,7 +462,7 @@ async def test_pillar_weighting_active_node(tmp_path):
             "timestamp": "2026-02-09T12:00:00",
         },
         {
-            "node": "tester",
+            "node": "architect",
             "event_type": "status",
             "data": "active",
             "timestamp": "2026-02-09T12:00:01",
@@ -476,10 +476,10 @@ async def test_pillar_weighting_active_node(tmp_path):
         await pilot.pause()
 
         coder_pillar = app.query_one("#pillar-test-session-coder", PillarWidget)
-        tester_pillar = app.query_one("#pillar-test-session-tester", PillarWidget)
+        architect_pillar = app.query_one("#pillar-test-session-architect", PillarWidget)
 
         assert coder_pillar.styles.height.unit == Unit.FRACTION
-        assert tester_pillar.styles.height.unit == Unit.FRACTION
+        assert architect_pillar.styles.height.unit == Unit.FRACTION
 
-        assert tester_pillar.styles.height.value == 100.0
+        assert architect_pillar.styles.height.value == 100.0
         assert coder_pillar.styles.height.value == 1.0
