@@ -1,6 +1,5 @@
 import contextlib
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -33,13 +32,10 @@ class SessionManager:
 
         # Find all .jsonl files recursively
         log_files = list(self.log_dir.rglob("*.jsonl"))
-        
+
         # Sort by mtime to preserve consistent processing order
-        try:
+        with contextlib.suppress(OSError):
             log_files.sort(key=lambda f: f.stat().st_mtime)
-        except OSError:
-            # Fallback if file deleted during scan
-            pass
 
         # Apply session limit: keep only the most recent files
         if len(log_files) > self.max_sessions:

@@ -357,55 +357,32 @@ def find_latest_session() -> str | None:
 
 
 def get_telemetry() -> Telemetry:
-    """Returns the global telemetry instance."""
+    """Returns the global telemetry instance with a session ID derived from the git repo and branch."""
     global _telemetry_instance
     if _telemetry_instance is None:
         import subprocess
+        import re
 
-        # Try to get repo/branch name for session ID
-        session_id = None
-        repo_name = None
+        # Strictly derive session ID from repo and branch
         try:
-            # Get repo name
+            # 1. Get repo name (from remote origin if possible, else from local directory)
+            repo_name = None
             res = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            if res.returncode != 0:
-                # Try any remote
-                res = subprocess.run(
-                    ["git", "remote"], capture_output=True, text=True, check=False
-                )
-                remotes = res.stdout.strip().splitlines()
-                if remotes:
-                    res = subprocess.run(
-                        ["git", "remote", "get-url", remotes[0]],
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                    )
 
             if res.returncode == 0:
                 url = res.stdout.strip()
-                import re
-
+                # Extract owner and repo from various git URL formats
                 match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
                 if match:
                     repo_name = match.group(1).replace("/", "-")
-                else:
-                    # Fallback to local directory name if remote doesn't match expected pattern
-                    res = subprocess.run(
-                        ["git", "rev-parse", "--show-toplevel"],
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                    )
-                    if res.returncode == 0:
-                        repo_name = Path(res.stdout.strip()).name
-            else:
-                # Fallback to local directory name if no remote at all
+
+            if not repo_name:
+                # Fallback to local directory name if no remote or remote doesn't match
                 res = subprocess.run(
                     ["git", "rev-parse", "--show-toplevel"],
                     capture_output=True,
@@ -414,38 +391,40 @@ def get_telemetry() -> Telemetry:
                 )
                 if res.returncode == 0:
                     repo_name = Path(res.stdout.strip()).name
+                else:
+                    raise RuntimeError(
+                        "Not a git repository: Could not determine repository root."
+                    )
 
-            if repo_name:
-                # Get branch name
-                res = subprocess.run(
-                    ["git", "branch", "--show-current"],
-                    capture_output=True,
-                    text=True,
-                    check=False,
+            # 2. Get branch name
+            res = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0:
+                branch_name = res.stdout.strip()
+                if not branch_name:
+                    # Detached HEAD? Fallback to commit hash
+                    res = subprocess.run(
+                        ["git", "rev-parse", "--short", "HEAD"],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    branch_name = res.stdout.strip() if res.returncode == 0 else "unknown"
+            else:
+                raise RuntimeError(
+                    "Not a git repository: Could not determine branch name."
                 )
-                if res.returncode == 0:
-                    branch_name = res.stdout.strip()
-                    if branch_name:
-                        session_id = f"{repo_name}/{branch_name}"
-        except Exception:
-            pass
 
-        if not session_id:
-            # Try to get tmux session name
-            try:
-                res = subprocess.run(
-                    ["tmux", "display-message", "-p", "#S"],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                if res.returncode == 0:
-                    session_id = res.stdout.strip()
-            except Exception:
-                pass
+            session_id = f"{repo_name}/{branch_name}"
+            _telemetry_instance = Telemetry(session_id)
 
-        if not session_id:
-            # Fallback to a timestamp-based session ID
-            session_id = f"session_{int(time.time())}"
-        _telemetry_instance = Telemetry(session_id)
+        except RuntimeError as e:
+            raise e
+        except Exception as e:
+            raise RuntimeError(f"Failed to derive session ID: {e}")
+
     return _telemetry_instance
