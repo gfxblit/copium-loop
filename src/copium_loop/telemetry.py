@@ -144,6 +144,37 @@ class Telemetry:
 
         return "\n".join(lines)
 
+    def _isolate_events(self, events: list[dict]) -> tuple[list[dict], str | None]:
+        """
+        Isolates events from the last run (starting with 'INIT:').
+
+        Returns:
+            tuple: (isolated_events, prompt)
+        """
+        last_system_init_idx = -1
+        last_any_init_idx = -1
+        for i, event in enumerate(events):
+            data = str(event.get("data", ""))
+            if "INIT: Starting workflow with prompt:" in data:
+                last_any_init_idx = i
+                # Prioritize system/info events
+                if event.get("source") == "system" or event.get("event_type") == "info":
+                    last_system_init_idx = i
+
+        last_init_idx = (
+            last_system_init_idx if last_system_init_idx != -1 else last_any_init_idx
+        )
+
+        prompt = None
+        if last_init_idx != -1:
+            # Extract prompt from the last INIT: event
+            data = str(events[last_init_idx].get("data", ""))
+            prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
+            # Slice events to only consider this run
+            events = events[last_init_idx:]
+
+        return events, prompt
+
     def get_last_incomplete_node(self) -> tuple[str | None, dict]:
         """
         Determines which node to resume from based on log events.
@@ -156,6 +187,9 @@ class Telemetry:
         events = self.read_log()
         if not events:
             return None, {"reason": "no_log_found"}
+
+        # Isolate events from the last run
+        events, _ = self._isolate_events(events)
 
         # Check if workflow completed successfully
         workflow_events = [
@@ -230,26 +264,10 @@ class Telemetry:
         events = self.read_log()
         state = {}
 
-        # Identify the index of the last event matching "INIT: Starting workflow with prompt:"
-        # Prioritize system source to avoid LLM noise
-        last_init_idx = -1
-        for i, event in enumerate(events):
-            data = str(event.get("data", ""))
-            if "INIT: Starting workflow with prompt:" in data:
-                # Prioritize system/info events
-                if event.get("source") == "system" or event.get("event_type") == "info":
-                    last_init_idx = i
-                elif last_init_idx == -1:
-                    # Fallback to output event if we haven't found any INIT yet
-                    last_init_idx = i
-
-        if last_init_idx != -1:
-            # Extract prompt from the last INIT: event
-            data = str(events[last_init_idx].get("data", ""))
-            prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
+        # Isolate events from the last run
+        events, prompt = self._isolate_events(events)
+        if prompt:
             state["prompt"] = prompt
-            # Slice events to only consider this run
-            events = events[last_init_idx:]
 
         # Reconstruct engine from output logs (in current run)
         for event in events:
