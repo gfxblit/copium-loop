@@ -19,7 +19,7 @@ def _is_python_project() -> bool:
         os.path.exists("pyproject.toml")
         or os.path.exists("setup.py")
         or os.path.exists("requirements.txt")
-        or any(glob.glob("*.py"))
+        or any(f.name.endswith(".py") for f in os.scandir(".") if f.is_file())
     )
 
 
