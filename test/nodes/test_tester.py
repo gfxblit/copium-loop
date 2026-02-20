@@ -283,3 +283,114 @@ class TestTesterNode:
 
             assert "FAIL (Coverage)" in result["test_output"]
             mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_detect_ruff_violations(self):
+        """Test that tester node detects ruff violations like F401 even if exit code is 0."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
+            # Ruff violation: F401 [*] 'os' imported but unused
+            mock_run.return_value = {
+                "output": "src/main.py:1:1: F401 [*] 'os' imported but unused",
+                "exit_code": 0,
+            }
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_node_detect_ruff_violation_with_colon_relaxed_space(self):
+        """Verify that it detects Ruff violations even with no space after the colon."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_telemetry"),
+        ):
+            # Violation: main.py:1:1:F401 (no space)
+            mock_run.side_effect = [
+                {"output": "main.py:1:1:F401 imported but unused", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]
+
+    @pytest.mark.asyncio
+    async def test_tester_detect_ruff_summary(self):
+        """Test that tester node detects ruff summary like 'Found 5 errors' even if exit code is 0."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
+        ):
+            mock_log_status = mock_get_telemetry.return_value.log_status
+            mock_run.return_value = {
+                "output": "Found 5 errors\n[*] 5 fixable with the --fix option.",
+                "exit_code": 0,
+            }
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "Found 5 errors" in result["test_output"]
+            mock_log_status.assert_any_call("tester", "failed")
+
+    @pytest.mark.asyncio
+    async def test_tester_node_false_positive_regex_avoidance(self):
+        """Verify that generic strings like 'T100' or 'ORD123' don't trigger failures."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+        ):
+            # Scenario: Output contains "Order ID: ORD123" and "Status: T100"
+            # but the exit code is 0. These should NOT match the new specific regex.
+            mock_run.side_effect = [
+                {
+                    "output": "Linting passed. Processed Order ID: ORD123",
+                    "exit_code": 0,
+                },
+                {"output": "Tests passed. Status: T100", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert result["test_output"] == "PASS"
+
+    @pytest.mark.asyncio
+    async def test_tester_node_detect_ruff_violation_with_line_col(self):
+        """Verify that it STILL detects Ruff violations when formatted with line/col and a colon."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_telemetry"),
+        ):
+            # Violation: src/main.py:1:1: F401
+            mock_run.side_effect = [
+                {"output": "src/main.py:1:1: F401 imported but unused", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+
+            state = {"retry_count": 0}
+            result = await tester(state)
+
+            assert "FAIL (Lint)" in result["test_output"]
+            assert "F401" in result["test_output"]

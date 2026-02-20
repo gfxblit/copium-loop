@@ -1,4 +1,7 @@
+import os
 from unittest.mock import patch
+
+import pytest
 
 from copium_loop import discovery
 
@@ -146,3 +149,58 @@ def test_get_lint_command_env_override():
         cmd, args = discovery.get_lint_command()
         assert cmd == "mylint"
         assert args == ["--strict"]
+
+
+def test_get_lint_command_python_no_config():
+    """Test that get_lint_command returns ruff for python projects even if no config file exists."""
+
+    def side_effect(path):
+        # No standard config files, but some .py file exists
+        if path in ["pyproject.toml", "setup.py", "requirements.txt", "package.json"]:
+            return False
+        return path.endswith(".py")
+
+    with (
+        patch("os.path.exists", side_effect=side_effect),
+        patch("glob.glob", return_value=["main.py"]),
+    ):
+        cmd, args = discovery.get_lint_command()
+        assert cmd == "sh"
+        assert args == ["-c", "ruff check . && ruff format --check ."]
+
+
+@pytest.mark.parametrize(
+    "file_to_create", ["pyproject.toml", "setup.py", "requirements.txt", "main.py"]
+)
+def test_discovery_python_project_detection(file_to_create, tmp_path):
+    """Test that python projects are detected correctly with various files."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        if file_to_create == "main.py":
+            (tmp_path / "main.py").touch()
+        else:
+            (tmp_path / file_to_create).touch()
+
+        test_cmd, _ = discovery.get_test_command()
+        assert test_cmd == "pytest"
+
+        build_cmd, _ = discovery.get_build_command()
+        assert build_cmd == ""
+
+        lint_cmd, _ = discovery.get_lint_command()
+        assert lint_cmd == "sh"
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_discovery_no_python_project(tmp_path):
+    """Test that non-python projects (without package.json) default to npm."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        # Empty directory
+        test_cmd, _ = discovery.get_test_command()
+        assert test_cmd == "npm"
+    finally:
+        os.chdir(original_cwd)

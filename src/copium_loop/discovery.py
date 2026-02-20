@@ -1,3 +1,4 @@
+import glob
 import os
 
 from copium_loop.constants import DEFAULT_MIN_COVERAGE
@@ -12,6 +13,16 @@ def get_package_manager() -> str:
     return "npm"
 
 
+def _is_python_project() -> bool:
+    """Checks if the current directory is a Python project."""
+    return (
+        os.path.exists("pyproject.toml")
+        or os.path.exists("setup.py")
+        or os.path.exists("requirements.txt")
+        or any(f.name.endswith(".py") for f in os.scandir(".") if f.is_file())
+    )
+
+
 def get_test_command() -> tuple[str, list[str]]:
     """Determines the test command based on the project structure."""
     test_cmd = "npm"
@@ -24,11 +35,7 @@ def get_test_command() -> tuple[str, list[str]]:
     elif os.path.exists("package.json"):
         test_cmd = get_package_manager()
         test_args = ["test"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
+    elif _is_python_project():
         min_cov = os.environ.get("COPIUM_MIN_COVERAGE", str(DEFAULT_MIN_COVERAGE))
         test_cmd = "pytest"
         test_args = [
@@ -52,11 +59,7 @@ def get_build_command() -> tuple[str, list[str]]:
     elif os.path.exists("package.json"):
         build_cmd = get_package_manager()
         build_args = ["run", "build"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
+    elif _is_python_project():
         return "", []
 
     return build_cmd, build_args
@@ -74,11 +77,7 @@ def get_lint_command() -> tuple[str, list[str]]:
     elif os.path.exists("package.json"):
         lint_cmd = get_package_manager()
         lint_args = ["run", "lint"]
-    elif (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-    ):
+    elif _is_python_project():
         lint_cmd = "sh"
         lint_args = ["-c", "ruff check . && ruff format --check ."]
 
