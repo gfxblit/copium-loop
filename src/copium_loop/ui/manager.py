@@ -1,4 +1,4 @@
-import contextlib
+import heapq
 import json
 import os
 from datetime import datetime
@@ -33,22 +33,32 @@ class SessionManager:
 
         try:
             with os.scandir(self.log_dir) as entries:
-                log_entries = [
+                # Optimized: Use heapq.nlargest to get recent files without sorting everything
+                # This avoids O(N log N) sort and full list creation
+
+                # Filter generator
+                filtered_entries = (
                     entry
                     for entry in entries
                     if entry.name.endswith(".jsonl") and entry.is_file()
-                ]
+                )
+
+                def safe_mtime(entry):
+                    try:
+                        return entry.stat().st_mtime
+                    except OSError:
+                        return 0.0
+
+                # Get K largest (newest)
+                recent_entries = heapq.nlargest(
+                    self.max_sessions, filtered_entries, key=safe_mtime
+                )
+
+                # Restore ascending order (oldest to newest) to preserve processing order
+                log_entries = list(reversed(recent_entries))
+
         except OSError:
             return []
-
-        # Sort by mtime to preserve consistent processing order
-        # Fallback if stat fails (e.g. file deleted during scan)
-        with contextlib.suppress(OSError):
-            log_entries.sort(key=lambda e: e.stat().st_mtime)
-
-        # Apply session limit: keep only the most recent files
-        if len(log_entries) > self.max_sessions:
-            log_entries = log_entries[-self.max_sessions :]
 
         active_sids = set()
         for entry in log_entries:

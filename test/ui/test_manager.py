@@ -1,4 +1,6 @@
 import json
+import os
+import time
 
 from copium_loop.ui.column import SessionColumn
 from copium_loop.ui.manager import SessionManager
@@ -188,3 +190,52 @@ def test_session_manager_toggle_system_logs(tmp_path):
     manager.toggle_system_logs()
     assert manager.show_system_logs is False
     assert manager.sessions["s1"].show_system_logs is False
+
+
+def test_manager_optimization(tmp_path):
+    """
+    Test that update_from_logs correctly identifies the most recent sessions
+    when using the optimized sorting logic.
+    """
+    max_sessions = 5
+    mgr = SessionManager(tmp_path, max_sessions=max_sessions)
+
+    # Create max_sessions + 5 log files
+    total_files = max_sessions + 5
+    now = time.time()
+
+    # Create files with distinct mtimes
+    # session_0 is oldest, session_{total_files-1} is newest
+    for i in range(total_files):
+        sid = f"session_{i}"
+        log_file = tmp_path / f"{sid}.jsonl"
+        with open(log_file, "w") as f:
+            f.write(
+                json.dumps({"node": "coder", "event_type": "status", "data": "active"})
+                + "\n"
+            )
+
+        # Set mtime
+        # mtime = now - (total_files - i) * 10
+        # Wait, if i increases, mtime increases (more recent).
+        # i=0: mtime = now - 100
+        # i=9: mtime = now - 10
+        # So session_9 is newest.
+        mtime = now - (total_files - i) * 10
+        os.utime(log_file, (mtime, mtime))
+
+    updates = mgr.update_from_logs()
+
+    # Verify we got exactly max_sessions updates
+    assert len(updates) == max_sessions
+
+    # Verify we got the NEWEST sessions (session_5 to session_9 if total is 10)
+    # The updates should be sorted by mtime ascending (oldest first within the top K)
+    # session_5 (oldest of top 5) -> session_9 (newest of top 5)
+
+    sids = [u["session_id"] for u in updates]
+    expected_sids = [
+        f"session_{i}" for i in range(total_files - max_sessions, total_files)
+    ]
+
+    assert sids == expected_sids
