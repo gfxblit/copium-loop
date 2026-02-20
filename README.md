@@ -31,14 +31,28 @@ copium-loop --monitor
 copium-loop --continue
 ```
 
-### CLI Arguments
+### Continuation and Resumption
 
-- `prompt`: The development task to perform.
-- `--node`, `-n`: Starting node (`coder`, `tester`, `architect`, `reviewer`, `pr_pre_checker`, `pr_creator`).
-- `--monitor`, `-m`: Start the Textual-based TUI monitor (Dashboard).
-- `--continue`, `-c`: Continue from the last incomplete workflow session. Sessions are locked to your current git branch. If no prompt is provided and a session exists for the branch, it resumes automatically.
-- `--engine`: The LLM engine to use (`gemini` or `jules`, default: `gemini`). Resumed sessions default to the engine they were started with.
-- `--verbose`, `-v`: Enable verbose output (default: True).
+Sessions are tied to your current branch and repository. `copium-loop` allows you to resume work seamlessly.
+
+- **Implicit Resumption**: If you run `copium-loop` without a prompt on a branch that has an active session, it will automatically resume from the last node it reached.
+  ```bash
+  # Automatically resumes the current branch's session
+  copium-loop
+  ```
+- **Explicit Resumption**: Use `--continue` or `-c` to explicitly request resumption.
+  ```bash
+  copium-loop --continue
+  ```
+- **Prompt Overriding**: You can resume a session but provide a *new* prompt to guide the AI differently for the remaining nodes.
+  ```bash
+  copium-loop --continue "now focus on fixing the login bug specifically"
+  ```
+- **Node Selection**: Combine with `--node` to restart from a specific phase while keeping the existing context.
+  ```bash
+  # Restart from the testing phase
+  copium-loop --continue --node tester
+  ```
 
 ## Branch-Locked Sessions
 

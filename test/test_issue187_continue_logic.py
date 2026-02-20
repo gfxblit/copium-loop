@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 import contextlib
-import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from copium_loop.__main__ import async_main
+
 
 @pytest.mark.asyncio
 async def test_implicit_resumption():
@@ -54,7 +56,7 @@ async def test_implicit_resumption():
                         # WorkflowManager should be initialized with start_node="tester" (from telemetry)
                         args, kwargs = mock_wm_cls.call_args
                         assert kwargs["start_node"] == "tester"
-                        
+
                         # Verify run was called with old prompt
                         args_run, _ = mock_wm.run.call_args
                         assert args_run[0] == "old prompt"
