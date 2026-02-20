@@ -84,16 +84,30 @@ async def async_main():
     if is_resuming:
         print(f"Attempting to continue session: {session_id}")
 
-        # Verify sticky environment (branch)
+        # Verify sticky environment (branch and repo root)
         stored_branch = (
             session_manager.get_branch_name() or session_manager.get_metadata("branch")
         )
+        stored_repo_root = (
+            session_manager.get_repo_root() or session_manager.get_metadata("repo_root")
+        )
+
         from copium_loop.git import get_current_branch
+        from copium_loop.shell import run_command
 
         current_branch = await get_current_branch()
+        res = await run_command("git", ["rev-parse", "--show-toplevel"])
+        current_repo_root = res["output"].strip() if res["exit_code"] == 0 else None
+
         if stored_branch and stored_branch != current_branch:
             print(
                 f"Error: Session branch mismatch. Session: {stored_branch}, Current: {current_branch}"
+            )
+            sys.exit(1)
+
+        if stored_repo_root and stored_repo_root != current_repo_root:
+            print(
+                f"Error: Session repo root mismatch. Session: {stored_repo_root}, Current: {current_repo_root}"
             )
             sys.exit(1)
 

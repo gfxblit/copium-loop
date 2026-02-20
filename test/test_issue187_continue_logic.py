@@ -1,10 +1,16 @@
 import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
+import os
 
 import pytest
 
 from copium_loop.__main__ import async_main
 
+@pytest.fixture(autouse=True)
+def mock_repo_root():
+    with patch("copium_loop.shell.run_command") as mock_run:
+        mock_run.return_value = {"exit_code": 0, "output": "/test/repo"}
+        yield mock_run
 
 @pytest.mark.asyncio
 async def test_implicit_resumption():
@@ -33,6 +39,7 @@ async def test_implicit_resumption():
                 # Simulate existing session state
                 mock_sm.get_agent_state.return_value = {"prompt": "old prompt"}
                 mock_sm.get_branch_name.return_value = "current-branch"
+                mock_sm.get_repo_root.return_value = "/test/repo"
                 mock_sm.get_original_prompt.return_value = "old prompt"
                 mock_sm.get_engine_name.return_value = "gemini"
                 mock_sm_cls.return_value = mock_sm
@@ -89,6 +96,7 @@ async def test_branch_mismatch_error():
             with patch("copium_loop.session_manager.SessionManager") as mock_sm_cls:
                 mock_sm = MagicMock()
                 mock_sm.get_branch_name.return_value = "other-branch"
+                mock_sm.get_repo_root.return_value = "/test/repo"
                 mock_sm.get_agent_state.return_value = {"prompt": "foo"}
                 mock_sm_cls.return_value = mock_sm
 
@@ -101,6 +109,49 @@ async def test_branch_mismatch_error():
                     with pytest.raises(SystemExit) as excinfo:
                         await async_main()
                     assert excinfo.value.code == 1
+
+
+@pytest.mark.asyncio
+async def test_repo_root_mismatch_error():
+    """
+    Test that if the session repo_root differs from current repo_root, it exits with error.
+    """
+    with patch("argparse.ArgumentParser.parse_args") as mock_parse:
+        mock_args = MagicMock()
+        mock_args.continue_session = True
+        mock_args.prompt = []
+        mock_args.node = "coder"
+        mock_args.verbose = False
+        mock_args.monitor = False
+        mock_args.engine = None
+        mock_parse.value = mock_args
+        mock_parse.return_value = mock_args
+
+        with patch("copium_loop.telemetry.get_telemetry") as mock_get_telemetry:
+            mock_telemetry = MagicMock()
+            mock_telemetry.session_id = "test-session"
+            mock_get_telemetry.return_value = mock_telemetry
+
+            with patch("copium_loop.session_manager.SessionManager") as mock_sm_cls:
+                mock_sm = MagicMock()
+                mock_sm.get_branch_name.return_value = "current-branch"
+                mock_sm.get_repo_root.return_value = "/original/path"
+                mock_sm.get_agent_state.return_value = {"prompt": "foo"}
+                mock_sm_cls.return_value = mock_sm
+
+                with patch(
+                    "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                ) as mock_branch:
+                    mock_branch.return_value = "current-branch"
+
+                    with patch("copium_loop.shell.run_command", new_callable=AsyncMock) as mock_run:
+                        # Mock git rev-parse --show-toplevel to return a DIFFERENT path
+                        mock_run.return_value = {"exit_code": 0, "output": "/new/path"}
+
+                        # Expect SystemExit(1)
+                        with pytest.raises(SystemExit) as excinfo:
+                            await async_main()
+                        assert excinfo.value.code == 1
 
 
 @pytest.mark.asyncio
@@ -129,6 +180,7 @@ async def test_explicit_continue_override():
                 mock_sm = MagicMock()
                 mock_sm.get_agent_state.return_value = {"prompt": "old prompt"}
                 mock_sm.get_branch_name.return_value = "current-branch"
+                mock_sm.get_repo_root.return_value = "/test/repo"
                 mock_sm_cls.return_value = mock_sm
 
                 with patch("copium_loop.copium_loop.WorkflowManager") as mock_wm_cls:

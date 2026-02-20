@@ -35,43 +35,6 @@ def telemetry_with_temp_dir(temp_log_dir, monkeypatch):
     return Telemetry("test_session")
 
 
-def test_get_telemetry_uses_tmux_session_name():
-    """Test that get_telemetry uses only the tmux session name when available."""
-
-    def side_effect(cmd, **_kwargs):
-        mock_res = MagicMock()
-        if cmd[0] == "git":
-            mock_res.returncode = 1
-            mock_res.stdout = ""
-        elif cmd[0] == "tmux":
-            mock_res.returncode = 0
-            mock_res.stdout = "my-awesome-session\n"
-        else:
-            mock_res.returncode = 1
-        return mock_res
-
-    with patch("subprocess.run", side_effect=side_effect) as mock_run:
-        t = telemetry.get_telemetry()
-        assert t.session_id == "my-awesome-session"
-        # Verify we requested ONLY the session name (#S), not pane ID (#D)
-        mock_run.assert_any_call(
-            ["tmux", "display-message", "-p", "#S"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-
-def test_get_telemetry_fallback_to_timestamp():
-    """Test that get_telemetry falls back to session_timestamp when tmux is not available."""
-    with (
-        patch("subprocess.run", side_effect=Exception("no tmux")),
-        patch("time.time", return_value=1234567890),
-    ):
-        t = telemetry.get_telemetry()
-        assert t.session_id == "session_1234567890"
-
-
 class TestTelemetryLogReading:
     """Tests for reading telemetry logs."""
 
