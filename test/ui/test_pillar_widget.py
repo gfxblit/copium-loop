@@ -36,3 +36,23 @@ def test_pillar_widget_updates_from_pillar():
     assert "▶ CODER" in str(widget.border_title)
     assert widget.styles.border_title_align == "center"
     assert widget.styles.border_subtitle_align == "center"
+
+
+@pytest.mark.asyncio
+async def test_pillar_widget_lean_node_no_suppression():
+    """Verify that PillarWidget does NOT suppress content even for lean nodes."""
+    # Test with a lean node
+    pillar = MatrixPillar("tester")
+    app = MockApp()
+    async with app.run_test():
+        widget = PillarWidget(node_id="tester")
+        await app.mount(widget)
+        pillar.add_line("This content should be visible")
+
+        # In the current implementation, MatrixPillar itself handles the suppression
+        # when get_content_renderable is called.
+        widget.update_from_pillar(pillar)
+
+        # For lean nodes, get_content_renderable now returns a TailRenderable
+        renderable = pillar.get_content_renderable()
+        assert "This content should be visible" in renderable.buffer[0]

@@ -11,6 +11,7 @@ from textual.css.scalar import Unit
 
 from copium_loop.ui.column import SessionColumn
 from copium_loop.ui.pillar import MatrixPillar
+from copium_loop.ui.renderable import TailRenderable
 from copium_loop.ui.textual_dashboard import TextualDashboard
 from copium_loop.ui.widgets.pillar import PillarWidget
 from copium_loop.ui.widgets.session import SessionWidget
@@ -92,6 +93,19 @@ def test_matrix_pillar_filtering():
 
     renderable_all = pillar.get_content_renderable(show_system=True)
     assert len(renderable_all.buffer) == 3
+
+    # Test that headers (--- ... ---) are always visible
+    pillar.add_line("--- CODER Node ---", source="system")
+    renderable_header = pillar.get_content_renderable(show_system=False)
+    # LLM output 1, LLM output 2, and the header
+    assert any("--- CODER Node ---" in line for line in renderable_header.buffer)
+
+    # Lean node should return TailRenderable instead of Text object
+    pillar_lean = MatrixPillar("tester")
+    pillar_lean.add_line("tester log")
+    renderable_lean = pillar_lean.get_content_renderable()
+    assert isinstance(renderable_lean, TailRenderable)
+    assert "tester log" in renderable_lean.buffer[0]
 
 
 def test_matrix_pillar_time_suffix():
@@ -188,19 +202,19 @@ def test_matrix_pillar_title_and_subtitle():
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
     assert isinstance(title, Text)
-    assert title.plain == "○ CODER"
+    assert title.plain == " ○ CODER "
     assert subtitle.plain == ""
 
     # Test active state
     pillar.set_status("active", datetime.now().isoformat())
     title = pillar.get_title_text()
-    assert title.plain == "▶ CODER"
+    assert title.plain == " ▶ CODER "
 
     # Test success state
     pillar.set_status("success", datetime.now().isoformat())
     title = pillar.get_title_text()
     subtitle = pillar.get_subtitle_text()
-    assert title.plain == "✔ CODER"
+    assert title.plain == " ✔ CODER "
     assert "SUCCESS" in subtitle.plain
     assert "@" in subtitle.plain
 
@@ -462,7 +476,7 @@ async def test_pillar_weighting_active_node(tmp_path):
             "timestamp": "2026-02-09T12:00:00",
         },
         {
-            "node": "tester",
+            "node": "architect",
             "event_type": "status",
             "data": "active",
             "timestamp": "2026-02-09T12:00:01",
@@ -476,10 +490,10 @@ async def test_pillar_weighting_active_node(tmp_path):
         await pilot.pause()
 
         coder_pillar = app.query_one("#pillar-test-session-coder", PillarWidget)
-        tester_pillar = app.query_one("#pillar-test-session-tester", PillarWidget)
+        architect_pillar = app.query_one("#pillar-test-session-architect", PillarWidget)
 
         assert coder_pillar.styles.height.unit == Unit.FRACTION
-        assert tester_pillar.styles.height.unit == Unit.FRACTION
+        assert architect_pillar.styles.height.unit == Unit.FRACTION
 
-        assert tester_pillar.styles.height.value == 100.0
+        assert architect_pillar.styles.height.value == 100.0
         assert coder_pillar.styles.height.value == 1.0

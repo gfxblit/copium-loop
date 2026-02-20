@@ -3,7 +3,7 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
-from copium_loop.nodes.utils import get_reviewer_prompt
+from copium_loop.nodes.utils import get_reviewer_prompt, node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
@@ -17,11 +17,11 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
+@node_header("reviewer")
 async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    telemetry.log_status("reviewer", "active")
-    telemetry.log_info("reviewer", "--- Reviewer Node ---\n")
-    print("--- Reviewer Node ---")
+    # telemetry.log_status("reviewer", "active") - handled by decorator
+
     engine = state["engine"]
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)

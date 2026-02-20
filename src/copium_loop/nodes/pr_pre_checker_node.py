@@ -6,16 +6,16 @@ from copium_loop.git import (
     rebase,
     rebase_abort,
 )
-from copium_loop.nodes.utils import validate_git_context
+from copium_loop.nodes.utils import node_header, validate_git_context
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
+@node_header("pr_pre_checker")
 async def pr_pre_checker_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    telemetry.log_status("pr_pre_checker", "active")
-    telemetry.log_info("pr_pre_checker", "--- PR Pre-Checker Node ---\n")
-    print("--- PR Pre-Checker Node ---")
+    # telemetry.log_status("pr_pre_checker", "active") - decorator handles this
+
     retry_count = state.get("retry_count", 0)
 
     try:
@@ -25,7 +25,7 @@ async def pr_pre_checker_node(state: AgentState) -> dict:
 
         # 2. Check uncommitted changes
         if await is_dirty(node="pr_pre_checker"):
-            msg = "Uncommitted changes found. Returning to coder to finalize commits.\n"
+            msg = "Uncommitted changes found. Returning to coder.\n"
             telemetry.log_info("pr_pre_checker", msg)
             print(msg, end="")
             telemetry.log_status("pr_pre_checker", "failed")
@@ -40,7 +40,7 @@ async def pr_pre_checker_node(state: AgentState) -> dict:
             }
 
         # 3. Attempt rebase on origin/main
-        msg = "Fetching origin and attempting rebase on origin/main...\n"
+        msg = "Syncing with origin/main...\n"
         telemetry.log_info("pr_pre_checker", msg)
         print(msg, end="")
         await fetch(node="pr_pre_checker")

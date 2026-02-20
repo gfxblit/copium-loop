@@ -99,3 +99,38 @@ async def test_session_widget_header_status_extended():
         await widget.refresh_ui()
         assert "⚠ FAILED" in get_plain_content(header)
         assert header.styles.border.top[1].rgb == (255, 0, 0)  # red
+
+
+@pytest.mark.asyncio
+async def test_lean_nodes_weight_and_content():
+    column = SessionColumn("test-session")
+
+    # Setup 'tester' as a lean node with content and active status
+    column.pillars["tester"].add_line("This should be suppressed")
+    column.pillars["tester"].status = "active"
+
+    # Setup 'coder' as a normal node with content and active status
+    column.pillars["coder"].add_line("This should be visible")
+    column.pillars["coder"].status = "active"
+
+    app = SessionWidgetMockApp(column)
+    async with app.run_test() as pilot:
+        session_widget = app.session_widget
+        # Trigger UI refresh to apply styles
+        await session_widget.refresh_ui()
+        await pilot.pause()
+
+        tester_widget = session_widget.query_one(
+            "#pillar-test-session-tester", PillarWidget
+        )
+        coder_widget = session_widget.query_one(
+            "#pillar-test-session-coder", PillarWidget
+        )
+
+        # Coder should have high weight because it's active and normal
+        # 100 base + 2 per line * 1 line = 102
+        assert coder_widget.styles.height.value == 102
+
+        # Tester is lean and active, so it should have lower weight than coder
+        # 50 base + 2 per line * 1 line = 52
+        assert tester_widget.styles.height.value == 52

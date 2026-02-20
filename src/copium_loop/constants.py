@@ -17,6 +17,9 @@ VALID_NODES = [
     "journaler",
 ]
 
+# Lean nodes that should occupy minimal space in the UI
+LEAN_NODES = {"tester", "pr_pre_checker", "pr_creator"}
+
 # Max retries for the workflow
 MAX_RETRIES = 10
 

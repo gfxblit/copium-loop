@@ -213,10 +213,14 @@ async def test_journaler_prompt_includes_existing_memories(agent_state):
 @pytest.mark.asyncio
 async def test_journaler_telemetry(agent_state):
     with (
-        patch.object(journaler_module, "get_telemetry") as mock_get_telemetry,
+        patch("copium_loop.nodes.utils.get_telemetry") as mock_utils_telemetry,
+        patch.object(journaler_module, "get_telemetry") as mock_node_telemetry,
         patch.object(journaler_module, "MemoryManager") as mock_mm,
     ):
-        mock_telemetry = mock_get_telemetry.return_value
+        mock_telemetry = MagicMock()
+        mock_utils_telemetry.return_value = mock_telemetry
+        mock_node_telemetry.return_value = mock_telemetry
+
         mock_mm_instance = mock_mm.return_value
         mock_mm_instance.get_project_memories.return_value = []
         agent_state["engine"].invoke.return_value = "Remember this."
@@ -228,9 +232,6 @@ async def test_journaler_telemetry(agent_state):
         await journaler(agent_state)
 
         mock_telemetry.log_status.assert_any_call("journaler", "active")
-        mock_telemetry.log_info.assert_any_call(
-            "journaler", "--- Journaling Node ---\n"
-        )
         mock_telemetry.log_status.assert_any_call("journaler", "journaled")
 
 

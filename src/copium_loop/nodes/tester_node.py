@@ -4,6 +4,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop import constants
 from copium_loop.discovery import get_build_command, get_lint_command, get_test_command
+from copium_loop.nodes.utils import node_header
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -13,7 +14,7 @@ async def _run_stage(
     stage_name: str, cmd: str, args: list[str], telemetry
 ) -> tuple[bool, str]:
     """Runs a single stage (lint, build, or test) and logs telemetry."""
-    msg = f"Running {stage_name}: {cmd} {' '.join(args)}...\n"
+    msg = f"Running {stage_name}...\n"
     telemetry.log_info("tester", msg)
     print(msg, end="")
 
@@ -56,11 +57,11 @@ async def _run_stage(
     return success, output
 
 
+@node_header("tester")
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    telemetry.log_status("tester", "active")
-    telemetry.log_info("tester", "--- Test Runner Node ---\n")
-    print("--- Test Runner Node ---")
+    # telemetry.log_status("tester", "active") - removed as it's handled by decorator
+
     retry_count = state.get("retry_count", 0)
 
     # 1. Lint

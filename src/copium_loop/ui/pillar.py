@@ -5,6 +5,8 @@ from rich import box
 from rich.panel import Panel
 from rich.text import Text
 
+from copium_loop.constants import LEAN_NODES
+
 from .renderable import TailRenderable
 
 
@@ -86,26 +88,28 @@ class MatrixPillar:
         status_color = self.get_status_color()
         if self.status == "active":
             return Text(
-                f"▶ {self.name.upper()}",
+                f" ▶ {self.name.upper()} ",
                 style=f"bold black on {status_color}",
                 justify="center",
             )
         elif self.status in self.SUCCESS_STATUSES:
             return Text(
-                f"✔ {self.name.upper()}",
+                f" ✔ {self.name.upper()} ",
                 style=f"bold black on {status_color}",
                 justify="center",
             )
         elif self.status in self.FAILURE_STATUSES:
             return Text(
-                f"✘ {self.name.upper()}",
+                f" ✘ {self.name.upper()} ",
                 style=f"bold white on {status_color}",
                 justify="center",
             )
         elif len(self.buffer) > 0:
-            return Text(f"✔ {self.name.upper()}", style="dim cyan", justify="center")
+            return Text(f" ✔ {self.name.upper()} ", style="dim cyan", justify="center")
         else:
-            return Text(f"○ {self.name.upper()}", style="dim grey50", justify="center")
+            return Text(
+                f" ○ {self.name.upper()} ", style="dim grey50", justify="center"
+            )
 
     def get_subtitle_text(self) -> Text:
         """Returns the subtitle text for the pillar (status + duration + completion time)."""
@@ -154,19 +158,31 @@ class MatrixPillar:
 
         return res
 
-    def get_content_renderable(self, show_system: bool = False) -> TailRenderable:
+    def is_lean_node(self) -> bool:
+        """Returns True if this is a 'lean' node that should occupy minimal space."""
+        return self.name in LEAN_NODES
+
+    def get_content_renderable(self, show_system: bool = False):
         """Returns the content renderable for the pillar, optionally filtering system logs."""
         filtered_buffer = []
         for entry in self.buffer:
             if isinstance(entry, dict):
-                if show_system or entry.get("source") == "llm":
-                    filtered_buffer.append(entry.get("line", ""))
+                line = entry.get("line", "")
+                source = entry.get("source", "llm")
+                # Always show headers (--- ... Node ---) even if from system source
+                is_header = line.strip().startswith("---") and line.strip().endswith(
+                    "---"
+                )
+                if show_system or source == "llm" or is_header:
+                    filtered_buffer.append(line)
             else:
                 # Legacy support for string entries
                 filtered_buffer.append(entry)
 
         # Truncate to max visible lines for rendering performance
-        return TailRenderable(filtered_buffer[-20:], self.status)
+        # Lean nodes (tester, etc.) show less by default
+        max_lines = 10 if self.is_lean_node() else 20
+        return TailRenderable(filtered_buffer[-max_lines:], self.status)
 
     def render(self, show_system: bool = False) -> Panel:
         # Visual Semantics:

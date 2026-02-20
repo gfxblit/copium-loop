@@ -1,5 +1,53 @@
+import functools
+
 from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
+
+
+def node_header(node_name: str):
+    """
+    Decorator to log status, log info, and print node headers consistently.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            telemetry = get_telemetry()
+            telemetry.log_status(node_name, "active")
+
+            # Format the display name (e.g., 'pr_pre_checker' -> 'PR Pre-Checker')
+            name = node_name.replace("_node", "")
+            parts = name.split("_")
+            formatted_parts = []
+            for p in parts:
+                if p.lower() == "pr":
+                    formatted_parts.append("PR")
+                elif p.lower() == "llm":
+                    formatted_parts.append("LLM")
+                elif p.lower() == "pre":
+                    formatted_parts.append("Pre-Checker")
+                elif p.lower() == "checker":
+                    # skip if we already handled pre-checker
+                    if formatted_parts and formatted_parts[-1] == "Pre-Checker":
+                        continue
+                    formatted_parts.append("Checker")
+                else:
+                    formatted_parts.append(p.capitalize())
+
+            display_name = " ".join(formatted_parts)
+            msg = f"\n--- {display_name} Node ---\n"
+            telemetry.log_info(node_name, msg)
+            print(msg, end="")
+
+            try:
+                return await func(*args, **kwargs)
+            except Exception:
+                telemetry.log_status(node_name, "failed")
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 async def get_architect_prompt(engine_type: str, state: dict) -> str:

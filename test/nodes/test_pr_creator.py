@@ -141,6 +141,56 @@ class TestPrCreatorNode:
     @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
+    async def test_pr_creator_links_issue(
+        self,
+        mock_run,
+        mock_push,
+        mock_is_dirty,
+        mock_validate_git,
+        agent_state,
+    ):
+        """Test that PR creator links an issue to the PR."""
+        mock_validate_git.return_value = "feature-branch"
+        mock_is_dirty.return_value = False
+        mock_push.return_value = {"exit_code": 0}
+
+        # Mock responses for gh pr create, gh pr view, and gh pr edit
+        mock_run.side_effect = [
+            {
+                "output": "https://github.com/org/repo/pull/1\n",
+                "exit_code": 0,
+            },  # gh pr create
+            {"output": "PR body content", "exit_code": 0},  # gh pr view
+            {"output": "Successfully updated PR", "exit_code": 0},  # gh pr edit
+        ]
+
+        agent_state["retry_count"] = 0
+        agent_state["issue_url"] = "https://github.com/org/repo/issues/123"
+        result = await pr_creator(agent_state)
+
+        assert result["review_status"] == "pr_created"
+
+        # Check that gh pr view was called with the PR URL
+        view_call = mock_run.call_args_list[1]
+        assert "view" in view_call.args[1]
+        assert any(
+            "https://github.com/org/repo/pull/1" in str(arg)
+            for arg in view_call.args[1]
+        )
+
+        # Check that gh pr edit was called with the new body
+        edit_call = mock_run.call_args_list[2]
+        assert "edit" in edit_call.args[1]
+        assert any(
+            "Closes https://github.com/org/repo/issues/123" in str(arg)
+            for arg in edit_call.args[1]
+        )
+
+    @pytest.mark.asyncio
+    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
     async def test_pr_creator_push_failure(
         self,
         mock_push,
