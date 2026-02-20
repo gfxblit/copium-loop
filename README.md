@@ -22,24 +22,29 @@ export NTFY_CHANNEL="your-channel-name"  # For notifications
 copium-loop "implement user authentication"
 
 # Options
-copium-loop --start reviewer --verbose "check code"
+copium-loop --node reviewer --verbose "check code"
 
-# Monitor multiple sessions
+# Monitor sessions
 copium-loop --monitor
 
-# Continue an incomplete session
+# Resume the session for the current branch
 copium-loop --continue
 ```
 
 ### CLI Arguments
 
 - `prompt`: The development task to perform.
-- `--start`, `-s`: Starting node (`coder`, `test_runner`, `reviewer`, `pr_pre_checker`, `pr_creator`).
-- `--monitor`, `-m`: Start the Matrix visualization monitor (Dashboard).
-- `--continue`, `-c`: Continue from the last incomplete workflow session.
-- `--session`: Specific session ID to monitor or continue.
-- `--engine`: The LLM engine to use (`gemini` or `jules`, default: `gemini`).
+- `--node`, `-n`: Starting node (`coder`, `tester`, `architect`, `reviewer`, `pr_pre_checker`, `pr_creator`).
+- `--monitor`, `-m`: Start the Textual-based TUI monitor (Dashboard).
+- `--continue`, `-c`: Continue from the last incomplete workflow session. Sessions are locked to your current git branch. If no prompt is provided and a session exists for the branch, it resumes automatically.
+- `--engine`: The LLM engine to use (`gemini` or `jules`, default: `gemini`). Resumed sessions default to the engine they were started with.
 - `--verbose`, `-v`: Enable verbose output (default: True).
+
+## Branch-Locked Sessions
+
+Sessions are automatically named based on your repository and current branch (e.g., `owner-repo/branch-name`). This ensures that your work is always organized by the feature you are working on.
+
+When you switch branches, `copium-loop` will naturally find or create the session associated with that branch.
 
 ## How It Works
 

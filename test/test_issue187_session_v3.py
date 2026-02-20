@@ -4,6 +4,8 @@ import argparse
 import sys
 import os
 import subprocess
+from pathlib import Path
+from copium_loop.session_manager import SessionManager, SessionData
 
 @pytest.mark.asyncio
 async def test_session_id_auto_derivation():
@@ -82,3 +84,60 @@ async def test_agent_state_persistence():
     called_state = wm.session_manager.update_agent_state.call_args[0][0]
     assert called_state["code_status"] == "success"
     assert called_state["prompt"] == "test"
+
+def test_session_data_v3_fields():
+    """Verify SessionData has the new required fields."""
+    data = SessionData(
+        session_id="test/branch",
+        branch_name="branch",
+        repo_root="/tmp/repo",
+        engine_name="gemini",
+        original_prompt="hello world"
+    )
+    assert data.session_id == "test/branch"
+    assert data.branch_name == "branch"
+    assert data.repo_root == "/tmp/repo"
+    assert data.engine_name == "gemini"
+    assert data.original_prompt == "hello world"
+
+def test_session_data_serialization_v3():
+    """Verify SessionData serialization includes new fields."""
+    data = SessionData(
+        session_id="test/branch",
+        branch_name="branch",
+        repo_root="/tmp/repo",
+        engine_name="gemini",
+        original_prompt="hello world",
+        agent_state={"foo": "bar"}
+    )
+    d = data.to_dict()
+    assert d["branch_name"] == "branch"
+    assert d["repo_root"] == "/tmp/repo"
+    assert d["engine_name"] == "gemini"
+    assert d["original_prompt"] == "hello world"
+    assert d["agent_state"] == {"foo": "bar"}
+
+    data2 = SessionData.from_dict(d)
+    assert data2.branch_name == "branch"
+    assert data2.repo_root == "/tmp/repo"
+    assert data2.engine_name == "gemini"
+    assert data2.original_prompt == "hello world"
+    assert data2.agent_state == {"foo": "bar"}
+
+def test_session_manager_update_info(tmp_path):
+    """Verify SessionManager.update_session_info works."""
+    with patch("pathlib.Path.home", return_value=tmp_path):
+        sm = SessionManager("test-session")
+        sm.update_session_info(
+            branch_name="feat/new",
+            repo_root="/home/user/repo",
+            engine_name="jules",
+            original_prompt="fix bugs"
+        )
+        
+        # Reload to verify persistence
+        sm2 = SessionManager("test-session")
+        assert sm2.get_branch_name() == "feat/new"
+        assert sm2.get_repo_root() == "/home/user/repo"
+        assert sm2.get_engine_name() == "jules"
+        assert sm2.get_original_prompt() == "fix bugs"
