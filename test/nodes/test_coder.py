@@ -3,6 +3,7 @@ import sys
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from copium_loop.copium_loop import WorkflowManager
 from copium_loop.nodes import coder
 
 # Get the module object explicitly to avoid shadowing issues
@@ -156,3 +157,44 @@ class TestCoderNode:
         prompt = call_args[0]
         assert "To do this, you MUST activate the 'tdd-guide' skill" in prompt
         assert "1. Write tests FIRST (they should fail initially)" in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_failure_sets_correct_status(self):
+        """
+        Test that WorkflowManager._handle_error sets code_status="failed"
+        but NOT review_status="rejected" for coder node failures.
+        """
+        manager = WorkflowManager()
+        state = {"retry_count": 0}
+
+        # Call _handle_error for coder node
+        result = manager._handle_error(state, "coder", "Unexpected failure")
+
+        assert result["code_status"] == "failed"
+        assert result.get("review_status") != "rejected"
+
+    @pytest.mark.asyncio
+    async def test_coder_node_handles_failed_status_with_unexpected_failure_prompt(
+        self, agent_state
+    ):
+        """
+        Test that coder node uses "unexpected failure" prompt when code_status is "failed".
+        """
+        agent_state["engine"].invoke.return_value = "Retrying after failure..."
+        agent_state["messages"] = [
+            HumanMessage(content="Original request"),
+            SystemMessage(content="All models exhausted"),
+        ]
+        agent_state["code_status"] = "failed"
+        agent_state["retry_count"] = 1
+
+        await coder(agent_state)
+
+        # Check that the prompt contains the "unexpected failure" message
+        call_args = agent_state["engine"].invoke.call_args[0]
+        prompt = call_args[0]
+
+        assert "coder encountered an unexpected failure" in prompt.lower()
+        assert "unexpected failure" in prompt.lower()
+        assert "All models exhausted" in prompt
+        assert "rejected by the reviewer" not in prompt

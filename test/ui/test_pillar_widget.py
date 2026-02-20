@@ -24,3 +24,15 @@ async def test_pillar_widget_updates_content():
         pillar.set_status("active")
         pillar_widget.update_from_pillar(pillar)
         assert pillar_widget.pillar.status == "active"
+
+
+def test_pillar_widget_updates_from_pillar():
+    pillar = MatrixPillar("coder")
+    widget = PillarWidget(node_id="coder")
+
+    pillar.set_status("active")
+    widget.update_from_pillar(pillar)
+
+    assert "▶ CODER" in str(widget.border_title)
+    assert widget.styles.border_title_align == "center"
+    assert widget.styles.border_subtitle_align == "center"
