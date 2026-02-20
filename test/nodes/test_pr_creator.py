@@ -157,9 +157,12 @@ class TestPrCreatorNode:
 
         # Mock responses for gh pr create, gh pr view, and gh pr edit
         mock_run.side_effect = [
-            {"output": "https://github.com/org/repo/pull/1\n", "exit_code": 0}, # gh pr create
-            {"output": "PR body content", "exit_code": 0}, # gh pr view
-            {"output": "Successfully updated PR", "exit_code": 0}, # gh pr edit
+            {
+                "output": "https://github.com/org/repo/pull/1\n",
+                "exit_code": 0,
+            },  # gh pr create
+            {"output": "PR body content", "exit_code": 0},  # gh pr view
+            {"output": "Successfully updated PR", "exit_code": 0},  # gh pr edit
         ]
 
         agent_state["retry_count"] = 0
@@ -171,12 +174,18 @@ class TestPrCreatorNode:
         # Check that gh pr view was called with the PR URL
         view_call = mock_run.call_args_list[1]
         assert "view" in view_call.args[1]
-        assert any("https://github.com/org/repo/pull/1" in str(arg) for arg in view_call.args[1])
+        assert any(
+            "https://github.com/org/repo/pull/1" in str(arg)
+            for arg in view_call.args[1]
+        )
 
         # Check that gh pr edit was called with the new body
         edit_call = mock_run.call_args_list[2]
         assert "edit" in edit_call.args[1]
-        assert any("Closes https://github.com/org/repo/issues/123" in str(arg) for arg in edit_call.args[1])
+        assert any(
+            "Closes https://github.com/org/repo/issues/123" in str(arg)
+            for arg in edit_call.args[1]
+        )
 
     @pytest.mark.asyncio
     @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)

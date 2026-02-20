@@ -53,7 +53,7 @@ class TestPRPreChecker:
 
         mock_telemetry.log_status.assert_any_call("pr_pre_checker", "active")
         mock_telemetry.log_info.assert_any_call(
-            "pr_pre_checker", "--- PR Pre-Checker Node ---\n"
+            "pr_pre_checker", "Syncing with origin/main...\n"
         )
         mock_telemetry.log_status.assert_any_call("pr_pre_checker", "success")
 

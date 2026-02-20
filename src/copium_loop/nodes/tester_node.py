@@ -13,7 +13,7 @@ async def _run_stage(
     stage_name: str, cmd: str, args: list[str], telemetry
 ) -> tuple[bool, str]:
     """Runs a single stage (lint, build, or test) and logs telemetry."""
-    msg = f"Running {stage_name}: {cmd} {' '.join(args)}...\n"
+    msg = f"Running {stage_name}...\n"
     telemetry.log_info("tester", msg)
     print(msg, end="")
 
@@ -59,8 +59,6 @@ async def _run_stage(
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("tester", "active")
-    telemetry.log_info("tester", "--- Test Runner Node ---\n")
-    print("--- Test Runner Node ---")
     retry_count = state.get("retry_count", 0)
 
     # 1. Lint

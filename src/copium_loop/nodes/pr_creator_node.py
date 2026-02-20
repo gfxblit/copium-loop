@@ -17,8 +17,6 @@ from copium_loop.telemetry import get_telemetry
 async def pr_creator_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("pr_creator", "active")
-    telemetry.log_info("pr_creator", "--- PR Creator Node ---\n")
-    print("--- PR Creator Node ---")
     retry_count = state.get("retry_count", 0)
     issue_url = state.get("issue_url", "")
 
@@ -30,7 +28,7 @@ async def pr_creator_node(state: AgentState) -> dict:
 
         # 2. Check uncommitted changes (expected from journaler)
         if await is_dirty(node="pr_creator"):
-            msg = "Committing changes (journal/memory updates)...\n"
+            msg = "Committing journal updates...\n"
             telemetry.log_info("pr_creator", msg)
             print(msg, end="")
             await add(".", node="pr_creator")
