@@ -158,13 +158,16 @@ class Telemetry:
         """
         last_system_init_idx = -1
         last_any_init_idx = -1
-        for i, event in enumerate(events):
+        for i in range(len(events) - 1, -1, -1):
+            event = events[i]
             data = str(event.get("data", ""))
             if "INIT: Starting workflow with prompt:" in data:
-                last_any_init_idx = i
                 # Prioritize system/info events
                 if event.get("source") == "system" or event.get("event_type") == "info":
                     last_system_init_idx = i
+                    break
+                if last_any_init_idx == -1:
+                    last_any_init_idx = i
 
         last_init_idx = (
             last_system_init_idx if last_system_init_idx != -1 else last_any_init_idx

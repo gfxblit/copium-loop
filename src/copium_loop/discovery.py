@@ -1,4 +1,3 @@
-import glob
 import os
 
 from copium_loop.constants import DEFAULT_MIN_COVERAGE
