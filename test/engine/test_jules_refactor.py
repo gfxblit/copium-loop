@@ -55,7 +55,7 @@ async def test_jules_sets_has_changeset_in_state():
 
 @pytest.mark.asyncio
 async def test_jules_extract_summary_standard_verdict():
-    """Verify that JulesEngine._extract_summary uses standard VERDICT: APPROVED."""
+    """Verify that JulesEngine._extract_summary uses IMPLICIT_VERDICT: APPROVED."""
     engine = JulesEngine()
 
     status_data = {
@@ -64,5 +64,4 @@ async def test_jules_extract_summary_standard_verdict():
     }
 
     summary = engine._extract_summary(status_data)
-    assert "VERDICT: APPROVED" in summary
-    assert "IMPLICIT_VERDICT" not in summary
+    assert "IMPLICIT_VERDICT: APPROVED" in summary

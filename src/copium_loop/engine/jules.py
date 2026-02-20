@@ -347,7 +347,9 @@ class JulesEngine(LLMEngine):
         has_changeset = any(isinstance(o, dict) and "changeSet" in o for o in outputs)
         if has_changeset:
             summary = (
-                f"{summary}\nVERDICT: APPROVED" if summary else "VERDICT: APPROVED"
+                f"{summary}\nIMPLICIT_VERDICT: APPROVED"
+                if summary
+                else "IMPLICIT_VERDICT: APPROVED"
             )
 
         if pr_url:
