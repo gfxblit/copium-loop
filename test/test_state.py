@@ -1,4 +1,9 @@
-from copium_loop.constants import MODELS
+from copium_loop.constants import (
+    COMMAND_TIMEOUT,
+    INACTIVITY_TIMEOUT,
+    MODELS,
+    NODE_TIMEOUT,
+)
 from copium_loop.state import AgentState
 
 
@@ -22,8 +27,14 @@ def test_agent_state_has_architect_status():
 
 
 def test_models_defined():
-    assert "gemini-3-pro-preview" in MODELS
-    assert "gemini-3-flash-preview" in MODELS
+    assert "gemini-3.1-pro-preview" in MODELS
+    assert "gemini-3.1-flash-preview" in MODELS
+
+
+def test_timeouts_defined():
+    assert INACTIVITY_TIMEOUT == 600
+    assert NODE_TIMEOUT == 3600
+    assert COMMAND_TIMEOUT == 1800
 
 
 def test_agent_state_has_engine_and_no_jules_metadata():
