@@ -8,6 +8,8 @@ from copium_loop.telemetry import get_telemetry
 @node_header("journaler")
 async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
+    # telemetry.log_status("journaler", "active") - decorator
+
     engine = state["engine"]
     try:
         memory_manager = MemoryManager()

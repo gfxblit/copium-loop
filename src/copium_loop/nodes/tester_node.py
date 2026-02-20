@@ -60,6 +60,8 @@ async def _run_stage(
 @node_header("tester")
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
+    # telemetry.log_status("tester", "active") - removed as it's handled by decorator
+
     retry_count = state.get("retry_count", 0)
 
     # 1. Lint

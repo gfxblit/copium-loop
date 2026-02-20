@@ -20,6 +20,8 @@ def _parse_verdict(content: str) -> str | None:
 @node_header("reviewer")
 async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
+    # telemetry.log_status("reviewer", "active") - handled by decorator
+
     engine = state["engine"]
     test_output = state.get("test_output", "")
     retry_count = state.get("retry_count", 0)

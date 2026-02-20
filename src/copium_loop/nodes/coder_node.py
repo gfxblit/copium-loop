@@ -9,6 +9,7 @@ from copium_loop.telemetry import get_telemetry
 @node_header("coder")
 async def coder_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
+
     engine = state["engine"]
     system_prompt = await get_coder_prompt(engine.engine_type, state, engine)
 

@@ -14,6 +14,8 @@ from copium_loop.telemetry import get_telemetry
 @node_header("pr_pre_checker")
 async def pr_pre_checker_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
+    # telemetry.log_status("pr_pre_checker", "active") - decorator handles this
+
     retry_count = state.get("retry_count", 0)
 
     try:
