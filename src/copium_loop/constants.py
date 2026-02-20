@@ -1,4 +1,4 @@
-# Default models to try in order. Gemeni-3.1 and 2.5
+# Default models to try in order. Gemini-3.1 and 2.5
 # share the same quota, so no point in add those as
 # fallbacks.
 MODELS = [
