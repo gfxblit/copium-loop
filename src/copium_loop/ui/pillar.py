@@ -164,21 +164,25 @@ class MatrixPillar:
 
     def get_content_renderable(self, show_system: bool = False):
         """Returns the content renderable for the pillar, optionally filtering system logs."""
-        # For lean nodes, we show nothing in the content area
-        if self.is_lean_node():
-            return Text(self.name.upper(), justify="center")
-
         filtered_buffer = []
         for entry in self.buffer:
             if isinstance(entry, dict):
-                if show_system or entry.get("source") == "llm":
-                    filtered_buffer.append(entry.get("line", ""))
+                line = entry.get("line", "")
+                source = entry.get("source", "llm")
+                # Always show headers (--- ... Node ---) even if from system source
+                is_header = line.strip().startswith("---") and line.strip().endswith(
+                    "---"
+                )
+                if show_system or source == "llm" or is_header:
+                    filtered_buffer.append(line)
             else:
                 # Legacy support for string entries
                 filtered_buffer.append(entry)
 
         # Truncate to max visible lines for rendering performance
-        return TailRenderable(filtered_buffer[-20:], self.status)
+        # Lean nodes (tester, etc.) show less by default
+        max_lines = 10 if self.is_lean_node() else 20
+        return TailRenderable(filtered_buffer[-max_lines:], self.status)
 
     def render(self, show_system: bool = False) -> Panel:
         # Visual Semantics:

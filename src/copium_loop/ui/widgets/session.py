@@ -108,24 +108,26 @@ class SessionWidget(Vertical):
                 )
 
                 # Weighting logic:
-                # Lean nodes (tester, pr_pre_checker, pr_creator) get minimal fixed space
-                if pillar_data.is_lean_node():
-                    weight = 1
-                    widget.styles.min_height = 2
                 # Active nodes should be very prominent.
                 # Nodes with history get some space but less than active.
                 # Idle nodes without history get minimal space.
-                elif pillar_data.status == "active":
+                # Lean nodes (tester, pr_pre_checker, pr_creator) are always smaller.
+                is_lean = pillar_data.is_lean_node()
+
+                if pillar_data.status == "active":
                     count = len(pillar_data.buffer)
-                    weight = 100 + (count * 2)
+                    # Lean active nodes get less weight than others
+                    base_weight = 50 if is_lean else 100
+                    weight = base_weight + (count * 2)
                     widget.styles.min_height = 4
                 elif len(pillar_data.buffer) > 0:
                     count = len(pillar_data.buffer)
-                    weight = 10 + count
-                    widget.styles.min_height = 4
+                    # Lean nodes with history get much less weight
+                    weight = (5 + count) if is_lean else (10 + count)
+                    widget.styles.min_height = 4 if not is_lean else 3
                 else:
                     weight = 1
-                    widget.styles.min_height = 3
+                    widget.styles.min_height = 3 if not is_lean else 2
 
                 widget.styles.height = f"{weight}fr"
         except Exception:

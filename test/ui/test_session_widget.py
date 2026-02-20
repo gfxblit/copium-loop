@@ -131,6 +131,6 @@ async def test_lean_nodes_weight_and_content():
         # 100 base + 2 per line * 1 line = 102
         assert coder_widget.styles.height.value == 102
 
-        # Tester should be lean, so it should NOT have the high weight
-        # It should have a fixed small weight/height (1)
-        assert tester_widget.styles.height.value == 1
+        # Tester is lean and active, so it should have lower weight than coder
+        # 50 base + 2 per line * 1 line = 52
+        assert tester_widget.styles.height.value == 52
