@@ -111,7 +111,7 @@ class SessionWidget(Vertical):
                 # Lean nodes (tester, pr_pre_checker, pr_creator) get minimal fixed space
                 if pillar_data.is_lean_node():
                     weight = 1
-                    widget.styles.min_height = 3
+                    widget.styles.min_height = 2
                 # Active nodes should be very prominent.
                 # Nodes with history get some space but less than active.
                 # Idle nodes without history get minimal space.
