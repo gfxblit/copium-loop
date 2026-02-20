@@ -503,7 +503,9 @@ class JulesEngine(LLMEngine):
                 if node == "coder":
                     if verbose:
                         print(f"[{node}] Pushing branch {branch} to origin...")
-                    res = await git.push(remote="origin", branch=branch, node=node)
+                    res = await git.push(
+                        force=True, remote="origin", branch=branch, node=node
+                    )
                     if res["exit_code"] != 0:
                         raise JulesSessionError(
                             f"Failed to push branch {branch} to origin: {res['output']}"

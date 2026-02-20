@@ -72,6 +72,9 @@ async def rebase_abort(node: str | None = None) -> dict:
     return await run_command("git", ["rebase", "--abort"], node=node)
 
 
+PROTECTED_BRANCHES = {"main", "master", "develop", "release"}
+
+
 async def push(
     force: bool = False,
     remote: str = "origin",
@@ -79,9 +82,17 @@ async def push(
     node: str | None = None,
 ) -> dict:
     """Pushes the current branch to the remote repository."""
+    if force:
+        target_branch = branch
+        if not target_branch:
+            target_branch = await get_current_branch(node=node)
+
+        if target_branch in PROTECTED_BRANCHES:
+            raise ValueError(f"Cannot force push to protected branch: {target_branch}")
+
     args = ["push"]
     if force:
-        args.append("--force")
+        args.append("--force-with-lease")
     if branch:
         args.extend(["-u", remote, branch])
     else:
