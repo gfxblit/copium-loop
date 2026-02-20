@@ -7,8 +7,6 @@ from copium_loop.telemetry import get_telemetry
 async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("journaler", "active")
-    telemetry.log_info("journaler", "--- Journaling Node ---\n")
-    print("--- Journaling Node ---")
 
     engine = state["engine"]
     try:

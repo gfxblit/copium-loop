@@ -20,8 +20,6 @@ def _parse_verdict(content: str) -> str | None:
 async def architect_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("architect", "active")
-    telemetry.log_info("architect", "--- Architect Node ---\n")
-    print("--- Architect Node ---")
     engine = state["engine"]
     retry_count = state.get("retry_count", 0)
 

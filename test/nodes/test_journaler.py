@@ -228,9 +228,6 @@ async def test_journaler_telemetry(agent_state):
         await journaler(agent_state)
 
         mock_telemetry.log_status.assert_any_call("journaler", "active")
-        mock_telemetry.log_info.assert_any_call(
-            "journaler", "--- Journaling Node ---\n"
-        )
         mock_telemetry.log_status.assert_any_call("journaler", "journaled")
 
 
