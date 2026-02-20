@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -33,10 +33,12 @@ class TestPRPreChecker:
     @patch.object(pr_pre_checker_module, "is_dirty", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "fetch", new_callable=AsyncMock)
     @patch.object(pr_pre_checker_module, "rebase", new_callable=AsyncMock)
+    @patch("copium_loop.nodes.utils.get_telemetry")
     @patch.object(pr_pre_checker_module, "get_telemetry")
     async def test_pr_pre_checker_telemetry(
         self,
-        mock_get_telemetry,
+        mock_node_telemetry,
+        mock_utils_telemetry,
         mock_rebase,
         _mock_fetch,
         mock_is_dirty,
@@ -46,7 +48,9 @@ class TestPRPreChecker:
         mock_validate_git.return_value = "feature-branch"
         mock_is_dirty.return_value = False
         mock_rebase.return_value = {"exit_code": 0, "output": "Successfully rebased"}
-        mock_telemetry = mock_get_telemetry.return_value
+        mock_telemetry = MagicMock()
+        mock_node_telemetry.return_value = mock_telemetry
+        mock_utils_telemetry.return_value = mock_telemetry
 
         agent_state["retry_count"] = 0
         await pr_pre_checker(agent_state)

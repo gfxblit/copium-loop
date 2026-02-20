@@ -1,17 +1,13 @@
 from copium_loop.constants import MODELS
 from copium_loop.memory import MemoryManager
+from copium_loop.nodes.utils import node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
+@node_header("journaler")
 async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    telemetry.log_status("journaler", "active")
-
-    msg = "\n--- Journaler Node ---\n"
-    telemetry.log_info("journaler", msg)
-    print(msg, end="")
-
     engine = state["engine"]
     try:
         memory_manager = MemoryManager()

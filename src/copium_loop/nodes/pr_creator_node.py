@@ -8,20 +8,15 @@ from copium_loop.git import (
     is_dirty,
     push,
 )
-from copium_loop.nodes.utils import validate_git_context
+from copium_loop.nodes.utils import node_header, validate_git_context
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
+@node_header("pr_creator")
 async def pr_creator_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    telemetry.log_status("pr_creator", "active")
-
-    msg = "\n--- PR Creator Node ---\n"
-    telemetry.log_info("pr_creator", msg)
-    print(msg, end="")
-
     retry_count = state.get("retry_count", 0)
     issue_url = state.get("issue_url", "")
 
