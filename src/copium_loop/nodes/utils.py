@@ -2,7 +2,7 @@ from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
 
 
-async def get_architect_prompt(engine_type: str, state: dict) -> str:
+async def get_architect_prompt(engine_type: str, state: dict, engine) -> str:
     """Generates the architect system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:
@@ -55,7 +55,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="architect"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
 
-    safe_git_diff = git_diff  # We assume engine handles sanitization if needed, or we can sanitize here
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
@@ -83,7 +83,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
 
-async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
+async def get_reviewer_prompt(engine_type: str, state: dict, engine) -> str:
     """Generates the reviewer system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:
@@ -137,7 +137,7 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="reviewer"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="reviewer")
 
-    safe_git_diff = git_diff
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
 
