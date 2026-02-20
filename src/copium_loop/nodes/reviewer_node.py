@@ -35,7 +35,7 @@ async def reviewer_node(state: AgentState) -> dict:
         }
 
     try:
-        system_prompt = await get_reviewer_prompt(engine.engine_type, state)
+        system_prompt = await get_reviewer_prompt(engine.engine_type, state, engine)
     except Exception as e:
         msg = f"Error generating reviewer prompt: {e}\n"
         telemetry.log_info("reviewer", msg)
