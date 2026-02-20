@@ -39,7 +39,11 @@ def node_header(node_name: str):
             telemetry.log_info(node_name, msg)
             print(msg, end="")
 
-            return await func(*args, **kwargs)
+            try:
+                return await func(*args, **kwargs)
+            except Exception:
+                telemetry.log_status(node_name, "failed")
+                raise
 
         return wrapper
 

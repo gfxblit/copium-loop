@@ -49,3 +49,23 @@ async def test_node_header_with_special_naming(capsys):
         # Check printed output - should be formatted nicely
         captured = capsys.readouterr()
         assert "--- PR Pre-Checker Node ---" in captured.out
+
+
+@pytest.mark.asyncio
+async def test_node_header_exception_handling():
+    """Test that the node_header decorator logs failure status on exception."""
+
+    @node_header("error_node")
+    async def failing_node(_state):
+        raise ValueError("Something went wrong")
+
+    state = {}
+    with patch("copium_loop.nodes.utils.get_telemetry") as mock_get_telemetry:
+        mock_telemetry = mock_get_telemetry.return_value
+
+        with pytest.raises(ValueError, match="Something went wrong"):
+            await failing_node(state)
+
+        # Should have logged active, then failed
+        mock_telemetry.log_status.assert_any_call("error_node", "active")
+        mock_telemetry.log_status.assert_any_call("error_node", "failed")
