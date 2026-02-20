@@ -185,12 +185,24 @@ async def test_get_repo_name_parsing():
 
     for url, expected in urls:
         with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [
-                {"exit_code": 0, "output": "origin\n"},
-                {"exit_code": 0, "output": url + "\n"},
-            ]
+            mock_run.return_value = {
+                "exit_code": 0,
+                "output": f"origin\t{url} (fetch)\n",
+            }
             repo = await get_repo_name()
             assert repo == expected
+
+
+@pytest.mark.asyncio
+async def test_get_repo_name_fallback():
+    url = "https://github.com/fallback/repo.git"
+    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": f"upstream\t{url} (fetch)\n",
+        }
+        repo = await get_repo_name()
+        assert repo == "fallback/repo"
 
 
 @pytest.mark.asyncio
@@ -204,10 +216,10 @@ async def test_get_repo_name_no_remote():
 @pytest.mark.asyncio
 async def test_get_repo_name_unsupported_url():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-        mock_run.side_effect = [
-            {"exit_code": 0, "output": "origin\n"},
-            {"exit_code": 0, "output": "https://example.com/not-a-repo\n"},
-        ]
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": "origin\thttps://example.com/not-a-repo (fetch)\n",
+        }
         with pytest.raises(
             ValueError, match="Could not parse repo name from remote URL"
         ):
