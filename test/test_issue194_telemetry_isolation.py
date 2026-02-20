@@ -95,12 +95,16 @@ def test_reconstruct_state_handles_jules_engine_leakage(telemetry_with_temp_dir)
 def test_get_last_incomplete_node_isolates_runs(telemetry_with_temp_dir):
     """Test that get_last_incomplete_node doesn't return success from a previous run."""
     # First Run succeeded
-    telemetry_with_temp_dir.log_info("coder", "INIT: Starting workflow with prompt: First prompt")
+    telemetry_with_temp_dir.log_info(
+        "coder", "INIT: Starting workflow with prompt: First prompt"
+    )
     telemetry_with_temp_dir.log_status("coder", "success")
     telemetry_with_temp_dir.log_workflow_status("success")
 
     # Second Run is just starting
-    telemetry_with_temp_dir.log_info("coder", "INIT: Starting workflow with prompt: Second prompt")
+    telemetry_with_temp_dir.log_info(
+        "coder", "INIT: Starting workflow with prompt: Second prompt"
+    )
     telemetry_with_temp_dir.log_status("coder", "active")
 
     node, metadata = telemetry_with_temp_dir.get_last_incomplete_node()
@@ -108,3 +112,29 @@ def test_get_last_incomplete_node_isolates_runs(telemetry_with_temp_dir):
     # It should resume from coder (active in second run)
     assert node == "coder"
     assert metadata["reason"] == "incomplete"
+
+
+def test_get_formatted_log_isolates_runs(telemetry_with_temp_dir):
+    """Test that get_formatted_log only shows events after the last INIT: marker."""
+    # First Run
+    telemetry_with_temp_dir.log_info(
+        "coder", "INIT: Starting workflow with prompt: First prompt"
+    )
+    telemetry_with_temp_dir.log_status("coder", "success")
+
+    # Second Run
+    telemetry_with_temp_dir.log_info(
+        "coder", "INIT: Starting workflow with prompt: Second prompt"
+    )
+    telemetry_with_temp_dir.log_status("coder", "active")
+
+    formatted_log = telemetry_with_temp_dir.get_formatted_log()
+
+    # Should NOT contain the first prompt
+    assert "First prompt" not in formatted_log
+    # Should contain the second prompt
+    assert "Second prompt" in formatted_log
+    # Should contain the status from the second run
+    assert "coder: status: active" in formatted_log
+    # Should NOT contain the status from the first run (unless it's identical, but let's check)
+    assert "coder: status: success" not in formatted_log

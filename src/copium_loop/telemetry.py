@@ -94,6 +94,11 @@ class Telemetry:
         if not events:
             return "No telemetry log found."
 
+        # Isolate events from the last run
+        events, _ = self._isolate_events(events)
+        if not events:
+            return "No events found in current run."
+
         # Filter out noisy events
         relevant_events = [e for e in events if e.get("event_type") != "metric"]
 
