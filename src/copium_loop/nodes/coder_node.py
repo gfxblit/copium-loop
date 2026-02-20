@@ -10,6 +10,10 @@ async def coder_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("coder", "active")
 
+    msg = "\n--- Coder Node ---\n"
+    telemetry.log_info("coder", msg)
+    print(msg, end="")
+
     engine = state["engine"]
     system_prompt = await get_coder_prompt(engine.engine_type, state, engine)
 

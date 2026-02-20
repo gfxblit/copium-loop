@@ -59,6 +59,11 @@ async def _run_stage(
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("tester", "active")
+
+    msg = "\n--- Tester Node ---\n"
+    telemetry.log_info("tester", msg)
+    print(msg, end="")
+
     retry_count = state.get("retry_count", 0)
 
     # 1. Lint

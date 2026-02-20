@@ -8,6 +8,10 @@ async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("journaler", "active")
 
+    msg = "\n--- Journaler Node ---\n"
+    telemetry.log_info("journaler", msg)
+    print(msg, end="")
+
     engine = state["engine"]
     try:
         memory_manager = MemoryManager()

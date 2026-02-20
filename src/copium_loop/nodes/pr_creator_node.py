@@ -17,6 +17,11 @@ from copium_loop.telemetry import get_telemetry
 async def pr_creator_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("pr_creator", "active")
+
+    msg = "\n--- PR Creator Node ---\n"
+    telemetry.log_info("pr_creator", msg)
+    print(msg, end="")
+
     retry_count = state.get("retry_count", 0)
     issue_url = state.get("issue_url", "")
 

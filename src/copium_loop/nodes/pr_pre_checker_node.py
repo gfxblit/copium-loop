@@ -14,6 +14,11 @@ from copium_loop.telemetry import get_telemetry
 async def pr_pre_checker_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     telemetry.log_status("pr_pre_checker", "active")
+
+    msg = "\n--- PR Pre-Checker Node ---\n"
+    telemetry.log_info("pr_pre_checker", msg)
+    print(msg, end="")
+
     retry_count = state.get("retry_count", 0)
 
     try:
