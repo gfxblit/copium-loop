@@ -86,8 +86,14 @@ async def test_rebase_abort():
 
 @pytest.mark.asyncio
 async def test_push():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with (
+        patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run,
+        patch(
+            "copium_loop.git.get_current_branch", new_callable=AsyncMock
+        ) as mock_branch,
+    ):
         mock_run.return_value = {"exit_code": 0}
+        mock_branch.return_value = "feature-branch"
 
         # Test default push
         await git.push()
@@ -95,7 +101,9 @@ async def test_push():
 
         # Test force push
         await git.push(force=True)
-        mock_run.assert_called_with("git", ["push", "--force", "origin"], node=None)
+        mock_run.assert_called_with(
+            "git", ["push", "--force-with-lease", "origin"], node=None
+        )
 
         # Test push specific branch
         await git.push(branch="my-branch")

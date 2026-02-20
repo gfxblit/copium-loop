@@ -610,7 +610,7 @@ async def test_jules_api_invoke_apply_artifacts():
     with (
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
-        patch("copium_loop.git.get_current_branch", return_value="main"),
+        patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
         patch("copium_loop.git.add", new_callable=AsyncMock) as mock_add,
         patch("copium_loop.git.commit", new_callable=AsyncMock) as mock_commit,
         patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
@@ -661,7 +661,7 @@ async def test_jules_api_invoke_apply_artifacts():
         assert mock_push.call_count == 2
         # Check first push
         mock_push.assert_any_call(
-            force=True, remote="origin", branch="main", node="coder"
+            force=True, remote="origin", branch="feature-branch", node="coder"
         )
         # Check second push
         mock_push.assert_any_call(force=True, node="coder")
