@@ -230,19 +230,28 @@ class Telemetry:
         events = self.read_log()
         state = {}
 
-        # We can't fully reconstruct messages, but we can get some state
-        # Look for the initial prompt in output events
-        for event in events:
-            if event.get("event_type") == "output" and "INIT:" in str(
-                event.get("data", "")
-            ):
-                # Extract prompt from "INIT: Starting workflow with prompt: ..."
-                data = event.get("data", "")
-                if "Starting workflow with prompt:" in data:
-                    prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
-                    state["prompt"] = prompt
+        # Identify the index of the last event matching "INIT: Starting workflow with prompt:"
+        # Prioritize system source to avoid LLM noise
+        last_init_idx = -1
+        for i, event in enumerate(events):
+            data = str(event.get("data", ""))
+            if "INIT: Starting workflow with prompt:" in data:
+                # Prioritize system/info events
+                if event.get("source") == "system" or event.get("event_type") == "info":
+                    last_init_idx = i
+                elif last_init_idx == -1:
+                    # Fallback to output event if we haven't found any INIT yet
+                    last_init_idx = i
 
-        # Reconstruct engine from output logs
+        if last_init_idx != -1:
+            # Extract prompt from the last INIT: event
+            data = str(events[last_init_idx].get("data", ""))
+            prompt = data.split("Starting workflow with prompt:", 1)[1].strip()
+            state["prompt"] = prompt
+            # Slice events to only consider this run
+            events = events[last_init_idx:]
+
+        # Reconstruct engine from output logs (in current run)
         for event in events:
             if event.get("event_type") == "output":
                 data = str(event.get("data", ""))
