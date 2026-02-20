@@ -127,9 +127,7 @@ async def get_repo_name(node: str | None = None) -> str:
     import re
 
     # Get all remotes and their URLs in one go
-    res = await run_command(
-        "git", ["remote", "-v"], node=node, capture_stderr=False
-    )
+    res = await run_command("git", ["remote", "-v"], node=node, capture_stderr=False)
     output = res["output"].strip()
 
     remotes = {}
