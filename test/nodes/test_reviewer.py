@@ -218,12 +218,13 @@ class TestReviewerNode:
         system_prompt = args[0]
 
         assert (
-            "Principal Software Engineer and Meticulous Code Review Architect"
+            "Principal Software Engineer and a meticulous Code Review Architect"
             in system_prompt
         )
-        assert "Establish context by reading relevant files" in system_prompt
-        assert "Prioritize logic over style" in system_prompt
-        assert 'DO NOT tell the author to "check"' in system_prompt
+        assert "Identify potential bugs, security vulnerabilities" in system_prompt
+        assert (
+            "ONLY reject if there are CRITICAL or HIGH severity issues" in system_prompt
+        )
         assert "VERDICT: APPROVED" in system_prompt
         assert "VERDICT: REJECTED" in system_prompt
         assert "(Current HEAD:" in system_prompt
