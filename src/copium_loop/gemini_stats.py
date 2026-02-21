@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import subprocess
 import sys
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiStatsClient:
@@ -116,7 +119,8 @@ class GeminiStatsClient:
 
             return self._parse_output(result.stdout)
 
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to fetch stats: %s", str(e))
             return None
 
     async def get_usage_async(self) -> dict | None:
