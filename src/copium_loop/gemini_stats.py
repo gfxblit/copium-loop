@@ -30,14 +30,24 @@ class GeminiStatsClient:
         """Ensures the background gemini-cli session is running in tmux."""
         try:
             # Check if the window exists using a more robust list-windows call
+            # Target specifically the current session to avoid cross-session conflicts
             result = subprocess.run(
-                ["tmux", "list-windows", "-a", "-F", "#{session_name}:#{window_name}"],
+                [
+                    "tmux",
+                    "list-windows",
+                    "-t",
+                    self.session_name,
+                    "-F",
+                    "#{window_name}",
+                ],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            target_entry = f"{self.session_name}:{self.window_name}"
-            if target_entry not in result.stdout:
+
+            # Use exact match for window name
+            windows = result.stdout.splitlines()
+            if self.window_name not in windows:
                 # Create window and start gemini
                 # Use absolute path for gemini.
                 cmd = "/opt/homebrew/bin/gemini --sandbox"
@@ -56,8 +66,8 @@ class GeminiStatsClient:
                     text=True,
                     check=False,
                 )
-                # Give it a few seconds to initialize
-                time.sleep(3.0)
+                # Give it sufficient time to initialize (booting gemini-cli)
+                time.sleep(10.0)
         except Exception:
             pass
 
@@ -104,7 +114,7 @@ class GeminiStatsClient:
             )
 
             # Wait for output to be generated and rendered
-            time.sleep(1.5)
+            time.sleep(2.0)
 
             # Capture pane output
             result = subprocess.run(
