@@ -5,11 +5,11 @@ from rich.text import Text
 from textual.css.scalar import Unit
 from textual.widgets import Static
 
-from copium_loop.ui.footer_stats import CodexStatsStrategy
+from copium_loop.ui.footer_stats import GeminiStatsStrategy
 from copium_loop.ui.textual_dashboard import TextualDashboard
 
 
-class TestCodexStatsStrategy:
+class TestGeminiStatsStrategy:
     def _stats_to_text(self, stats: list | None) -> str:
         """Helper to convert stats list to a single string for assertion."""
         if not stats:
@@ -25,7 +25,7 @@ class TestCodexStatsStrategy:
         return "".join(plain_texts)
 
     def test_get_stats_shows_both_resets(self):
-        # Mock CodexbarClient
+        # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
             "pro": 85,
@@ -34,16 +34,18 @@ class TestCodexStatsStrategy:
             "reset_flash": "19:45",
         }
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         full_text = self._stats_to_text(stats)
 
         # We expect to see both reset times
+        assert "PRO LEFT: 15.0%" in full_text
+        assert "FLASH LEFT: 60.0%" in full_text
         assert "PRO RESET: 18:30" in full_text
         assert "FLASH RESET: 19:45" in full_text
 
     def test_get_stats_shows_single_reset_when_same(self):
-        # Mock CodexbarClient
+        # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
             "pro": 85,
@@ -52,7 +54,7 @@ class TestCodexStatsStrategy:
             "reset_flash": "18:30",
         }
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         full_text = self._stats_to_text(stats)
 
@@ -62,7 +64,7 @@ class TestCodexStatsStrategy:
         assert "FLASH RESET:" not in full_text
 
     def test_get_stats_shows_single_reset_when_flash_unknown(self):
-        # Mock CodexbarClient
+        # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
             "pro": 85,
@@ -71,7 +73,7 @@ class TestCodexStatsStrategy:
             "reset_flash": "?",
         }
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         full_text = self._stats_to_text(stats)
 
@@ -88,7 +90,7 @@ class TestCodexStatsStrategy:
             "reset": "2h 30m",
         }
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
 
         assert stats is not None
@@ -102,7 +104,7 @@ class TestCodexStatsStrategy:
         mock_client = MagicMock()
         mock_client.get_usage.return_value = None
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
 
         assert stats is None
@@ -112,7 +114,7 @@ class TestCodexStatsStrategy:
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {"pro": 0, "flash": 0, "reset": "never"}
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         assert stats[0][0] == "PRO LEFT: 100.0%"
         assert stats[2][0] == "FLASH LEFT: 100.0%"
@@ -122,7 +124,7 @@ class TestCodexStatsStrategy:
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {"pro": 100, "flash": 100, "reset": "now"}
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         assert stats[0][0] == "PRO LEFT: 0.0%"
         assert stats[2][0] == "FLASH LEFT: 0.0%"
@@ -136,7 +138,7 @@ class TestCodexStatsStrategy:
             "reset": "long ago",
         }
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
         assert stats[0][0] == "PRO LEFT: 0.0%"
         assert stats[2][0] == "FLASH LEFT: 0.0%"
@@ -146,7 +148,7 @@ class TestCodexStatsStrategy:
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {}
 
-        strategy = CodexStatsStrategy(mock_client)
+        strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
 
         assert stats is not None
@@ -197,10 +199,10 @@ async def test_system_stats_strategy_removed_from_dashboard(tmp_path):
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
 
-    # Check that only CodexStatsStrategy is in stats_strategies
+    # Check that only GeminiStatsStrategy is in stats_strategies
     strategies = [type(s) for s in app.stats_strategies]
     assert len(strategies) == 1
-    assert strategies[0] == CodexStatsStrategy
+    assert strategies[0] == GeminiStatsStrategy
 
 
 @pytest.mark.asyncio
