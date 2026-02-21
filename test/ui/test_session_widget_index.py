@@ -24,12 +24,12 @@ class SessionWidgetIndexMockApp(App):
 @pytest.mark.asyncio
 async def test_session_widget_displays_index():
     app = SessionWidgetIndexMockApp(index=1)
-    async with app.run_test() as pilot:
+    async with app.run_test():
         session_widget = app.query_one(SessionWidget)
         # Manually trigger refresh as in other tests
         await session_widget.refresh_ui()
 
-        header = session_widget.query_one(f"#header-test-session", Static)
+        header = session_widget.query_one("#header-test-session", Static)
         content = str(header.render())
 
         assert "[1]" in content
@@ -38,10 +38,10 @@ async def test_session_widget_displays_index():
 @pytest.mark.asyncio
 async def test_session_widget_no_index():
     app = SessionWidgetIndexMockApp(index=None)
-    async with app.run_test() as pilot:
+    async with app.run_test():
         session_widget = app.query_one(SessionWidget)
         await session_widget.refresh_ui()
-        header = session_widget.query_one(f"#header-test-session", Static)
+        header = session_widget.query_one("#header-test-session", Static)
         content = str(header.render())
         assert "test-session" in content
         assert "[" not in content
