@@ -126,28 +126,28 @@ async def get_repo_name(node: str | None = None) -> str:
     """Extracts owner/repo from git remotes."""
     import re
 
-    # Try origin first, then any available remote
-    remotes_to_try = ["origin"]
-    res = await run_command("git", ["remote"], node=node, capture_stderr=False)
-    all_remotes = res["output"].strip().splitlines()
-    for r in all_remotes:
-        if r != "origin":
-            remotes_to_try.append(r)
+    # Get all remotes and their URLs in one go
+    res = await run_command("git", ["remote", "-v"], node=node, capture_stderr=False)
+    if res["exit_code"] != 0:
+        raise ValueError("Could not determine git remote URL.")
 
-    url = None
-    for remote in remotes_to_try:
-        try:
-            res = await run_command(
-                "git",
-                ["remote", "get-url", remote],
-                node=node,
-                capture_stderr=True,
-            )
-            if res["exit_code"] == 0:
-                url = res["output"].strip()
-                break
-        except Exception:
-            continue
+    output = res["output"].strip()
+    if not output:
+        raise ValueError("Could not determine git remote URL.")
+
+    # Parse output: name \t url (role)
+    remotes = {}
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            name = parts[0]
+            url = parts[1]
+            remotes[name] = url
+
+    url = remotes.get("origin")
+    if not url and remotes:
+        # Get the first available remote URL if origin not found
+        url = next(iter(remotes.values()))
 
     if not url:
         raise ValueError("Could not determine git remote URL.")
