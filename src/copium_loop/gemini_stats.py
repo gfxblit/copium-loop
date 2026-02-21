@@ -35,12 +35,13 @@ class TmuxStatsFetcher:
         session_name: str = "copium-loop",
         window_name: str = "stats",
         tmux: TmuxInterface | None = None,
+        gemini_cmd: str = "/opt/homebrew/bin/gemini --sandbox",
     ):
         self.session_name = session_name
         self.window_name = window_name
         self.target = f"{self.session_name}:{self.window_name}"
         self.tmux = tmux or TmuxManager()
-        self.gemini_cmd = "/opt/homebrew/bin/gemini --sandbox"
+        self.gemini_cmd = gemini_cmd
 
     def _ensure_worker(self):
         """Ensures the background gemini-cli session is running in tmux."""
@@ -91,8 +92,16 @@ class GeminiStatsClient:
         # Keep these for backward compatibility
         session_name: str = "copium-loop",
         tmux: TmuxInterface | None = None,
+        gemini_cmd: str | None = None,
     ):
-        self.fetcher = fetcher or TmuxStatsFetcher(session_name=session_name, tmux=tmux)
+        if fetcher:
+            self.fetcher = fetcher
+        else:
+            fetcher_kwargs = {"session_name": session_name, "tmux": tmux}
+            if gemini_cmd:
+                fetcher_kwargs["gemini_cmd"] = gemini_cmd
+            self.fetcher = TmuxStatsFetcher(**fetcher_kwargs)
+
         self._cache_ttl = 60
         self._last_check = 0
         self._cached_data: dict | None = None
