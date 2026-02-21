@@ -12,6 +12,7 @@ def mock_repo_root():
         mock_run.return_value = {"exit_code": 0, "output": "/test/repo"}
         yield mock_run
 
+
 @pytest.mark.asyncio
 async def test_fresh_start_with_prompt():
     """

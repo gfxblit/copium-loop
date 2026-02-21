@@ -412,7 +412,9 @@ def get_telemetry() -> Telemetry:
                         text=True,
                         check=False,
                     )
-                    branch_name = res.stdout.strip() if res.returncode == 0 else "unknown"
+                    branch_name = (
+                        res.stdout.strip() if res.returncode == 0 else "unknown"
+                    )
             else:
                 raise RuntimeError(
                     "Not a git repository: Could not determine branch name."

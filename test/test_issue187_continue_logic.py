@@ -12,6 +12,7 @@ def mock_repo_root():
         mock_run.return_value = {"exit_code": 0, "output": "/test/repo"}
         yield mock_run
 
+
 @pytest.mark.asyncio
 async def test_implicit_resumption():
     """
@@ -144,7 +145,9 @@ async def test_repo_root_mismatch_error():
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
-                    with patch("copium_loop.shell.run_command", new_callable=AsyncMock) as mock_run:
+                    with patch(
+                        "copium_loop.shell.run_command", new_callable=AsyncMock
+                    ) as mock_run:
                         # Mock git rev-parse --show-toplevel to return a DIFFERENT path
                         mock_run.return_value = {"exit_code": 0, "output": "/new/path"}
 
