@@ -13,6 +13,20 @@ from copium_loop.constants import (
 )
 from copium_loop.telemetry import get_telemetry
 
+# Expanded ANSI escape code regex to cover CSI, OSC, DCS, Fe, Fs sequences
+ANSI_ESCAPE_RE = re.compile(
+    r"""
+    \x1B\[[0-?]*[ -/]*[@-~]     | # CSI
+    \x1B\].*?(?:\x07|\x1B\\)    | # OSC
+    \x1B[P^_].*?(?:\x07|\x1B\\) | # DCS, PM, APC
+    \x1B[@-Z\\-_]               | # Fe
+    \x1B[ -/][0-~]                # Fs/Fp/nF
+""",
+    re.VERBOSE | re.DOTALL,
+)
+
+CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
 
 class StreamLogger:
     """Helper to buffer output for line-based logging while streaming to stdout."""
@@ -139,10 +153,10 @@ def _clean_chunk(chunk: str | bytes) -> str:
         return str(chunk)
 
     # Remove ANSI escape codes
-    without_ansi = re.sub(r"\x1B\[[0-9;]*[a-zA-Z]", "", chunk)
+    without_ansi = ANSI_ESCAPE_RE.sub("", chunk)
 
     # Remove disruptive control characters (excluding TAB, LF, CR)
-    return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", without_ansi)
+    return CONTROL_CHAR_RE.sub("", without_ansi)
 
 
 async def stream_subprocess(
