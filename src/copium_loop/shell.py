@@ -13,7 +13,6 @@ from copium_loop.constants import (
 )
 from copium_loop.telemetry import get_telemetry
 
-
 # Expanded ANSI escape code regex to cover CSI, OSC, DCS, Fe, Fs sequences
 ANSI_ESCAPE_RE = re.compile(
     r"""
