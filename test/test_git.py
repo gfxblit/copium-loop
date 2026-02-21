@@ -185,10 +185,11 @@ async def test_get_repo_name_parsing():
 
     for url, expected in urls:
         with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [
-                {"exit_code": 0, "output": "origin\n"},
-                {"exit_code": 0, "output": url + "\n"},
-            ]
+            # We mock git remote -v output
+            # Output format: origin  url (fetch)
+            output = f"origin\t{url} (fetch)\norigin\t{url} (push)\n"
+            mock_run.return_value = {"exit_code": 0, "output": output}
+
             repo = await get_repo_name()
             assert repo == expected
 
@@ -204,10 +205,8 @@ async def test_get_repo_name_no_remote():
 @pytest.mark.asyncio
 async def test_get_repo_name_unsupported_url():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
-        mock_run.side_effect = [
-            {"exit_code": 0, "output": "origin\n"},
-            {"exit_code": 0, "output": "https://example.com/not-a-repo\n"},
-        ]
+        output = "origin\thttps://example.com/not-a-repo (fetch)\n"
+        mock_run.return_value = {"exit_code": 0, "output": output}
         with pytest.raises(
             ValueError, match="Could not parse repo name from remote URL"
         ):
