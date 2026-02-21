@@ -1,9 +1,9 @@
-# Default models to try in order. Gemini-3.1 and 2.5
+# Default models to try in order. Gemini-3 and 2.5
 # share the same quota, so no point in add those as
 # fallbacks.
 MODELS = [
-    "gemini-3.1-pro-preview",
-    "gemini-3.1-flash-preview",
+    "gemini-3-pro-preview",
+    "gemini-3-flash-preview",
 ]
 
 # Valid workflow nodes
