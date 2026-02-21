@@ -8,8 +8,8 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.widgets import Label, Static
 
-from ..codexbar import CodexbarClient
-from .footer_stats import CodexStatsStrategy
+from ..gemini_stats import GeminiStatsClient
+from .footer_stats import GeminiStatsStrategy
 from .manager import SessionManager
 from .widgets.session import SessionWidget
 
@@ -73,11 +73,12 @@ class TextualDashboard(App):
         self.log_dir = log_dir or (Path.home() / ".copium" / "logs")
         self.title = f"Copium Loop Monitor - {self.log_dir}"
         self.manager = SessionManager(self.log_dir)
-        self.codexbar_client = CodexbarClient()
+        self.stats_client = GeminiStatsClient()
         self.stats_strategies = [
-            CodexStatsStrategy(self.codexbar_client),
+            GeminiStatsStrategy(self.stats_client),
         ]
         self._updating = False
+
         self._ui_lock = asyncio.Lock()
         self.enable_polling = enable_polling
 

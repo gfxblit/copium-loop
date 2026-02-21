@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from rich.text import Text
 
-from ..codexbar import CodexbarClient
+from ..gemini_stats import GeminiStatsClient
 
 
 class FooterStatsStrategy(ABC):
@@ -12,8 +12,8 @@ class FooterStatsStrategy(ABC):
         pass
 
 
-class CodexStatsStrategy(FooterStatsStrategy):
-    def __init__(self, client: CodexbarClient):
+class GeminiStatsStrategy(FooterStatsStrategy):
+    def __init__(self, client: GeminiStatsClient):
         self.client = client
 
     def get_stats(self) -> list[Text | str | tuple[str, str]] | None:

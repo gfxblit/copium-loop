@@ -340,13 +340,14 @@ async def test_pagination_fails_without_stats(tmp_path):
         }
         log_file.write_text(json.dumps(data) + "\n")
 
-    # Mock CodexbarClient to return None
-    with patch("copium_loop.ui.textual_dashboard.CodexbarClient") as MockClient:
+    # Mock GeminiStatsClient to return None
+    with patch("copium_loop.ui.textual_dashboard.GeminiStatsClient") as MockClient:
         instance = MockClient.return_value
         instance.get_usage.return_value = None
         instance.get_usage_async.return_value = None
 
         app = TextualDashboard(log_dir=log_dir, enable_polling=False)
+
         async with app.run_test() as pilot:
             await app.update_from_logs()
             await pilot.pause()
