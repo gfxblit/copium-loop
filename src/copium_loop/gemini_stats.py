@@ -5,9 +5,10 @@ import asyncio
 import json
 import logging
 import re
-import subprocess
 import sys
 import time
+
+from copium_loop.tmux import TmuxInterface, TmuxManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,13 @@ class GeminiStatsClient:
     to fetch usage quotas via /stats.
     """
 
-    def __init__(self, session_name: str = "copium-loop"):
+    def __init__(
+        self, session_name: str = "copium-loop", tmux: TmuxInterface | None = None
+    ):
         self.session_name = session_name
         self.window_name = "stats"
         self.target = f"{self.session_name}:{self.window_name}"
+        self.tmux = tmux or TmuxManager()
         self._cache_ttl = 60
         self._last_check = 0
         self._cached_data: dict | None = None
@@ -31,40 +35,14 @@ class GeminiStatsClient:
         try:
             # Check if the window exists using a more robust list-windows call
             # Target specifically the current session to avoid cross-session conflicts
-            result = subprocess.run(
-                [
-                    "tmux",
-                    "list-windows",
-                    "-t",
-                    self.session_name,
-                    "-F",
-                    "#{window_name}",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            # Use exact match for window name
-            windows = result.stdout.splitlines()
-            if self.window_name not in windows:
+            if not self.tmux.has_window(self.session_name, self.window_name):
                 # Create window and start gemini
                 # Use absolute path for gemini.
                 cmd = "/opt/homebrew/bin/gemini --sandbox"
-                subprocess.run(
-                    [
-                        "tmux",
-                        "new-window",
-                        "-t",
-                        self.session_name,
-                        "-n",
-                        self.window_name,
-                        "-d",
-                        cmd,
-                    ],
-                    capture_output=True,
-                    text=True,
-                    check=False,
+                self.tmux.new_window(
+                    self.session_name,
+                    self.window_name,
+                    cmd,
                 )
                 # Give it sufficient time to initialize (booting gemini-cli)
                 time.sleep(10.0)
@@ -88,46 +66,26 @@ class GeminiStatsClient:
             # 2. C-c to clear any partial input
             # 3. 'i' to enter Insert mode
             # 4. '/stats' and Enter to execute
-            subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "Escape"],
-                check=False,
-            )
+            self.tmux.send_keys(self.target, "Escape")
             time.sleep(0.1)
-            subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "C-c"],
-                check=False,
-            )
+            self.tmux.send_keys(self.target, "C-c")
             time.sleep(0.1)
-            subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "i"],
-                check=False,
-            )
+            self.tmux.send_keys(self.target, "i")
             time.sleep(0.1)
-            subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "/stats"],
-                check=False,
-            )
+            self.tmux.send_keys(self.target, "/stats")
             time.sleep(0.1)
-            subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "Enter"],
-                check=False,
-            )
+            self.tmux.send_keys(self.target, "Enter")
 
             # Wait for output to be generated and rendered
             time.sleep(2.0)
 
             # Capture pane output
-            result = subprocess.run(
-                ["tmux", "capture-pane", "-p", "-t", self.target],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            output = self.tmux.capture_pane(self.target)
 
-            if result.returncode != 0:
+            if not output:
                 return None
 
-            return self._parse_output(result.stdout)
+            return self._parse_output(output)
 
         except Exception as e:
             logger.error("Failed to fetch stats: %s", str(e))
