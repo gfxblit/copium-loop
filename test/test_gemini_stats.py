@@ -31,7 +31,7 @@ class TestGeminiStatsClient(unittest.TestCase):
                 "-n",
                 "stats",
                 "-d",
-                "zsh -i -c '/opt/homebrew/bin/gemini --sandbox'",
+                "/opt/homebrew/bin/gemini --sandbox",
             ],
             capture_output=True,
             text=True,
@@ -42,8 +42,8 @@ class TestGeminiStatsClient(unittest.TestCase):
     def test_get_usage_success(self, mock_run):
         # Mock tmux behavior:
         # 1. list-windows (shows stats)
-        # 2-5. send-keys (Escape, C-c, i, /stats)
-        # 6. capture-pane
+        # 2-6. send-keys (Escape, C-c, i, /stats, Enter)
+        # 7. capture-pane
         stats_output = """
 │  Auto (Gemini 3) Usage                                                                                                                   │
 │  Model                       Reqs             Usage remaining                                                                            │
@@ -55,11 +55,12 @@ class TestGeminiStatsClient(unittest.TestCase):
 │  gemini-3-pro-preview           -      80.0% resets in 12h 25m                                                                            │
 """
         mock_run.side_effect = [
-            MagicMock(stdout="stats\n", returncode=0), # list-windows
+            MagicMock(stdout="copium-loop:stats\n", returncode=0), # list-windows
             MagicMock(returncode=0), # send Escape
             MagicMock(returncode=0), # send C-c
             MagicMock(returncode=0), # send i
             MagicMock(returncode=0), # send /stats
+            MagicMock(returncode=0), # send Enter
             MagicMock(stdout=stats_output, returncode=0), # capture-pane
         ]
 
@@ -74,8 +75,8 @@ class TestGeminiStatsClient(unittest.TestCase):
         self.assertEqual(usage["reset_pro"], "12h 25m")
         self.assertEqual(usage["reset_flash"], "12h 17m")
 
-        # Verify 6 calls were made
-        self.assertEqual(mock_run.call_count, 6)
+        # Verify 7 calls were made
+        self.assertEqual(mock_run.call_count, 7)
 
     @patch("subprocess.run")
     def test_caching(self, mock_run):
@@ -85,22 +86,23 @@ class TestGeminiStatsClient(unittest.TestCase):
 │  gemini-3-flash-preview         -      100.0% resets in 1h                                                                            │
 """
         mock_run.side_effect = [
-            MagicMock(stdout="stats\n", returncode=0), # list-windows
+            MagicMock(stdout="copium-loop:stats\n", returncode=0), # list-windows
             MagicMock(returncode=0), # send Escape
             MagicMock(returncode=0), # send C-c
             MagicMock(returncode=0), # send i
             MagicMock(returncode=0), # send /stats
+            MagicMock(returncode=0), # send Enter
             MagicMock(stdout=stats_output, returncode=0), # capture-pane
         ]
 
         with patch("time.sleep", return_value=None):
             self.client.get_usage()
 
-        self.assertEqual(mock_run.call_count, 6)
+        self.assertEqual(mock_run.call_count, 7)
 
         # Second call should use cache
         self.client.get_usage()
-        self.assertEqual(mock_run.call_count, 6) # Still 6
+        self.assertEqual(mock_run.call_count, 7) # Still 7
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import asyncio
 import json
 import re
@@ -90,7 +91,12 @@ class GeminiStatsClient:
             )
             time.sleep(0.1)
             subprocess.run(
-                ["tmux", "send-keys", "-t", self.target, "/stats", "Enter"],
+                ["tmux", "send-keys", "-t", self.target, "/stats"],
+                check=False,
+            )
+            time.sleep(0.1)
+            subprocess.run(
+                ["tmux", "send-keys", "-t", self.target, "Enter"],
                 check=False,
             )
 
