@@ -10,7 +10,7 @@ def test_cli_invalid_start_node():
     # Run the CLI command
     env = {"PYTHONPATH": "src"}
     result = subprocess.run(
-        [sys.executable, "-m", "copium_loop", "-s", "invalid_node", "test prompt"],
+        [sys.executable, "-m", "copium_loop", "-n", "invalid_node", "test prompt"],
         capture_output=True,
         text=True,
         env=env,

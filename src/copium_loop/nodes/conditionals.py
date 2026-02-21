@@ -7,8 +7,8 @@ from copium_loop.telemetry import get_telemetry
 
 def should_continue_from_test(state: AgentState) -> str:
     telemetry = get_telemetry()
+    telemetry.log_status("tester", "success")
     if state.get("test_output") == "PASS":
-        telemetry.log_status("tester", "success")
         return "architect"
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -33,6 +33,7 @@ def should_continue_from_architect(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
+    telemetry.log_status("architect", "success")
     if status == "error":
         return "architect"
 
@@ -52,6 +53,7 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
+    telemetry.log_status("reviewer", "success")
     if status == "error":
         return "reviewer"
 
@@ -63,13 +65,12 @@ def should_continue_from_review(state: AgentState) -> str:
 
 def should_continue_from_pr_creator(state: AgentState) -> str:
     telemetry = get_telemetry()
+    telemetry.log_status("pr_creator", "success")
     status = state.get("review_status")
     if status == "pr_created":
-        telemetry.log_status("pr_creator", "success")
         return END
 
     if status == "pr_skipped":
-        telemetry.log_status("pr_creator", "success")
         return END
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -86,13 +87,12 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
 
 def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     telemetry = get_telemetry()
+    telemetry.log_status("pr_pre_checker", "success")
     status = state.get("review_status")
     if status == "pre_check_passed":
-        telemetry.log_status("pr_pre_checker", "success")
         return "pr_creator"
 
     if status == "pr_skipped":
-        telemetry.log_status("pr_pre_checker", "success")
         return END
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -118,6 +118,7 @@ def should_continue_from_journaler(state: AgentState) -> str:
 
 def should_continue_from_coder(state: AgentState) -> str:
     telemetry = get_telemetry()
+    telemetry.log_status("coder", "success")
     status = state.get("code_status")
     if status == "coded":
         return "tester"
