@@ -183,7 +183,7 @@ class TestCoderNode:
         agent_state["engine"].invoke.return_value = "Retrying after failure..."
         agent_state["messages"] = [
             HumanMessage(content="Original request"),
-            SystemMessage(content="All models exhausted"),
+            SystemMessage(content="Unexpected connection error"),
         ]
         agent_state["code_status"] = "failed"
         agent_state["retry_count"] = 1
@@ -196,5 +196,5 @@ class TestCoderNode:
 
         assert "coder encountered an unexpected failure" in prompt.lower()
         assert "unexpected failure" in prompt.lower()
-        assert "All models exhausted" in prompt
+        assert "Unexpected connection error" in prompt
         assert "rejected by the reviewer" not in prompt
