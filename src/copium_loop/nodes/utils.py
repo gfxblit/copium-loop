@@ -316,8 +316,10 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     if code_status == "failed":
         last_message = messages[-1]
-        safe_error = engine.sanitize_for_prompt(last_message.content)
-        system_prompt = f"""Coder encountered an unexpected failure, retry on original prompt. (Current HEAD: {head_hash}): {user_request_block}
+        # Skip error block if failure was due to model exhaustion (infrastructure issue)
+        if "all models exhausted" not in last_message.content.lower():
+            safe_error = engine.sanitize_for_prompt(last_message.content)
+            system_prompt = f"""Coder encountered an unexpected failure, retry on original prompt. (Current HEAD: {head_hash}): {user_request_block}
 
     <error>
     {safe_error}
