@@ -174,13 +174,16 @@ class TextualDashboard(App):
 
             if current_sids == visible_sids and not has_empty_label:
                 # Just refresh existing
-                for widget in current_widgets:
+                for i, widget in enumerate(current_widgets):
+                    widget.index = i + 1
                     await widget.refresh_ui()
             else:
                 # Rebuild
                 await container.remove_children()
-                for session in visible_sessions:
-                    w = SessionWidget(session, id=f"session-{session.session_id}")
+                for i, session in enumerate(visible_sessions):
+                    w = SessionWidget(
+                        session, index=i + 1, id=f"session-{session.session_id}"
+                    )
                     await container.mount(w)
                     await w.refresh_ui()
 
