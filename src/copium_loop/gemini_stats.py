@@ -7,65 +7,57 @@ import logging
 import re
 import sys
 import time
+from typing import Protocol, runtime_checkable
 
 from copium_loop.tmux import TmuxInterface, TmuxManager
 
 logger = logging.getLogger(__name__)
 
 
-class GeminiStatsClient:
-    """
-    Client for interacting with the gemini-cli inside a tmux window
-    to fetch usage quotas via /stats.
-    """
+@runtime_checkable
+class StatsFetcher(Protocol):
+    """Protocol for fetching raw stats output."""
+
+    def fetch(self) -> str | None:
+        """Fetches the raw string output from the stats source."""
+        ...
+
+    async def fetch_async(self) -> str | None:
+        """Asynchronously fetches the raw string output."""
+        ...
+
+
+class TmuxStatsFetcher:
+    """Fetches stats by interacting with gemini-cli inside a tmux window."""
 
     def __init__(
-        self, session_name: str = "copium-loop", tmux: TmuxInterface | None = None
+        self,
+        session_name: str = "copium-loop",
+        window_name: str = "stats",
+        tmux: TmuxInterface | None = None,
     ):
         self.session_name = session_name
-        self.window_name = "stats"
+        self.window_name = window_name
         self.target = f"{self.session_name}:{self.window_name}"
         self.tmux = tmux or TmuxManager()
-        self._cache_ttl = 60
-        self._last_check = 0
-        self._cached_data: dict | None = None
+        self.gemini_cmd = "/opt/homebrew/bin/gemini --sandbox"
 
     def _ensure_worker(self):
         """Ensures the background gemini-cli session is running in tmux."""
         try:
-            # Check if the window exists using a more robust list-windows call
-            # Target specifically the current session to avoid cross-session conflicts
             if not self.tmux.has_window(self.session_name, self.window_name):
-                # Create window and start gemini
-                # Use absolute path for gemini.
-                cmd = "/opt/homebrew/bin/gemini --sandbox"
                 self.tmux.new_window(
                     self.session_name,
                     self.window_name,
-                    cmd,
+                    self.gemini_cmd,
                 )
-                # Give it sufficient time to initialize (booting gemini-cli)
                 time.sleep(10.0)
         except Exception:
             pass
 
-    def get_usage(self) -> dict | None:
-        """
-        Fetches usage statistics by querying the background gemini session.
-        Returns a dictionary with 'pro', 'flash', and 'reset' keys, or None if failed.
-        """
-        now = time.time()
-        if self._cached_data and (now - self._last_check < self._cache_ttl):
-            return self._cached_data
-
+    def fetch(self) -> str | None:
         self._ensure_worker()
-
         try:
-            # Send robust sequence to trigger /stats:
-            # 1. Escape to ensure we're in Normal mode
-            # 2. C-c to clear any partial input
-            # 3. 'i' to enter Insert mode
-            # 4. '/stats' and Enter to execute
             self.tmux.send_keys(self.target, "Escape")
             time.sleep(0.1)
             self.tmux.send_keys(self.target, "C-c")
@@ -76,33 +68,72 @@ class GeminiStatsClient:
             time.sleep(0.1)
             self.tmux.send_keys(self.target, "Enter")
 
-            # Wait for output to be generated and rendered
             time.sleep(2.0)
-
-            # Capture pane output
             output = self.tmux.capture_pane(self.target)
+            return output if output else None
+        except Exception as e:
+            logger.error("Failed to fetch stats from tmux: %s", str(e))
+            return None
 
+    async def fetch_async(self) -> str | None:
+        return await asyncio.to_thread(self.fetch)
+
+
+class GeminiStatsClient:
+    """
+    Client for fetching and parsing usage quotas.
+    Decoupled from the actual fetching mechanism via StatsFetcher.
+    """
+
+    def __init__(
+        self,
+        fetcher: StatsFetcher | None = None,
+        # Keep these for backward compatibility
+        session_name: str = "copium-loop",
+        tmux: TmuxInterface | None = None,
+    ):
+        self.fetcher = fetcher or TmuxStatsFetcher(session_name=session_name, tmux=tmux)
+        self._cache_ttl = 60
+        self._last_check = 0
+        self._cached_data: dict | None = None
+
+    def get_usage(self) -> dict | None:
+        """
+        Fetches usage statistics.
+        Returns a dictionary with 'pro', 'flash', and 'reset' keys, or None if failed.
+        """
+        now = time.time()
+        if self._cached_data and (now - self._last_check < self._cache_ttl):
+            return self._cached_data
+
+        try:
+            output = self.fetcher.fetch()
             if not output:
                 return None
 
             return self._parse_output(output)
-
         except Exception as e:
-            logger.error("Failed to fetch stats: %s", str(e))
+            logger.error("Failed to get usage: %s", str(e))
             return None
 
     async def get_usage_async(self) -> dict | None:
-        """
-        Asynchronously fetches usage statistics.
-        """
-        # For simplicity in this implementation, we'll wrap the sync call
-        # as the interaction with tmux is mostly shell-based and quick.
-        return await asyncio.to_thread(self.get_usage)
+        """Asynchronously fetches usage statistics."""
+        now = time.time()
+        if self._cached_data and (now - self._last_check < self._cache_ttl):
+            return self._cached_data
+
+        try:
+            output = await self.fetcher.fetch_async()
+            if not output:
+                return None
+
+            return self._parse_output(output)
+        except Exception as e:
+            logger.error("Failed to get usage async: %s", str(e))
+            return None
 
     def _parse_output(self, output: str) -> dict:
-        """
-        Parses the /stats output to extract usage percentages and reset times.
-        """
+        """Parses the raw output to extract usage percentages and reset times."""
         data = {
             "pro": 0.0,
             "flash": 0.0,
