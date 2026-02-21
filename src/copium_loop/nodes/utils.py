@@ -315,10 +315,11 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     system_prompt = f"You are a software engineer. (Current HEAD: {head_hash}) Implement the following request: {user_request_block}\n\n{mandatory_instructions}"
 
     if code_status == "failed":
-        last_message = messages[-1]
+        last_error = state.get("last_error")
+        error_content = last_error if last_error else messages[-1].content
         # Skip error block if failure was due to model exhaustion (infrastructure issue)
-        if "all models exhausted" not in last_message.content.lower():
-            safe_error = engine.sanitize_for_prompt(last_message.content)
+        if "all models exhausted" not in error_content.lower():
+            safe_error = engine.sanitize_for_prompt(error_content)
             system_prompt = f"""Coder encountered an unexpected failure, retry on original prompt. (Current HEAD: {head_hash}): {user_request_block}
 
     <error>
@@ -341,8 +342,9 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif review_status == "rejected":
-        last_message = messages[-1]
-        safe_feedback = engine.sanitize_for_prompt(last_message.content)
+        last_error = state.get("last_error")
+        feedback_content = last_error if last_error else messages[-1].content
+        safe_feedback = engine.sanitize_for_prompt(feedback_content)
         system_prompt = f"""Your previous implementation was rejected by the reviewer. (Current HEAD: {head_hash})
 
     <reviewer_feedback>
@@ -354,8 +356,9 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif architect_status == "refactor":
-        last_message = messages[-1]
-        safe_feedback = engine.sanitize_for_prompt(last_message.content)
+        last_error = state.get("last_error")
+        feedback_content = last_error if last_error else messages[-1].content
+        safe_feedback = engine.sanitize_for_prompt(feedback_content)
         system_prompt = f"""Your previous implementation was flagged for architectural improvement by the architect. (Current HEAD: {head_hash})
 
     <architect_feedback>
@@ -367,8 +370,9 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif review_status == "pr_failed":
-        last_message = messages[-1]
-        safe_error = engine.sanitize_for_prompt(last_message.content)
+        last_error = state.get("last_error")
+        error_content = last_error if last_error else messages[-1].content
+        safe_error = engine.sanitize_for_prompt(error_content)
         system_prompt = f"""Your previous attempt to create a PR failed. (Current HEAD: {head_hash})
 
     <error>
