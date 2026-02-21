@@ -95,8 +95,8 @@ async def async_main():
         from copium_loop.git import get_current_branch
         from copium_loop.shell import run_command
 
-        current_branch = await get_current_branch()
-        res = await run_command("git", ["rev-parse", "--show-toplevel"])
+        current_branch = await get_current_branch(node=start_node)
+        res = await run_command("git", ["rev-parse", "--show-toplevel"], node=start_node)
         current_repo_root = res["output"].strip() if res["exit_code"] == 0 else None
 
         if stored_branch and stored_branch != current_branch:
