@@ -35,6 +35,7 @@ async def test_session_widget_displays_index():
         assert "[1]" in content
         assert "test-session" in content
 
+
 @pytest.mark.asyncio
 async def test_session_widget_no_index():
     app = SessionWidgetIndexMockApp(index=None)
