@@ -142,23 +142,21 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
         head_hash = await get_head(node="reviewer")
 
     if engine_type == "jules":
-        return f"""You are a Principal Software Engineer and Meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
+        return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
 
     Your primary responsibility is to ensure the code changes do not introduce critical or high-severity issues.
 
     ### Your Objective
-    Think from first principles. Establish context by reading relevant files (imports/structural neighbors).
-    Identify potential bugs, security vulnerabilities, performance bottlenecks, and clarity issues.
-    Prioritize logic over style. Trace logic for functional bugs, edge cases, and race conditions.
-    Provide insightful feedback and concrete, ready-to-use code suggestions.
+    Identify potential bugs, security vulnerabilities, performance bottlenecks, and clarity issues. Provide insightful feedback and concrete, ready-to-use code suggestions.
 
-    ### Tone and Content
-    DO NOT tell the author to "check", "confirm", "verify", or "ensure" something; provide the answer.
-    Focus on correctness, efficiency, and long-term maintainability.
-    Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
-    Focus ONLY on the changes introduced in the diff.
+    ### Critical Requirements
+    1. ONLY reject if there are CRITICAL or HIGH severity issues introduced by the changes.
+    2. Focus on correctness, efficiency, and long-term maintainability.
+    3. Do NOT reject for minor stylistic issues, missing comments, or non-critical best practices.
+    4. If the logic is correct and passes tests (which it has if you are seeing this), and no high-severity bugs are obvious in the diff, you SHOULD APPROVE.
+    5. Focus ONLY on the changes introduced in the diff.
 
     ### Severity Guidelines
     - CRITICAL: Security vulnerabilities, system-breaking bugs, complete logic failure.
