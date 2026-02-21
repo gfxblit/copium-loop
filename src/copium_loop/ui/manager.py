@@ -1,4 +1,5 @@
 import contextlib
+import heapq
 import json
 import os
 from datetime import datetime
@@ -44,11 +45,16 @@ class SessionManager:
         # Sort by mtime to preserve consistent processing order
         # Fallback if stat fails (e.g. file deleted during scan)
         with contextlib.suppress(OSError):
-            log_entries.sort(key=lambda e: e.stat().st_mtime)
-
-        # Apply session limit: keep only the most recent files
-        if len(log_entries) > self.max_sessions:
-            log_entries = log_entries[-self.max_sessions :]
+            if len(log_entries) > self.max_sessions:
+                # Optimization: Use heapq to find most recent files efficiently
+                # O(N log K) where N is total files and K is max_sessions
+                log_entries = heapq.nlargest(
+                    self.max_sessions, log_entries, key=lambda e: e.stat().st_mtime
+                )
+                # Sort them back to oldest-first to preserve processing order
+                log_entries.sort(key=lambda e: e.stat().st_mtime)
+            else:
+                log_entries.sort(key=lambda e: e.stat().st_mtime)
 
         active_sids = set()
         for entry in log_entries:
