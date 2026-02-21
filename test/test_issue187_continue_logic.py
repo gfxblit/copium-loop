@@ -1,10 +1,10 @@
 import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
-import os
 
 import pytest
 
 from copium_loop.__main__ import async_main
+
 
 @pytest.fixture(autouse=True)
 def mock_repo_root():

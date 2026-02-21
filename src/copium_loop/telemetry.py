@@ -1,7 +1,6 @@
 import atexit
 import concurrent.futures
 import json
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -360,8 +359,8 @@ def get_telemetry() -> Telemetry:
     """Returns the global telemetry instance with a session ID derived from the git repo and branch."""
     global _telemetry_instance
     if _telemetry_instance is None:
-        import subprocess
         import re
+        import subprocess
 
         # Strictly derive session ID from repo and branch
         try:
@@ -425,6 +424,6 @@ def get_telemetry() -> Telemetry:
         except RuntimeError as e:
             raise e
         except Exception as e:
-            raise RuntimeError(f"Failed to derive session ID: {e}")
+            raise RuntimeError(f"Failed to derive session ID: {e}") from e
 
     return _telemetry_instance
