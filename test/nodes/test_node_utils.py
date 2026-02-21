@@ -69,3 +69,27 @@ async def test_node_header_exception_handling():
         # Should have logged active, then failed
         mock_telemetry.log_status.assert_any_call("error_node", "active")
         mock_telemetry.log_status.assert_any_call("error_node", "failed")
+
+
+def test_is_infrastructure_error():
+    from copium_loop.nodes.utils import is_infrastructure_error
+
+    # Git/Network errors
+    assert is_infrastructure_error("Could not resolve host: github.com") is True
+    assert (
+        is_infrastructure_error("fatal: unable to access 'https://github.com/...'")
+        is True
+    )
+    assert is_infrastructure_error("Connection refused") is True
+    assert is_infrastructure_error("Operation timed out") is True
+    assert is_infrastructure_error("Network is unreachable") is True
+
+    # Model exhaustion
+    assert is_infrastructure_error("all models exhausted") is True
+    assert is_infrastructure_error("All models exhausted in Jules session") is True
+
+    # Non-infrastructure errors
+    assert is_infrastructure_error("SyntaxError: invalid syntax") is False
+    assert is_infrastructure_error("AssertionError: assert False") is False
+    assert is_infrastructure_error("ValueError: invalid value") is False
+    assert is_infrastructure_error("") is False
