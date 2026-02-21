@@ -1,6 +1,7 @@
 import unittest
-import re
+
 from copium_loop.shell import _clean_chunk
+
 
 class TestShellSecurity(unittest.TestCase):
     def test_clean_chunk_csi(self):
