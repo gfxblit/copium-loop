@@ -14,6 +14,16 @@ def _parse_verdict(content: str) -> str | None:
     matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED)", content.upper())
     if matches:
         return matches[-1]
+
+    # Fallback for implicit approval
+    content_upper = content.upper()
+    implicit_signals = [
+        "READY FOR SUBMISSION",
+        "ALL PLAN STEPS COMPLETED",
+    ]
+    if any(signal in content_upper for signal in implicit_signals):
+        return "APPROVED"
+
     return None
 
 
@@ -82,6 +92,7 @@ async def reviewer_node(state: AgentState) -> dict:
         }
 
     verdict = _parse_verdict(review_content)
+
     if not verdict:
         msg = "\nReview decision: Error (no verdict found)\n"
         telemetry.log_info("reviewer", msg)

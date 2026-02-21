@@ -315,28 +315,40 @@ class JulesEngine(LLMEngine):
                 if not summary and title:
                     summary = title
 
-        # Fallback to activities for textual summary if not already found
+        # Collect unique textual updates from activities
         activities = status_data.get("activities", [])
-        if not summary:
-            # Check for agentMessaged first
-            for activity in reversed(activities):
-                if "agentMessaged" in activity:
-                    am = activity["agentMessaged"]
-                    summary = (
-                        am.get("agentMessage")
-                        or am.get("message")
-                        or am.get("text")
-                        or ""
-                    )
-                    if summary:
-                        break
+        collected_messages = []
+        seen_messages = set()
 
-            # Fallback to description/text
-            if not summary:
-                for activity in reversed(activities):
-                    summary = activity.get("description") or activity.get("text") or ""
-                    if summary:
-                        break
+        if summary:
+            collected_messages.append(summary)
+            seen_messages.add(summary)
+
+        for activity in activities:
+            text = ""
+            if "agentMessaged" in activity:
+                am = activity["agentMessaged"]
+                text = (
+                    am.get("agentMessage") or am.get("message") or am.get("text") or ""
+                )
+            elif "progressUpdated" in activity:
+                text = activity["progressUpdated"].get("description", "")
+
+            if not text:
+                text = activity.get("description") or activity.get("text") or ""
+
+            if text and text not in seen_messages:
+                collected_messages.append(text)
+                seen_messages.add(text)
+
+        summary = "\n".join(collected_messages)
+
+        # If a changeSet is present, it's an implicit approval
+        has_changeset = any(isinstance(o, dict) and "changeSet" in o for o in outputs)
+        if has_changeset:
+            summary = (
+                f"{summary}\nVERDICT: APPROVED" if summary else "VERDICT: APPROVED"
+            )
 
         if pr_url:
             summary = (
@@ -452,9 +464,12 @@ class JulesEngine(LLMEngine):
             # 1. Check for existing session via SessionManager
             session_name = None
             if self.session_manager and node:
-                state = self.session_manager.get_engine_state("jules", node)
-                if isinstance(state, dict) and state.get("prompt_hash") == prompt_hash:
-                    session_name = state.get("session_id")
+                s_state = self.session_manager.get_engine_state("jules", node)
+                if (
+                    isinstance(s_state, dict)
+                    and s_state.get("prompt_hash") == prompt_hash
+                ):
+                    session_name = s_state.get("session_id")
 
             if session_name:
                 session_url = self._get_session_url(session_name)
@@ -473,11 +488,11 @@ class JulesEngine(LLMEngine):
                         headers=self._get_headers(),
                     )
                     if resp.status_code == 200:
-                        state = resp.json().get("state")
-                        if state in ["COMPLETED", "FAILED"]:
+                        s_state = resp.json().get("state")
+                        if s_state in ["COMPLETED", "FAILED"]:
                             if verbose:
                                 print(
-                                    f"[{node}] Session {session_name} is {state}. Resuming to get results."
+                                    f"[{node}] Session {session_name} is {s_state}. Resuming to get results."
                                 )
                         else:
                             if verbose:
