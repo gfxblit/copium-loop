@@ -10,7 +10,7 @@ def test_cli_invalid_start_node():
     # Run the CLI command
     env = {"PYTHONPATH": "src"}
     result = subprocess.run(
-        [sys.executable, "-m", "copium_loop", "-s", "invalid_node", "test prompt"],
+        [sys.executable, "-m", "copium_loop", "-n", "invalid_node", "test prompt"],
         capture_output=True,
         text=True,
         env=env,
@@ -43,11 +43,11 @@ def test_readme_mentions_continue_flag():
     assert "--continue" in content or " -c" in content
 
 
-def test_readme_mentions_session_flag():
-    """Verify README mentions the --session flag."""
+def test_readme_mentions_node_flag():
+    """Verify README mentions the --node flag."""
     with open("README.md") as f:
         content = f.read()
-    assert "--session" in content
+    assert "--node" in content or " -n" in content
 
 
 def test_readme_mentions_python_support():

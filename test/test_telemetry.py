@@ -3,7 +3,6 @@
 import os
 import re
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,34 +32,6 @@ def telemetry_with_temp_dir(temp_log_dir, monkeypatch):
     # Patch Path.home() to return tmp_path
     monkeypatch.setattr(Path, "home", lambda: temp_log_dir.parent.parent)
     return Telemetry("test_session")
-
-
-def test_get_telemetry_uses_tmux_session_name():
-    """Test that get_telemetry uses only the tmux session name when available."""
-    mock_res = MagicMock()
-    mock_res.returncode = 0
-    mock_res.stdout = "my-awesome-session\n"
-
-    with patch("subprocess.run", return_value=mock_res) as mock_run:
-        t = telemetry.get_telemetry()
-        assert t.session_id == "my-awesome-session"
-        # Verify we requested ONLY the session name (#S), not pane ID (#D)
-        mock_run.assert_called_with(
-            ["tmux", "display-message", "-p", "#S"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-
-def test_get_telemetry_fallback_to_timestamp():
-    """Test that get_telemetry falls back to session_timestamp when tmux is not available."""
-    with (
-        patch("subprocess.run", side_effect=Exception("no tmux")),
-        patch("time.time", return_value=1234567890),
-    ):
-        t = telemetry.get_telemetry()
-        assert t.session_id == "session_1234567890"
 
 
 class TestTelemetryLogReading:

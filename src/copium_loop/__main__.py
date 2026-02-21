@@ -11,8 +11,8 @@ async def async_main():
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
     parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     parser.add_argument(
-        "-s",
-        "--start",
+        "-n",
+        "--node",
         help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
         default="coder",
     )
@@ -26,14 +26,11 @@ async def async_main():
         help="Start the Textual-based TUI monitor",
     )
     parser.add_argument(
-        "--session", type=str, help="Specific session ID to monitor or continue"
-    )
-    parser.add_argument(
         "--continue",
         "-c",
         dest="continue_session",
         action="store_true",
-        help="Continue from the last incomplete workflow session",
+        help="Continue from the last incomplete workflow session. If a prompt is provided, it overrides the session prompt.",
     )
     parser.add_argument(
         "--engine",
@@ -53,33 +50,76 @@ async def async_main():
         return
 
     from copium_loop.copium_loop import WorkflowManager
+    from copium_loop.session_manager import SessionManager
     from copium_loop.telemetry import (
-        Telemetry,
-        find_latest_session,
         get_telemetry,
     )
 
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")
 
-    # Handle --continue flag
-    start_node = args.start
+    # Get derived session ID
+    telemetry = get_telemetry()
+    session_id = telemetry.session_id
+    session_manager = SessionManager(session_id)
+
+    # Determine if we should continue
+    # Implicit continue if no prompt provided and session exists (has original prompt or agent state)
+    is_resuming = args.continue_session
+    prompt_provided = bool(args.prompt)
+
+    if (
+        not is_resuming
+        and not prompt_provided
+        and (session_manager.get_agent_state() or session_manager.get_original_prompt())
+    ):
+        print(f"Existing session found for this branch: {session_id}")
+        print("No prompt provided, implicitly resuming...")
+        is_resuming = True
+
+    # Handle resumption logic
+    start_node = args.node
     reconstructed_state = None
 
-    if args.continue_session:
-        # Determine which session to continue
-        session_id = args.session
-        if not session_id:
-            # Try to find the latest session
-            session_id = find_latest_session()
-            if not session_id:
-                print("Error: No previous sessions found to continue.")
-                sys.exit(1)
-
+    if is_resuming:
         print(f"Attempting to continue session: {session_id}")
 
-        # Load the telemetry for this session
-        telemetry = Telemetry(session_id)
+        # Verify sticky environment (branch and repo root)
+        stored_branch = (
+            session_manager.get_branch_name() or session_manager.get_metadata("branch")
+        )
+        stored_repo_root = (
+            session_manager.get_repo_root() or session_manager.get_metadata("repo_root")
+        )
+
+        from copium_loop.git import get_current_branch
+        from copium_loop.shell import run_command
+
+        current_branch = await get_current_branch(node=start_node)
+        res = await run_command("git", ["rev-parse", "--show-toplevel"], node=start_node)
+        current_repo_root = res["output"].strip() if res["exit_code"] == 0 else None
+
+        if stored_branch and stored_branch != current_branch:
+            print(
+                f"Error: Session branch mismatch. Session: {stored_branch}, Current: {current_branch}"
+            )
+            sys.exit(1)
+
+        if stored_repo_root and stored_repo_root != current_repo_root:
+            print(
+                f"Error: Session repo root mismatch. Session: {stored_repo_root}, Current: {current_repo_root}"
+            )
+            sys.exit(1)
+
+        # Load persisted AgentState
+        reconstructed_state = session_manager.get_agent_state()
+
+        if not reconstructed_state:
+            # Fallback to telemetry reconstruction if AgentState is missing (legacy)
+            print(
+                "Warning: No persisted AgentState found, falling back to telemetry..."
+            )
+            reconstructed_state = telemetry.reconstruct_state()
 
         # Determine where to resume from
         resume_node, metadata = telemetry.get_last_incomplete_node()
@@ -99,29 +139,44 @@ async def async_main():
                 sys.exit(1)
 
         print(f"Resuming from node: {resume_node}")
-        print(f"Metadata: {metadata}")
-
-        # Reconstruct state from logs
-        reconstructed_state = telemetry.reconstruct_state()
         start_node = resume_node
 
-        # If we have a prompt from the logs, use it; otherwise use default
-        prompt = reconstructed_state.get(
-            "prompt", "Continue development and verify implementation."
-        )
+        # If prompt is provided via CLI, override the stored prompt
+        if args.prompt:
+            prompt = " ".join(args.prompt)
+            print(f"Overriding session prompt with: {prompt}")
+        else:
+            # If we have a prompt from the logs/state, use it
+            prompt = session_manager.get_original_prompt()
+            if prompt is None:
+                prompt = reconstructed_state.get(
+                    "prompt", "Continue development and verify implementation."
+                )
 
         # Use reconstructed engine if not explicitly provided
-        if args.engine is None and "engine_name" in reconstructed_state:
-            args.engine = reconstructed_state["engine_name"]
+        if args.engine is None:
+            args.engine = (
+                session_manager.get_engine_name()
+                or session_manager.get_metadata("engine_name")
+            )
+            if args.engine is None and "engine_name" in reconstructed_state:
+                args.engine = reconstructed_state["engine_name"]
     else:
         prompt = (
             " ".join(args.prompt)
             if args.prompt
             else "Continue development and verify implementation."
         )
+        # Store initial prompt in state for persistence
+        if reconstructed_state is None:
+            reconstructed_state = {}
+        reconstructed_state["prompt"] = prompt
 
     workflow = WorkflowManager(
-        start_node=start_node, verbose=args.verbose, engine_name=args.engine
+        start_node=start_node,
+        verbose=args.verbose,
+        engine_name=args.engine,
+        session_id=session_id,
     )
 
     try:

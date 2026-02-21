@@ -48,14 +48,21 @@ class SessionWidget(Vertical):
         # We don't pre-populate self.pillars here because they need to be mounted in compose or refresh_ui
         self.pillars: dict[str, PillarWidget] = {}
 
+    @property
+    def safe_id(self) -> str:
+        """Returns a Textual-safe ID (no slashes, etc)."""
+        import re
+
+        return re.sub(r"[^a-zA-Z0-9_\-]", "_", self.session_id)
+
     def compose(self) -> ComposeResult:
         yield Static(
             "",
             classes="session-header",
-            id=f"header-{self.session_id}",
+            id=f"header-{self.safe_id}",
         )
         with Vertical(
-            id=f"pillars-container-{self.session_id}", classes="pillars-container"
+            id=f"pillars-container-{self.safe_id}", classes="pillars-container"
         ):
             pass
 
@@ -69,7 +76,7 @@ class SessionWidget(Vertical):
             return
 
         try:
-            header = self.query_one(f"#header-{self.session_id}", Static)
+            header = self.query_one(f"#header-{self.safe_id}", Static)
             header.styles.border_title_align = "center"
             header.styles.border_subtitle_align = "center"
             header.border_title = ""
@@ -90,14 +97,12 @@ class SessionWidget(Vertical):
             header.update(f"{self.session_id}{status_suffix}")
             header.border_subtitle = ""
 
-            container = self.query_one(
-                f"#pillars-container-{self.session_id}", Vertical
-            )
+            container = self.query_one(f"#pillars-container-{self.safe_id}", Vertical)
 
             for node_id, pillar_data in self.session_column.pillars.items():
                 if node_id not in self.pillars:
                     widget = PillarWidget(
-                        node_id, id=f"pillar-{self.session_id}-{node_id}"
+                        node_id, id=f"pillar-{self.safe_id}-{node_id}"
                     )
                     self.pillars[node_id] = widget
                     await container.mount(widget)
