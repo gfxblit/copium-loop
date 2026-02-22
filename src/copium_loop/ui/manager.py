@@ -1,5 +1,7 @@
 import contextlib
+import heapq
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,20 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(self, log_dir: Path):
+        """Recursively yields DirEntry objects for .jsonl files."""
+        try:
+            with os.scandir(log_dir) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from self._scan_log_files(entry.path)
+                    elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
+                        ".jsonl"
+                    ):
+                        yield entry
+        except OSError:
+            pass
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -30,16 +46,24 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
-
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
+        # Find all .jsonl files recursively using os.scandir for performance
+        entries = self._scan_log_files(self.log_dir)
 
         # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        # heapq.nlargest is more efficient than full sort for large directories
+        def get_mtime(entry):
+            try:
+                return entry.stat().st_mtime
+            except OSError:
+                return 0.0
+
+        top_entries = heapq.nlargest(self.max_sessions, entries, key=get_mtime)
+
+        # Convert back to Path objects and sort by mtime ascending to preserve processing order
+        # (oldest to newest) which is what the original code did after slicing [-max_sessions:]
+        log_files = [Path(e.path) for e in top_entries]
+        with contextlib.suppress(OSError):
+            log_files.sort(key=lambda f: f.stat().st_mtime)
 
         active_sids = set()
         log_entries_map = {}

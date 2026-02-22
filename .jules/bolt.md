@@ -9,3 +9,7 @@
 ## 2025-02-18 - Optimize Git Remote Checks
 **Learning:** Checking for git remotes using sequential subprocess calls (`git remote` list then `git remote get-url` per remote) is inefficient (N+1 problem).
 **Action:** Use `git remote -v` to fetch all remote URLs in a single subprocess call and parse the output. This reduces overhead significantly, especially in environments where process spawning is expensive.
+
+## 2025-02-18 - Optimized File Scanning
+**Learning:** `Path.rglob` combined with `sort` instantiates `Path` objects and performs `stat` calls for every file, which is $O(N)$ syscalls and memory. `os.scandir` yields `DirEntry` objects with cached stat info, and `heapq.nlargest` allows finding top K items in $O(N \log K)$ time without loading all N items.
+**Action:** Use `os.scandir` recursively and `heapq.nlargest` for filtering large directories by timestamp, avoiding full list instantiation and sorting.

@@ -188,3 +188,54 @@ def test_session_manager_toggle_system_logs(tmp_path):
     manager.toggle_system_logs()
     assert manager.show_system_logs is False
     assert manager.sessions["s1"].show_system_logs is False
+
+
+def test_manager_update_from_logs_nested(tmp_path):
+    """Verify update_from_logs handles nested directories and correct sorting."""
+    import time
+    import os
+
+    mgr = SessionManager(tmp_path, max_sessions=5)
+
+    # Create nested structure
+    # efficient: file 0 is oldest, file 9 is newest
+    files = []
+    base_time = time.time() - 1000
+
+    for i in range(10):
+        # Create directories
+        d = tmp_path / f"dir_{i}"
+        d.mkdir()
+        f = d / "log.jsonl"
+
+        # Write content
+        event = {
+            "node": "workflow",
+            "event_type": "workflow_status",
+            "data": "running",
+            "timestamp": "2026-01-28T10:00:00",
+        }
+        with open(f, "w") as fh:
+            fh.write(json.dumps(event) + "\n")
+
+        # Set mtime
+        t = base_time + i * 10
+        os.utime(f, (t, t))
+        files.append(f)
+
+    # Calling update_from_logs should find the 5 most recent files (files 5-9)
+    updates = mgr.update_from_logs()
+
+    assert len(updates) == 5
+
+    # Check session IDs. Since files 5-9 are newest, they should be in the updates.
+    # The order in updates is not guaranteed by update_from_logs return value (it's a list),
+    # but the session map is updated.
+
+    # Session ID is relative path without suffix
+    expected_sids = {
+        str(files[i].relative_to(tmp_path).with_suffix("")) for i in range(5, 10)
+    }
+    actual_sids = {u["session_id"] for u in updates}
+
+    assert actual_sids == expected_sids
