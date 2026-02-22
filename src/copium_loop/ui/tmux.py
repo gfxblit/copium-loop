@@ -5,12 +5,16 @@ import subprocess
 def extract_tmux_session(session_id: str) -> str | None:
     """Extracts the tmux session name or pane ID from a session_id.
 
-    Session IDs are typically formatted as {tmux_session}_{pane_id} (e.g., work_%1)
+    Session IDs are typically formatted as {repo}/{tmux_session}_{pane_id} (e.g., myrepo/work_%1)
     or session_{timestamp} (e.g., session_123456789).
     Returns the most specific target possible.
     """
     if not session_id:
         return None
+
+    # Strip any directory prefix (e.g., repo/session -> session)
+    if "/" in session_id:
+        session_id = session_id.rsplit("/", 1)[1]
 
     # If it's already a pane ID, return it
     if session_id.startswith("%") and session_id[1:].isdigit():
@@ -25,9 +29,7 @@ def extract_tmux_session(session_id: str) -> str | None:
         if suffix.startswith("%") and suffix[1:].isdigit():
             return suffix
 
-        # Note: We used to treat session_timestamp as None, but existing tests
-        # require returning the full ID. We preserve it to allow potential
-        # matches if the user named their session thus.
+        # Preserve the ID after stripping slash for potential matches
         return session_id
 
     # Otherwise, it's likely just the session name
@@ -50,12 +52,22 @@ def switch_to_tmux_session(session_name: str):
     if "_" in session_name and not session_name.startswith("%"):
         targets.append(session_name.rsplit("_", 1)[0])
 
+    # If we have TMUX env var, it's a comma-separated list: socket_path,pid,session_index
+    # We use the socket path to ensure we target the correct tmux server instance.
+    tmux_env = os.environ.get("TMUX", "")
+    socket_path = tmux_env.split(",")[0] if tmux_env else None
+
     for t in targets:
         try:
             # We use 'tmux switch-client' which is the standard way to switch sessions/panes.
             # It works for sessions, windows, and panes (via %ID).
+            cmd = ["tmux"]
+            if socket_path:
+                cmd.extend(["-S", socket_path])
+            cmd.extend(["switch-client", "-t", t])
+
             result = subprocess.run(
-                ["tmux", "switch-client", "-t", t],
+                cmd,
                 check=True,
                 capture_output=True,
                 text=True,

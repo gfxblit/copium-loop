@@ -56,16 +56,31 @@ def test_extract_tmux_session_old_format_with_underscore_in_name():
     assert extract_tmux_session(session_id) == "%5"
 
 
+def test_extract_tmux_session_with_path_prefix():
+    """Test that extract_tmux_session correctly strips repo prefixes."""
+    assert extract_tmux_session("myrepo/my_session") == "my_session"
+    assert extract_tmux_session("myrepo/my_session_0") == "my_session_0"
+    assert extract_tmux_session("myrepo/my_session_%1") == "%1"
+    assert extract_tmux_session("github.com/user/repo/session_1234") == "session_1234"
+
+
 def test_switch_to_tmux_session_success():
-    """Test switching tmux sessions (mocked)."""
+    """Test switching tmux sessions (mocked) with socket path."""
     with (
-        patch("subprocess.run") as mock_run,
+        patch("copium_loop.ui.tmux.subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
         mock_run.return_value.returncode = 0
         switch_to_tmux_session("target_session")
         mock_run.assert_called_with(
-            ["tmux", "switch-client", "-t", "target_session"],
+            [
+                "tmux",
+                "-S",
+                "/tmp/tmux-1234/default",
+                "switch-client",
+                "-t",
+                "target_session",
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -73,9 +88,9 @@ def test_switch_to_tmux_session_success():
 
 
 def test_switch_to_tmux_session_fallback():
-    """Test switching tmux sessions with fallback (mocked)."""
+    """Test switching tmux sessions with fallback (mocked) with socket path."""
     with (
-        patch("subprocess.run") as mock_run,
+        patch("copium_loop.ui.tmux.subprocess.run") as mock_run,
         patch.dict("os.environ", {"TMUX": "/tmp/tmux-1234/default,1234,0"}),
     ):
         mock_result = MagicMock()
@@ -88,13 +103,20 @@ def test_switch_to_tmux_session_fallback():
 
         assert mock_run.call_count == 2
         mock_run.assert_any_call(
-            ["tmux", "switch-client", "-t", "target_session"],
+            [
+                "tmux",
+                "-S",
+                "/tmp/tmux-1234/default",
+                "switch-client",
+                "-t",
+                "target_session",
+            ],
             check=True,
             capture_output=True,
             text=True,
         )
         mock_run.assert_any_call(
-            ["tmux", "switch-client", "-t", "target"],
+            ["tmux", "-S", "/tmp/tmux-1234/default", "switch-client", "-t", "target"],
             check=True,
             capture_output=True,
             text=True,

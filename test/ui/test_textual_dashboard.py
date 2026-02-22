@@ -358,3 +358,67 @@ async def test_pagination_fails_without_stats(tmp_path):
             await app.update_footer_stats()
             stats_text = str(app.query_one("#stats-bar", Static).render())
             assert "Page 1/2" in stats_text
+
+
+@pytest.mark.asyncio
+async def test_numeric_keys_priority(tmp_path, monkeypatch):
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "test-session.jsonl").write_text(
+        json.dumps(
+            {
+                "node": "workflow",
+                "event_type": "workflow_status",
+                "data": "running",
+                "timestamp": "2026-02-09T12:00:00",
+            }
+        )
+        + "\n"
+    )
+
+    app = TextualDashboard(log_dir=log_dir, enable_polling=False)
+
+    switched_to = []
+
+    def mock_switch(sid):
+        switched_to.append(sid)
+
+    monkeypatch.setattr("copium_loop.ui.tmux.switch_to_tmux_session", mock_switch)
+
+    async with app.run_test() as pilot:
+        await app.update_from_logs()
+        await pilot.pause()
+
+        session_widget = app.query_one(SessionWidget)
+        session_widget.focus()
+        await pilot.pause()
+        assert app.focused == session_widget
+
+        # Press '1' - should work due to priority=True
+        await pilot.press("1")
+        await pilot.pause()
+        assert switched_to == ["test-session"]
+
+
+@pytest.mark.asyncio
+async def test_switch_to_tmux_session_uses_socket(monkeypatch):
+    from unittest.mock import patch
+
+    from copium_loop.ui.tmux import switch_to_tmux_session
+
+    monkeypatch.setenv("TMUX", "/tmp/tmux-unit-test,123,0")
+
+    with patch("copium_loop.ui.tmux.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+
+        switch_to_tmux_session("test-session")
+
+        found = False
+        for call in mock_run.call_args_list:
+            args = call.args[0]
+            if "switch-client" in args and "test-session" in args:
+                found = True
+                assert "-S" in args
+                assert "/tmp/tmux-unit-test" in args
+                break
+        assert found
