@@ -73,7 +73,7 @@ class SessionColumn:
         col_layout.split_column(*layout_elements)
 
         # Dynamically truncate session_id based on available column width
-        display_name = self.session_id
+        display_name = self.session_id.split("/", 1)[-1]
 
         if column_width:
             # Account for: panel borders (2), padding (2)

@@ -94,7 +94,8 @@ class SessionWidget(Vertical):
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
 
-            header.update(f"{self.session_id}{status_suffix}")
+            display_name = self.session_id.split("/", 1)[-1]
+            header.update(f"{display_name}{status_suffix}")
             header.border_subtitle = ""
 
             container = self.query_one(f"#pillars-container-{self.safe_id}", Vertical)

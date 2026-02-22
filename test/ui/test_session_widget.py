@@ -134,3 +134,36 @@ async def test_lean_nodes_weight_and_content():
         # Tester is lean and active, so it should have lower weight than coder
         # 50 base + 2 per line * 1 line = 52
         assert tester_widget.styles.height.value == 52
+
+@pytest.mark.asyncio
+async def test_session_widget_displays_only_branch_name():
+    # Setup with repo/branch format
+    col = SessionColumn("my-repo/feature-branch")
+    app = SessionWidgetMockApp(col)
+    
+    async with app.run_test() as pilot:
+        widget = app.query_one(SessionWidget)
+        
+        # Initial check
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        
+        # Should fail initially as it will show full ID
+        assert "feature-branch" in rendered
+        assert "my-repo/" not in rendered
+
+@pytest.mark.asyncio
+async def test_session_widget_handles_no_prefix():
+    # Setup with simple branch name
+    col = SessionColumn("simple-branch")
+    app = SessionWidgetMockApp(col)
+    
+    async with app.run_test() as pilot:
+        widget = app.query_one(SessionWidget)
+        
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        
+        assert "simple-branch" in rendered
