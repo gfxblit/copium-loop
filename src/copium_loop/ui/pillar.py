@@ -164,6 +164,9 @@ class MatrixPillar:
 
     def get_content_renderable(self, show_system: bool = False):
         """Returns the content renderable for the pillar, optionally filtering system logs."""
+        if self.is_lean_node():
+            return TailRenderable([], self.status)
+
         filtered_buffer = []
         for entry in self.buffer:
             if isinstance(entry, dict):
