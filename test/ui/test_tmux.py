@@ -73,7 +73,14 @@ def test_switch_to_tmux_session_success():
         mock_run.return_value.returncode = 0
         switch_to_tmux_session("target_session")
         mock_run.assert_called_with(
-            ["tmux", "-S", "/tmp/tmux-1234/default", "switch-client", "-t", "target_session"],
+            [
+                "tmux",
+                "-S",
+                "/tmp/tmux-1234/default",
+                "switch-client",
+                "-t",
+                "target_session",
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -96,7 +103,14 @@ def test_switch_to_tmux_session_fallback():
 
         assert mock_run.call_count == 2
         mock_run.assert_any_call(
-            ["tmux", "-S", "/tmp/tmux-1234/default", "switch-client", "-t", "target_session"],
+            [
+                "tmux",
+                "-S",
+                "/tmp/tmux-1234/default",
+                "switch-client",
+                "-t",
+                "target_session",
+            ],
             check=True,
             capture_output=True,
             text=True,
