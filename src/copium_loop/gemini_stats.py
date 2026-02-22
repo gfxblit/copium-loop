@@ -105,6 +105,7 @@ class GeminiStatsClient:
         self._cache_ttl = 60
         self._last_check = 0
         self._cached_data: dict | None = None
+        self._lock = asyncio.Lock()
 
     def get_usage(self) -> dict | None:
         """
@@ -127,19 +128,20 @@ class GeminiStatsClient:
 
     async def get_usage_async(self) -> dict | None:
         """Asynchronously fetches usage statistics."""
-        now = time.time()
-        if self._cached_data and (now - self._last_check < self._cache_ttl):
-            return self._cached_data
+        async with self._lock:
+            now = time.time()
+            if self._cached_data and (now - self._last_check < self._cache_ttl):
+                return self._cached_data
 
-        try:
-            output = await self.fetcher.fetch_async()
-            if not output:
+            try:
+                output = await self.fetcher.fetch_async()
+                if not output:
+                    return None
+
+                return self._parse_output(output)
+            except Exception as e:
+                logger.error("Failed to get usage async: %s", str(e))
                 return None
-
-            return self._parse_output(output)
-        except Exception as e:
-            logger.error("Failed to get usage async: %s", str(e))
-            return None
 
     def _parse_output(self, output: str) -> dict:
         """Parses the raw output to extract usage percentages and reset times."""

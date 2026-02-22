@@ -51,8 +51,8 @@ class TextualDashboard(App):
         Binding("l", "toggle_system_logs", "Toggle Logs", show=True),
         Binding("tab", "next_page", "Next Page", show=True, priority=True),
         Binding("shift+tab", "prev_page", "Prev Page", show=True, priority=True),
-        Binding("right", "next_page", "Next Page", show=False),
-        Binding("left", "prev_page", "Prev Page", show=False),
+        Binding("right", "next_page", "Next Page", show=False, priority=True),
+        Binding("left", "prev_page", "Prev Page", show=False, priority=True),
         Binding("n", "next_page", "Next Page", show=False),
         Binding("p", "prev_page", "Prev Page", show=False),
         Binding("1", "switch_tmux(1)", "Tmux 1", show=False, priority=True),
@@ -78,6 +78,7 @@ class TextualDashboard(App):
             GeminiStatsStrategy(self.stats_client),
         ]
         self._updating = False
+        self._updating_stats = False
 
         self._ui_lock = asyncio.Lock()
         self.enable_polling = enable_polling
@@ -95,48 +96,54 @@ class TextualDashboard(App):
 
     async def update_footer_stats(self) -> None:
         """Updates the stats bar with system/codex stats."""
-        stats_parts = []
-        for strategy in self.stats_strategies:
-            try:
-                if hasattr(strategy, "get_stats_async"):
-                    stats = await strategy.get_stats_async()
-                else:
-                    stats = strategy.get_stats()
-
-                if stats:
-                    if isinstance(stats, list):
-                        for s in stats:
-                            if isinstance(s, tuple):
-                                stats_parts.append(Text(s[0], style=s[1]))
-                            else:
-                                stats_parts.append(Text(str(s)))
+        if self._updating_stats:
+            return
+        self._updating_stats = True
+        try:
+            stats_parts = []
+            for strategy in self.stats_strategies:
+                try:
+                    if hasattr(strategy, "get_stats_async"):
+                        stats = await strategy.get_stats_async()
                     else:
-                        stats_parts.append(Text(str(stats)))
-                    stats_parts.append(Text(" | "))
-            except Exception:
-                pass
+                        stats = strategy.get_stats()
 
-        if stats_parts and stats_parts[-1].plain == " | ":
-            # Remove trailing pipe
-            stats_parts.pop()
+                    if stats:
+                        if isinstance(stats, list):
+                            for s in stats:
+                                if isinstance(s, tuple):
+                                    stats_parts.append(Text(s[0], style=s[1]))
+                                else:
+                                    stats_parts.append(Text(str(s)))
+                        else:
+                            stats_parts.append(Text(str(stats)))
+                        stats_parts.append(Text(" | "))
+                except Exception:
+                    pass
 
-        full_stats = Text()
-        for part in stats_parts:
-            full_stats.append(part)
+            if stats_parts and stats_parts[-1].plain == " | ":
+                # Remove trailing pipe
+                stats_parts.pop()
 
-        # Add pagination info
-        _, page, total = self.manager.get_visible_sessions()
-        if total > 1:
-            if stats_parts:
-                full_stats.append(Text(" | "))
-            full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
+            full_stats = Text()
+            for part in stats_parts:
+                full_stats.append(part)
 
-        if full_stats:
-            with contextlib.suppress(Exception):
-                self.query_one("#stats-bar", Static).update(full_stats)
-        else:
-            with contextlib.suppress(Exception):
-                self.query_one("#stats-bar", Static).update("")
+            # Add pagination info
+            _, page, total = self.manager.get_visible_sessions()
+            if total > 1:
+                if stats_parts:
+                    full_stats.append(Text(" | "))
+                full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
+
+            if full_stats:
+                with contextlib.suppress(Exception):
+                    self.query_one("#stats-bar", Static).update(full_stats)
+            else:
+                with contextlib.suppress(Exception):
+                    self.query_one("#stats-bar", Static).update("")
+        finally:
+            self._updating_stats = False
 
     async def update_from_logs(self) -> None:
         """Reads logs and updates the UI."""
