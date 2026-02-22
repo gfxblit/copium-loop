@@ -36,8 +36,8 @@ class SessionColumn:
 
     @property
     def display_name(self) -> str:
-        """Returns the display name of the session, truncated if necessary."""
-        return self.session_id.split("/", 1)[-1]
+        """Returns the display name for the session, extracting the branch name from the full session ID."""
+        return self.session_id.split("/")[-1]
 
     @property
     def last_updated(self) -> float:
