@@ -35,6 +35,11 @@ class SessionColumn:
         self._workflow_status = value
 
     @property
+    def display_name(self) -> str:
+        """Returns the display name of the session, truncated if necessary."""
+        return self.session_id.split("/", 1)[-1]
+
+    @property
     def last_updated(self) -> float:
         """Returns the maximum last_update timestamp across all pillars."""
         return max(pillar.last_update for pillar in self.pillars.values())
@@ -73,7 +78,7 @@ class SessionColumn:
         col_layout.split_column(*layout_elements)
 
         # Dynamically truncate session_id based on available column width
-        display_name = self.session_id.split("/", 1)[-1]
+        display_name = self.display_name
 
         if column_width:
             # Account for: panel borders (2), padding (2)

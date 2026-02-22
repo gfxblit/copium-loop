@@ -94,7 +94,7 @@ class SessionWidget(Vertical):
                 header.styles.border = ("round", "yellow")
                 header.styles.color = "yellow"
 
-            display_name = self.session_id.split("/", 1)[-1]
+            display_name = self.session_column.display_name
             header.update(f"{display_name}{status_suffix}")
             header.border_subtitle = ""
 
