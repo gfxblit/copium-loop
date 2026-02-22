@@ -36,9 +36,9 @@ class SessionManager:
                     for entry in it:
                         if entry.is_dir(follow_symlinks=False):
                             yield from scan(Path(entry.path))
-                        elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
-                            ".jsonl"
-                        ):
+                        elif entry.is_file(
+                            follow_symlinks=False
+                        ) and entry.name.endswith(".jsonl"):
                             yield entry
             except OSError:
                 pass
