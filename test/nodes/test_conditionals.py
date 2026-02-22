@@ -263,3 +263,73 @@ class TestConditionalLogic:
 
         # We want it to return END to align with MAX_RETRIES total failures/attempts.
         assert result == END
+
+    def test_should_continue_infrastructure_error(self):
+        """Test END transition on infrastructure errors across all nodes."""
+        from langgraph.graph import END
+
+        infra_error = "fatal: unable to access 'https://github.com/...'"
+
+        # coder
+        assert (
+            should_continue_from_coder(
+                {"code_status": "failed", "last_error": infra_error, "retry_count": 0}
+            )
+            == END
+        )
+
+        # test
+        assert (
+            should_continue_from_test(
+                {"test_output": "FAIL", "last_error": infra_error, "retry_count": 0}
+            )
+            == END
+        )
+
+        # architect
+        assert (
+            should_continue_from_architect(
+                {
+                    "architect_status": "refactor",
+                    "last_error": infra_error,
+                    "retry_count": 0,
+                }
+            )
+            == END
+        )
+
+        # reviewer
+        assert (
+            should_continue_from_review(
+                {
+                    "review_status": "rejected",
+                    "last_error": infra_error,
+                    "retry_count": 0,
+                }
+            )
+            == END
+        )
+
+        # pr_pre_checker
+        assert (
+            should_continue_from_pr_pre_checker(
+                {
+                    "review_status": "pr_failed",
+                    "last_error": infra_error,
+                    "retry_count": 0,
+                }
+            )
+            == END
+        )
+
+        # pr_creator
+        assert (
+            should_continue_from_pr_creator(
+                {
+                    "review_status": "pr_failed",
+                    "last_error": infra_error,
+                    "retry_count": 0,
+                }
+            )
+            == END
+        )

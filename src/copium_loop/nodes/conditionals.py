@@ -1,13 +1,30 @@
 from langgraph.graph import END
 
 from copium_loop import constants
+from copium_loop.nodes.utils import is_infrastructure_error
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
+def _check_infra_error(state: AgentState, telemetry, node: str) -> str | None:
+    """Centralized check for infrastructure errors."""
+    last_error = state.get("last_error")
+    if last_error and is_infrastructure_error(last_error):
+        print(f"\nInfrastructure failure detected in {node}: {last_error}")
+        print("Terminating workflow to prevent futile retries.")
+        telemetry.log_status(node, "failed")
+        telemetry.log_workflow_status("failed")
+        return END
+    return None
+
+
 def should_continue_from_test(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "tester"):
+        return result
+
     telemetry.log_status("tester", "success")
+
     if state.get("test_output") == "PASS":
         return "architect"
 
@@ -22,7 +39,11 @@ def should_continue_from_test(state: AgentState) -> str:
 
 def should_continue_from_architect(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "architect"):
+        return result
+
     status = state.get("architect_status")
+
     if status == "ok":
         telemetry.log_status("architect", "success")
         return "reviewer"
@@ -42,7 +63,11 @@ def should_continue_from_architect(state: AgentState) -> str:
 
 def should_continue_from_review(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "reviewer"):
+        return result
+
     status = state.get("review_status")
+
     if status == "approved":
         telemetry.log_status("reviewer", "success")
         return "pr_pre_checker"
@@ -65,8 +90,12 @@ def should_continue_from_review(state: AgentState) -> str:
 
 def should_continue_from_pr_creator(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "pr_creator"):
+        return result
+
     telemetry.log_status("pr_creator", "success")
     status = state.get("review_status")
+
     if status == "pr_created":
         return END
 
@@ -87,8 +116,12 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
 
 def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "pr_pre_checker"):
+        return result
+
     telemetry.log_status("pr_pre_checker", "success")
     status = state.get("review_status")
+
     if status == "pre_check_passed":
         return "pr_creator"
 
@@ -109,8 +142,12 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
 
 def should_continue_from_journaler(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "journaler"):
+        return result
+
     telemetry.log_status("journaler", "success")
     status = state.get("review_status")
+
     if status == "pre_check_passed":
         return "pr_creator"
     return END
@@ -118,8 +155,12 @@ def should_continue_from_journaler(state: AgentState) -> str:
 
 def should_continue_from_coder(state: AgentState) -> str:
     telemetry = get_telemetry()
+    if result := _check_infra_error(state, telemetry, "coder"):
+        return result
+
     telemetry.log_status("coder", "success")
     status = state.get("code_status")
+
     if status == "coded":
         return "tester"
 

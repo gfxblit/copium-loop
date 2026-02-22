@@ -198,3 +198,22 @@ class TestCoderNode:
         assert "unexpected failure" in prompt.lower()
         assert "Unexpected connection error" in prompt
         assert "rejected by the reviewer" not in prompt
+
+    @pytest.mark.asyncio
+    async def test_coder_skips_error_block_on_infrastructure_failure(self, agent_state):
+        """Test that coder skips the error block if the failure is an infrastructure error."""
+        agent_state["engine"].invoke.return_value = "Retrying..."
+        agent_state["messages"] = [
+            HumanMessage(content="Original request"),
+            SystemMessage(content="fatal: unable to access 'https://github.com/...'"),
+        ]
+        agent_state["code_status"] = "failed"
+        agent_state["last_error"] = "fatal: unable to access 'https://github.com/...'"
+
+        await coder(agent_state)
+
+        # Check that the prompt DOES NOT contain the <error> block
+        call_args = agent_state["engine"].invoke.call_args[0]
+        prompt = call_args[0]
+        assert "<error>" not in prompt
+        assert "fatal: unable to access" not in prompt

@@ -50,6 +50,26 @@ def node_header(node_name: str):
     return decorator
 
 
+def is_infrastructure_error(error_msg: str) -> bool:
+    """
+    Identifies common infrastructure/network errors that an LLM cannot resolve.
+    """
+    if not error_msg:
+        return False
+
+    infra_patterns = [
+        "Could not resolve host",
+        "fatal: unable to access",
+        "Connection refused",
+        "Operation timed out",
+        "Network is unreachable",
+        "all models exhausted",
+    ]
+
+    error_msg_lower = error_msg.lower()
+    return any(pattern.lower() in error_msg_lower for pattern in infra_patterns)
+
+
 async def get_architect_prompt(engine_type: str, state: dict) -> str:
     """Generates the architect system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
@@ -317,8 +337,8 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     if code_status == "failed":
         last_error = state.get("last_error")
         error_content = last_error if last_error else messages[-1].content
-        # Skip error block if failure was due to model exhaustion (infrastructure issue)
-        if "all models exhausted" not in error_content.lower():
+        # Skip error block if failure was due to infrastructure issues
+        if not is_infrastructure_error(error_content):
             safe_error = engine.sanitize_for_prompt(error_content)
             system_prompt = f"""Coder encountered an unexpected failure, retry on original prompt. (Current HEAD: {head_hash}): {user_request_block}
 
