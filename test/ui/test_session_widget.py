@@ -135,6 +135,7 @@ async def test_lean_nodes_weight_and_content():
         # 50 base + 2 per line * 1 line = 52
         assert tester_widget.styles.height.value == 52
 
+
 @pytest.mark.asyncio
 async def test_session_widget_displays_only_branch_name():
     # Setup with repo/branch format
@@ -152,6 +153,7 @@ async def test_session_widget_displays_only_branch_name():
         # Should fail initially as it will show full ID
         assert "feature-branch" in rendered
         assert "my-repo/" not in rendered
+
 
 @pytest.mark.asyncio
 async def test_session_widget_handles_no_prefix():
