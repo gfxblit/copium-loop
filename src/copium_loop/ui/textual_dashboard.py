@@ -77,8 +77,8 @@ class TextualDashboard(App):
         self.stats_strategies = [
             GeminiStatsStrategy(self.stats_client),
         ]
-        self._updating = False
-        self._updating_stats = False
+        self._logs_lock = asyncio.Lock()
+        self._stats_lock = asyncio.Lock()
 
         self._ui_lock = asyncio.Lock()
         self.enable_polling = enable_polling
@@ -96,65 +96,65 @@ class TextualDashboard(App):
 
     async def update_footer_stats(self) -> None:
         """Updates the stats bar with system/codex stats."""
-        if self._updating_stats:
+        if self._stats_lock.locked():
             return
-        self._updating_stats = True
-        try:
-            stats_parts = []
-            for strategy in self.stats_strategies:
-                try:
-                    if hasattr(strategy, "get_stats_async"):
-                        stats = await strategy.get_stats_async()
-                    else:
-                        stats = strategy.get_stats()
-
-                    if stats:
-                        if isinstance(stats, list):
-                            for s in stats:
-                                if isinstance(s, tuple):
-                                    stats_parts.append(Text(s[0], style=s[1]))
-                                else:
-                                    stats_parts.append(Text(str(s)))
+        async with self._stats_lock:
+            try:
+                stats_parts = []
+                for strategy in self.stats_strategies:
+                    try:
+                        if hasattr(strategy, "get_stats_async"):
+                            stats = await strategy.get_stats_async()
                         else:
-                            stats_parts.append(Text(str(stats)))
-                        stats_parts.append(Text(" | "))
-                except Exception:
-                    pass
+                            stats = strategy.get_stats()
 
-            if stats_parts and stats_parts[-1].plain == " | ":
-                # Remove trailing pipe
-                stats_parts.pop()
+                        if stats:
+                            if isinstance(stats, list):
+                                for s in stats:
+                                    if isinstance(s, tuple):
+                                        stats_parts.append(Text(s[0], style=s[1]))
+                                    else:
+                                        stats_parts.append(Text(str(s)))
+                            else:
+                                stats_parts.append(Text(str(stats)))
+                            stats_parts.append(Text(" | "))
+                    except Exception:
+                        pass
 
-            full_stats = Text()
-            for part in stats_parts:
-                full_stats.append(part)
+                if stats_parts and stats_parts[-1].plain == " | ":
+                    # Remove trailing pipe
+                    stats_parts.pop()
 
-            # Add pagination info
-            _, page, total = self.manager.get_visible_sessions()
-            if total > 1:
-                if stats_parts:
-                    full_stats.append(Text(" | "))
-                full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
+                full_stats = Text()
+                for part in stats_parts:
+                    full_stats.append(part)
 
-            if full_stats:
-                with contextlib.suppress(Exception):
-                    self.query_one("#stats-bar", Static).update(full_stats)
-            else:
-                with contextlib.suppress(Exception):
-                    self.query_one("#stats-bar", Static).update("")
-        finally:
-            self._updating_stats = False
+                # Add pagination info
+                _, page, total = self.manager.get_visible_sessions()
+                if total > 1:
+                    if stats_parts:
+                        full_stats.append(Text(" | "))
+                    full_stats.append(Text(f"Page {page}/{total}", style="bold yellow"))
+
+                if full_stats:
+                    with contextlib.suppress(Exception):
+                        self.query_one("#stats-bar", Static).update(full_stats)
+                else:
+                    with contextlib.suppress(Exception):
+                        self.query_one("#stats-bar", Static).update("")
+            except Exception:
+                pass
 
     async def update_from_logs(self) -> None:
         """Reads logs and updates the UI."""
-        if self._updating:
+        if self._logs_lock.locked():
             return
-        self._updating = True
-        try:
-            await asyncio.to_thread(self.manager.update_from_logs)
-            await self.update_ui()
-        finally:
-            self._updating = False
+        async with self._logs_lock:
+            try:
+                await asyncio.to_thread(self.manager.update_from_logs)
+                await self.update_ui()
+            except Exception:
+                pass
 
     async def update_ui(self) -> None:
         """Syncs the UI with the session manager's state."""

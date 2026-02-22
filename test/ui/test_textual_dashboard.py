@@ -426,7 +426,7 @@ async def test_switch_to_tmux_session_uses_socket(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_textual_dashboard_update_footer_stats_guard(tmp_path):
-    """Verify that update_footer_stats has a concurrency guard."""
+    """Verify that update_footer_stats has a concurrency guard using asyncio.Lock."""
     from unittest.mock import AsyncMock, MagicMock
 
     from copium_loop.ui.textual_dashboard import TextualDashboard
@@ -435,6 +435,8 @@ async def test_textual_dashboard_update_footer_stats_guard(tmp_path):
     log_dir.mkdir()
 
     app = TextualDashboard(log_dir=log_dir, enable_polling=False)
+    assert hasattr(app, "_stats_lock")
+    assert isinstance(app._stats_lock, asyncio.Lock)
 
     call_count = 0
 
