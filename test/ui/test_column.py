@@ -278,3 +278,47 @@ async def test_pillar_min_height_when_idle_empty():
 
         coder_widget = app.query_one("#pillar-test-session-coder", PillarWidget)
         assert coder_widget.styles.min_height.value == 3
+
+
+def test_session_column_render_displays_only_branch_name():
+    # Setup with repo/branch format
+    session = SessionColumn("my-repo/feature-branch")
+
+    layout = session.render(column_width=40)
+
+    console = Console(width=40)
+    with console.capture() as capture:
+        console.print(layout)
+    output = capture.get()
+
+    # Should fail initially
+    assert "feature-branch" in output
+    assert "my-repo/" not in output
+
+
+def test_session_column_render_handles_no_prefix():
+    # Setup with simple branch name
+    session = SessionColumn("simple-branch")
+
+    layout = session.render(column_width=40)
+
+    console = Console(width=40)
+    with console.capture() as capture:
+        console.print(layout)
+    output = capture.get()
+
+    assert "simple-branch" in output
+
+
+def test_session_column_display_name_logic():
+    # Regular case
+    col = SessionColumn("owner/repo/branch")
+    assert col.display_name == "branch"
+
+    # No slash case
+    col = SessionColumn("branch-only")
+    assert col.display_name == "branch-only"
+
+    # One slash case
+    col = SessionColumn("owner/branch")
+    assert col.display_name == "branch"
