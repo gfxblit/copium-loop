@@ -140,15 +140,15 @@ async def test_session_widget_displays_only_branch_name():
     # Setup with repo/branch format
     col = SessionColumn("my-repo/feature-branch")
     app = SessionWidgetMockApp(col)
-    
-    async with app.run_test() as pilot:
+
+    async with app.run_test():
         widget = app.query_one(SessionWidget)
-        
+
         # Initial check
         await widget.refresh_ui()
         header = widget.query_one(f"#header-{widget.safe_id}", Static)
         rendered = str(header.render())
-        
+
         # Should fail initially as it will show full ID
         assert "feature-branch" in rendered
         assert "my-repo/" not in rendered
@@ -158,12 +158,12 @@ async def test_session_widget_handles_no_prefix():
     # Setup with simple branch name
     col = SessionColumn("simple-branch")
     app = SessionWidgetMockApp(col)
-    
-    async with app.run_test() as pilot:
+
+    async with app.run_test():
         widget = app.query_one(SessionWidget)
-        
+
         await widget.refresh_ui()
         header = widget.query_one(f"#header-{widget.safe_id}", Static)
         rendered = str(header.render())
-        
+
         assert "simple-branch" in rendered
