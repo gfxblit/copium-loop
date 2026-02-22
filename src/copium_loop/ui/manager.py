@@ -1,5 +1,6 @@
-import contextlib
+import heapq
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,45 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(self) -> list[Path]:
+        """
+        Recursively finds the most recent .jsonl files using os.scandir and heapq.
+        This avoids creating Path objects for all files and sorting the entire list,
+        which is significantly faster for large directories.
+        """
+
+        def scan(path: Path):
+            try:
+                with os.scandir(path) as it:
+                    for entry in it:
+                        if entry.is_dir(follow_symlinks=False):
+                            yield from scan(Path(entry.path))
+                        elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
+                            ".jsonl"
+                        ):
+                            yield entry
+            except OSError:
+                pass
+
+        def get_mtime(entry):
+            try:
+                return entry.stat().st_mtime
+            except OSError:
+                return 0.0
+
+        entries = scan(self.log_dir)
+
+        # efficiently get the N largest (newest) entries
+        # heapq.nlargest is O(N log K) vs sort's O(N log N)
+        top_entries = heapq.nlargest(self.max_sessions, entries, key=get_mtime)
+
+        # The original code sorted oldest -> newest.
+        # nlargest returns [newest, 2nd newest, ...].
+        # So we reverse it to match the expected order (oldest -> newest).
+        top_entries.reverse()
+
+        return [Path(e.path) for e in top_entries]
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -30,16 +70,7 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
-
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
-
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        log_files = self._scan_log_files()
 
         active_sids = set()
         log_entries_map = {}
