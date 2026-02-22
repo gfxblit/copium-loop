@@ -10,13 +10,14 @@ from copium_loop.ui.widgets.session import SessionWidget
 
 
 class SessionWidgetMockApp(App):
-    def __init__(self, column=None):
+    def __init__(self, column=None, index=0):
         super().__init__()
         self.session_column = column or SessionColumn("test-session")
         self.session_widget = None
+        self.index = index
 
     def compose(self) -> ComposeResult:
-        self.session_widget = SessionWidget(self.session_column)
+        self.session_widget = SessionWidget(self.session_column, index=self.index)
         yield self.session_widget
 
 
@@ -169,3 +170,35 @@ async def test_session_widget_handles_no_prefix():
         rendered = str(header.render())
 
         assert "simple-branch" in rendered
+
+
+@pytest.mark.asyncio
+async def test_session_widget_displays_index():
+    col = SessionColumn("test-session")
+    # Pass index=1
+    app = SessionWidgetMockApp(col, index=1)
+    async with app.run_test():
+        widget = app.session_widget
+
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+
+        # We expect "[1]" to be in the header
+        assert "[1]" in rendered
+
+
+@pytest.mark.asyncio
+async def test_session_widget_no_index_for_zero():
+    col = SessionColumn("test-session")
+    # Pass index=0
+    app = SessionWidgetMockApp(col, index=0)
+    async with app.run_test():
+        widget = app.session_widget
+
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+
+        # We expect no "[0]" in the header
+        assert "[0]" not in rendered
