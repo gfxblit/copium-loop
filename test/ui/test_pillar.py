@@ -100,12 +100,12 @@ def test_matrix_pillar_filtering():
     # LLM output 1, LLM output 2, and the header
     assert any("--- CODER Node ---" in line for line in renderable_header.buffer)
 
-    # Lean node should return TailRenderable instead of Text object
+    # Lean node should return an empty TailRenderable
     pillar_lean = MatrixPillar("tester")
     pillar_lean.add_line("tester log")
     renderable_lean = pillar_lean.get_content_renderable()
     assert isinstance(renderable_lean, TailRenderable)
-    assert "tester log" in renderable_lean.buffer[0]
+    assert len(renderable_lean.buffer) == 0
 
 
 def test_matrix_pillar_time_suffix():

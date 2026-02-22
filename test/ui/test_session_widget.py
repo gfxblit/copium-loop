@@ -131,9 +131,9 @@ async def test_lean_nodes_weight_and_content():
         # 100 base + 2 per line * 1 line = 102
         assert coder_widget.styles.height.value == 102
 
-        # Tester is lean and active, so it should have lower weight than coder
-        # 50 base + 2 per line * 1 line = 52
-        assert tester_widget.styles.height.value == 52
+        # Tester is lean and active, so it should have fixed weight 1 and min_height 3
+        assert tester_widget.styles.height.value == 1
+        assert tester_widget.styles.min_height.value == 3
 
 
 @pytest.mark.asyncio
