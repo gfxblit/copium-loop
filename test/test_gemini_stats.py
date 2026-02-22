@@ -188,6 +188,33 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(client.fetcher, TmuxStatsFetcher)
         self.assertEqual(client.fetcher.gemini_cmd, "/custom/gemini")
 
+    async def test_get_usage_async_concurrency_serialization(self):
+        """Verify that concurrent calls to get_usage_async are serialized."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        active_calls = 0
+        max_active_calls = 0
+
+        async def slow_fetch():
+            nonlocal active_calls, max_active_calls
+            active_calls += 1
+            max_active_calls = max(max_active_calls, active_calls)
+            await asyncio.sleep(0.01)
+            active_calls -= 1
+            return "gemini-3-pro-preview 0 80.0% resets in 1h"
+
+        self.mock_fetcher.fetch_async = AsyncMock(side_effect=slow_fetch)
+        self.client._cache_ttl = 0
+
+        await asyncio.gather(
+            self.client.get_usage_async(),
+            self.client.get_usage_async(),
+            self.client.get_usage_async(),
+        )
+
+        self.assertEqual(max_active_calls, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
