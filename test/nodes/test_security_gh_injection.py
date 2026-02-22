@@ -1,7 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from copium_loop.engine.gemini import GeminiEngine
-from copium_loop.nodes import reviewer, architect, journaler
+from copium_loop.nodes import architect, journaler, reviewer
+
 
 class TestGitInjection:
     """Security tests for git diff injection in reviewer and architect nodes."""
