@@ -398,3 +398,29 @@ async def test_numeric_keys_priority(tmp_path, monkeypatch):
         await pilot.press("1")
         await pilot.pause()
         assert switched_to == ["test-session"]
+
+
+@pytest.mark.asyncio
+async def test_switch_to_tmux_session_uses_socket(monkeypatch):
+    import os
+    from unittest.mock import patch
+    from copium_loop.ui.tmux import switch_to_tmux_session
+
+    monkeypatch.setenv("TMUX", "/tmp/tmux-unit-test,123,0")
+
+    with patch("copium_loop.ui.tmux.subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+
+        switch_to_tmux_session("test-session")
+
+        found = False
+        for call in mock_run.call_args_list:
+            args = call.args[0]
+            if "switch-client" in args and "test-session" in args:
+                found = True
+                assert "-S" in args
+                assert "/tmp/tmux-unit-test" in args
+                break
+        assert found
+
+

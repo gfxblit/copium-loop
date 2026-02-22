@@ -204,9 +204,11 @@ class TextualDashboard(App):
         visible_sessions, _, _ = self.manager.get_visible_sessions()
         if 0 < index <= len(visible_sessions):
             sid = visible_sessions[index - 1].session_id
-            from .tmux import switch_to_tmux_session
+            from .tmux import extract_tmux_session, switch_to_tmux_session
 
-            switch_to_tmux_session(sid)
+            target = extract_tmux_session(sid)
+            if target:
+                switch_to_tmux_session(target)
 
     async def action_refresh(self) -> None:
         await self.update_from_logs()
