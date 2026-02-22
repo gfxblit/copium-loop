@@ -308,3 +308,17 @@ def test_session_column_render_handles_no_prefix():
     output = capture.get()
 
     assert "simple-branch" in output
+
+
+def test_session_column_display_name_logic():
+    # Regular case
+    col = SessionColumn("owner/repo/branch")
+    assert col.display_name == "repo/branch"
+
+    # No slash case
+    col = SessionColumn("branch-only")
+    assert col.display_name == "branch-only"
+
+    # One slash case
+    col = SessionColumn("owner/branch")
+    assert col.display_name == "branch"
