@@ -16,10 +16,10 @@ async def journaler_node(state: AgentState) -> dict:
         existing_memories = memory_manager.get_project_memories()
         existing_memories_str = "\n    ".join(f"- {m}" for m in existing_memories)
 
-        test_output = state.get("test_output", "")
-        review_status = state.get("review_status", "")
-        git_diff = state.get("git_diff", "")
-        telemetry_log = telemetry.get_formatted_log()
+        test_output = engine.sanitize_for_prompt(state.get("test_output", ""))
+        review_status = engine.sanitize_for_prompt(state.get("review_status", ""))
+        git_diff = engine.sanitize_for_prompt(state.get("git_diff", ""))
+        telemetry_log = engine.sanitize_for_prompt(telemetry.get_formatted_log())
 
         # Get current git HEAD hash to force cache-miss in Jules
         head_hash = state.get("head_hash")
