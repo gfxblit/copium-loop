@@ -24,7 +24,7 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
-    def _scan_log_files(self, log_dir: Path):
+    def _scan_log_files(self, log_dir: Path | str):
         """Recursively yields DirEntry objects for .jsonl files."""
         try:
             with os.scandir(log_dir) as it:

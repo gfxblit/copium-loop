@@ -192,8 +192,8 @@ def test_session_manager_toggle_system_logs(tmp_path):
 
 def test_manager_update_from_logs_nested(tmp_path):
     """Verify update_from_logs handles nested directories and correct sorting."""
-    import time
     import os
+    import time
 
     mgr = SessionManager(tmp_path, max_sessions=5)
 
