@@ -22,7 +22,7 @@ async def test_implicit_resumption():
         mock_args = MagicMock()
         mock_args.continue_session = False
         mock_args.prompt = []
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None
@@ -83,7 +83,7 @@ async def test_branch_mismatch_error():
         mock_args = MagicMock()
         mock_args.continue_session = True
         mock_args.prompt = []
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None
@@ -121,7 +121,7 @@ async def test_repo_root_mismatch_error():
         mock_args = MagicMock()
         mock_args.continue_session = True
         mock_args.prompt = []
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None
@@ -166,7 +166,7 @@ async def test_explicit_continue_override():
         mock_args = MagicMock()
         mock_args.continue_session = True
         mock_args.prompt = ["new", "prompt"]
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None

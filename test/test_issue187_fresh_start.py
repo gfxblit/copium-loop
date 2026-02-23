@@ -22,7 +22,7 @@ async def test_fresh_start_with_prompt():
         mock_args = MagicMock()
         mock_args.continue_session = False
         mock_args.prompt = ["new", "prompt"]
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None
@@ -82,7 +82,7 @@ async def test_continue_with_prompt_override():
         mock_args = MagicMock()
         mock_args.continue_session = True
         mock_args.prompt = ["overridden", "prompt"]
-        mock_args.node = "coder"
+        mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
         mock_args.engine = None

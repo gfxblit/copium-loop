@@ -14,7 +14,7 @@ async def async_main():
         "-n",
         "--node",
         help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
-        default="coder",
+        default=None,
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"
@@ -129,10 +129,16 @@ async def async_main():
         if resume_node is None:
             reason = metadata.get("reason")
             if reason == "workflow_completed":
-                status = metadata.get("status")
-                print(f"Workflow already completed with status: {status}")
-                print("Nothing to continue.")
-                sys.exit(0)
+                if args.node:
+                    print(
+                        f"Workflow already completed, but explicit node '{args.node}' provided. Continuing..."
+                    )
+                    resume_node = args.node
+                else:
+                    status = metadata.get("status")
+                    print(f"Workflow already completed with status: {status}")
+                    print("Nothing to continue.")
+                    sys.exit(0)
             elif reason == "no_log_found":
                 print(f"Error: No log file found for session {session_id}")
                 sys.exit(1)
@@ -140,8 +146,12 @@ async def async_main():
                 print(f"Cannot determine resume point: {reason}")
                 sys.exit(1)
 
-        print(f"Resuming from node: {resume_node}")
-        start_node = resume_node
+        if args.node:
+            print(f"Using explicitly provided node: {args.node}")
+            start_node = args.node
+        else:
+            print(f"Resuming from node: {resume_node}")
+            start_node = resume_node
 
         # If prompt is provided via CLI, override the stored prompt
         if args.prompt:
@@ -173,6 +183,9 @@ async def async_main():
         if reconstructed_state is None:
             reconstructed_state = {}
         reconstructed_state["prompt"] = prompt
+
+    if start_node is None:
+        start_node = "coder"
 
     workflow = WorkflowManager(
         start_node=start_node,
