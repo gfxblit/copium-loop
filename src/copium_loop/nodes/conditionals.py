@@ -23,9 +23,8 @@ def should_continue_from_test(state: AgentState) -> str:
     if result := _check_infra_error(state, telemetry, "tester"):
         return result
 
-    telemetry.log_status("tester", "success")
-
     if state.get("test_output") == "PASS":
+        telemetry.log_status("tester", "success")
         return "architect"
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -34,6 +33,7 @@ def should_continue_from_test(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
+    telemetry.log_status("tester", "failed")
     return "coder"
 
 
@@ -54,7 +54,7 @@ def should_continue_from_architect(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
-    telemetry.log_status("architect", "success")
+    telemetry.log_status("architect", status if status else "error")
     if status == "error":
         return "architect"
 
@@ -78,7 +78,7 @@ def should_continue_from_review(state: AgentState) -> str:
         telemetry.log_workflow_status("failed")
         return END
 
-    telemetry.log_status("reviewer", "success")
+    telemetry.log_status("reviewer", status if status else "error")
     if status == "error":
         return "reviewer"
 
@@ -93,13 +93,14 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
     if result := _check_infra_error(state, telemetry, "pr_creator"):
         return result
 
-    telemetry.log_status("pr_creator", "success")
     status = state.get("review_status")
 
     if status == "pr_created":
+        telemetry.log_status("pr_creator", "success")
         return END
 
     if status == "pr_skipped":
+        telemetry.log_status("pr_creator", "success")
         return END
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -111,6 +112,7 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
     print(
         f"PR Creator failed or needs commit (status: {repr(status)}). Returning to coder."
     )
+    telemetry.log_status("pr_creator", "failed")
     return "coder"
 
 
@@ -119,13 +121,14 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     if result := _check_infra_error(state, telemetry, "pr_pre_checker"):
         return result
 
-    telemetry.log_status("pr_pre_checker", "success")
     status = state.get("review_status")
 
     if status == "pre_check_passed":
+        telemetry.log_status("pr_pre_checker", "success")
         return "pr_creator"
 
     if status == "pr_skipped":
+        telemetry.log_status("pr_pre_checker", "success")
         return END
 
     if state.get("retry_count", 0) >= constants.MAX_RETRIES:
@@ -137,6 +140,7 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     print(
         f"PR Pre-Checker failed or needs commit (status: {repr(status)}). Returning to coder."
     )
+    telemetry.log_status("pr_pre_checker", "failed")
     return "coder"
 
 

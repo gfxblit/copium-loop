@@ -27,12 +27,23 @@ class MatrixPillar:
             "no_lesson",
             "ok",
             "refactor",
+            "pr_skipped",
+            "pre_check_passed",
         }
     )
 
     # Statuses that indicate a successful completion for visual styling
     SUCCESS_STATUSES = frozenset(
-        {"success", "approved", "coded", "journaled", "no_lesson", "ok"}
+        {
+            "success",
+            "approved",
+            "coded",
+            "journaled",
+            "no_lesson",
+            "ok",
+            "pr_skipped",
+            "pre_check_passed",
+        }
     )
 
     # Statuses that indicate a failure for visual styling
@@ -145,7 +156,10 @@ class MatrixPillar:
         elif self.status in self.SUCCESS_STATUSES:
             status_desc = "SUCCESS"
         elif self.status in self.FAILURE_STATUSES:
-            status_desc = "FAILED"
+            if self.status in ["refactor", "rejected", "error", "pr_failed"]:
+                status_desc = self.status.upper()
+            else:
+                status_desc = "FAILED"
 
         res = Text(justify="center")
         if status_desc:
