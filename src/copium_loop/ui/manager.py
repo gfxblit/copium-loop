@@ -1,4 +1,4 @@
-import contextlib
+import heapq
 import json
 from datetime import datetime
 from pathlib import Path
@@ -31,15 +31,20 @@ class SessionManager:
             return []
 
         # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
+        # Optimization: Use heapq.nlargest to get the most recent sessions without sorting everything.
+        # This reduces complexity from O(N log N) to O(N log K).
+        def get_mtime(f):
+            try:
+                return f.stat().st_mtime
+            except OSError:
+                return 0.0
 
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
+        log_files = heapq.nlargest(
+            self.max_sessions, self.log_dir.rglob("*.jsonl"), key=get_mtime
+        )
 
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        # Restore ascending order (oldest first) to match previous behavior
+        log_files.sort(key=get_mtime)
 
         active_sids = set()
         log_entries_map = {}
