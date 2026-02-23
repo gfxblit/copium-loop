@@ -44,6 +44,7 @@ async def test_session_widget_displays_index():
         assert "[1]" in header_text
         assert "test-session" in header_text
 
+
 @pytest.mark.asyncio
 async def test_session_widget_no_index():
     col = SessionColumn("test-session")
