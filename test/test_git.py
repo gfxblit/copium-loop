@@ -195,6 +195,26 @@ async def test_get_repo_name_parsing():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://github.com/../evil",
+        "https://github.com/owner/../evil",
+    ],
+)
+async def test_get_repo_name_security(url):
+    """Test that get_repo_name rejects potentially malicious repo names."""
+    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        output = f"origin\t{url} (fetch)\n"
+        mock_run.return_value = {"exit_code": 0, "output": output}
+
+        with pytest.raises(
+            ValueError, match="Potentially malicious repo name detected"
+        ):
+            await get_repo_name()
+
+
+@pytest.mark.asyncio
 async def test_get_repo_name_no_remote():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = {"exit_code": 0, "output": ""}

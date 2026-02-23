@@ -158,6 +158,14 @@ async def get_repo_name(node: str | None = None) -> str:
     # The negative lookbehind (?<!/) ensures we don't match the protocol separator //
     match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
     if match:
-        return match.group(1)
+        repo_name = match.group(1)
+
+        # Security check: Prevent path traversal in repo names
+        if ".." in repo_name or repo_name.startswith("/"):
+            raise ValueError(
+                f"Potentially malicious repo name detected (path traversal risk): {repo_name}"
+            )
+
+        return repo_name
 
     raise ValueError(f"Could not parse repo name from remote URL: {url}")

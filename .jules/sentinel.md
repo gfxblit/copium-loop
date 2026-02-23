@@ -1,0 +1,4 @@
+## 2026-03-03 - Path Traversal in Git Remote Parsing
+**Vulnerability:** The `get_repo_name` function extracted repository names from git remote URLs using a regex that allowed `..` sequences. This could allow a malicious remote URL to trick the application into using a path traversal string (e.g., `../evil`) as a repository identifier, potentially leading to unauthorized file access or manipulation if used in file paths.
+**Learning:** Regex-based parsing of untrusted input (like remote URLs) is often insufficient for security validation. Relying on character classes like `[\w\-\.]+` without explicitly forbidding dangerous sequences like `..` can leave gaps.
+**Prevention:** Always validate extracted identifiers against a strict allowlist (e.g., only alphanumeric and specific safe characters) or explicitly deny known dangerous patterns (blocklist) like `..` and leading slashes before using them in file system operations.
