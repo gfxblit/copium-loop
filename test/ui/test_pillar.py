@@ -497,3 +497,32 @@ async def test_pillar_weighting_active_node(tmp_path):
 
         assert architect_pillar.styles.height.value == 100.0
         assert coder_pillar.styles.height.value == 1.0
+
+
+class TestPillarStatusNames:
+    def test_pillar_shows_specific_failure_status_names(self):
+        # Architect REFACTOR
+        pillar = MatrixPillar("Architect")
+        pillar.status = "refactor"
+        subtitle = pillar.get_subtitle_text()
+        assert "REFACTOR" in subtitle.plain
+        assert "FAILED" not in subtitle.plain
+
+        # Reviewer REJECTED
+        pillar = MatrixPillar("Reviewer")
+        pillar.status = "rejected"
+        subtitle = pillar.get_subtitle_text()
+        assert "REJECTED" in subtitle.plain
+        assert "FAILED" not in subtitle.plain
+
+        # Tester FAILED
+        pillar = MatrixPillar("Tester")
+        pillar.status = "failed"
+        subtitle = pillar.get_subtitle_text()
+        assert "FAILED" in subtitle.plain
+
+        # Error
+        pillar = MatrixPillar("Coder")
+        pillar.status = "error"
+        subtitle = pillar.get_subtitle_text()
+        assert "ERROR" in subtitle.plain

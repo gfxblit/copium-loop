@@ -205,6 +205,7 @@ async def async_main():
         elif status == "pr_failed":
             msg = "Workflow completed code/tests but failed to create PR."
             print(msg, file=sys.stderr)
+            get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: PR Failed", msg, 5)
             sys.exit(1)
         elif status == "approved" and ("PASS" in test_out or not test_out):
@@ -217,6 +218,7 @@ async def async_main():
             if "FAIL" in test_out:
                 msg = "Workflow finished with test failures."
                 print(msg, file=sys.stderr)
+                get_telemetry().log_workflow_status("failed")
                 await workflow.notify("Workflow: Failed", msg, 5)
                 sys.exit(1)
             msg = "Workflow completed successfully."
@@ -227,15 +229,18 @@ async def async_main():
         else:
             msg = "Workflow failed to converge."
             print(msg, file=sys.stderr)
+            get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: Failed", msg, 5)
             sys.exit(1)
 
     except ValueError as err:
         print(f"Error: {err}", file=sys.stderr)
+        get_telemetry().log_workflow_status("failed")
         sys.exit(1)
 
     except Exception as err:
         print(f"Workflow failed: {err}", file=sys.stderr)
+        get_telemetry().log_workflow_status("failed")
         await workflow.notify(
             "Workflow: Error", f"Workflow failed with error: {str(err)}", 5
         )

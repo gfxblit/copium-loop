@@ -1,5 +1,5 @@
 import io
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from langgraph.graph import END
 
@@ -333,3 +333,100 @@ class TestConditionalLogic:
             )
             == END
         )
+
+
+class TestConditionalTelemetry:
+    """Tests for telemetry logging in conditional state transitions."""
+
+    @patch("copium_loop.nodes.conditionals.get_telemetry")
+    def test_should_continue_from_test_telemetry(self, mock_get_telemetry):
+        mock_telemetry = MagicMock()
+        mock_get_telemetry.return_value = mock_telemetry
+
+        # PASS -> success
+        should_continue_from_test({"test_output": "PASS"})
+        mock_telemetry.log_status.assert_called_with("tester", "success")
+
+        # FAIL -> failed
+        mock_telemetry.reset_mock()
+        should_continue_from_test({"test_output": "FAIL", "retry_count": 0})
+        mock_telemetry.log_status.assert_called_with("tester", "failed")
+
+        # Max retries -> error
+        mock_telemetry.reset_mock()
+        should_continue_from_test(
+            {"test_output": "FAIL", "retry_count": constants.MAX_RETRIES}
+        )
+        mock_telemetry.log_status.assert_called_with("tester", "error")
+
+    @patch("copium_loop.nodes.conditionals.get_telemetry")
+    def test_should_continue_from_architect_telemetry(self, mock_get_telemetry):
+        mock_telemetry = MagicMock()
+        mock_get_telemetry.return_value = mock_telemetry
+
+        # ok -> success
+        should_continue_from_architect({"architect_status": "ok"})
+        mock_telemetry.log_status.assert_called_with("architect", "success")
+
+        # refactor -> refactor
+        mock_telemetry.reset_mock()
+        should_continue_from_architect(
+            {"architect_status": "refactor", "retry_count": 0}
+        )
+        mock_telemetry.log_status.assert_called_with("architect", "refactor")
+
+        # error -> error
+        mock_telemetry.reset_mock()
+        should_continue_from_architect({"architect_status": "error", "retry_count": 0})
+        mock_telemetry.log_status.assert_called_with("architect", "error")
+
+    @patch("copium_loop.nodes.conditionals.get_telemetry")
+    def test_should_continue_from_review_telemetry(self, mock_get_telemetry):
+        mock_telemetry = MagicMock()
+        mock_get_telemetry.return_value = mock_telemetry
+
+        # approved -> success
+        should_continue_from_review({"review_status": "approved"})
+        mock_telemetry.log_status.assert_called_with("reviewer", "success")
+
+        # rejected -> rejected
+        mock_telemetry.reset_mock()
+        should_continue_from_review({"review_status": "rejected", "retry_count": 0})
+        mock_telemetry.log_status.assert_called_with("reviewer", "rejected")
+
+        # error -> error
+        mock_telemetry.reset_mock()
+        should_continue_from_review({"review_status": "error", "retry_count": 0})
+        mock_telemetry.log_status.assert_called_with("reviewer", "error")
+
+    @patch("copium_loop.nodes.conditionals.get_telemetry")
+    def test_should_continue_from_pr_pre_checker_telemetry(self, mock_get_telemetry):
+        mock_telemetry = MagicMock()
+        mock_get_telemetry.return_value = mock_telemetry
+
+        # pre_check_passed -> success
+        should_continue_from_pr_pre_checker({"review_status": "pre_check_passed"})
+        mock_telemetry.log_status.assert_called_with("pr_pre_checker", "success")
+
+        # pr_failed -> failed
+        mock_telemetry.reset_mock()
+        should_continue_from_pr_pre_checker(
+            {"review_status": "pr_failed", "retry_count": 0}
+        )
+        mock_telemetry.log_status.assert_called_with("pr_pre_checker", "failed")
+
+    @patch("copium_loop.nodes.conditionals.get_telemetry")
+    def test_should_continue_from_pr_creator_telemetry(self, mock_get_telemetry):
+        mock_telemetry = MagicMock()
+        mock_get_telemetry.return_value = mock_telemetry
+
+        # pr_created -> success
+        should_continue_from_pr_creator({"review_status": "pr_created"})
+        mock_telemetry.log_status.assert_called_with("pr_creator", "success")
+
+        # pr_failed -> failed
+        mock_telemetry.reset_mock()
+        should_continue_from_pr_creator(
+            {"review_status": "pr_failed", "retry_count": 0}
+        )
+        mock_telemetry.log_status.assert_called_with("pr_creator", "failed")
