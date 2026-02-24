@@ -339,7 +339,13 @@ class TestNodeTimeouts:
     @pytest.mark.parametrize(
         "node_name, expected_output_key, expected_output_value_part, expected_status_key, expected_status_value",
         [
-            ("tester", "test_output", "FAIL: Node 'tester' timed out", None, None),
+            (
+                "tester",
+                "test_output",
+                "FAIL (Infra):\nNode 'tester' timed out",
+                None,
+                None,
+            ),
             ("coder", "last_error", "Node 'coder' timed out", "code_status", "failed"),
             (
                 "architect",

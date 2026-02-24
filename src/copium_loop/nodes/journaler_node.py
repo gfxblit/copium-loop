@@ -1,12 +1,11 @@
 from copium_loop.constants import MODELS
-from copium_loop.errors import is_infrastructure_error
 from copium_loop.memory import MemoryManager
 from copium_loop.nodes.utils import node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-@node_header("journaler")
+@node_header("journaler", status_key="journal_status", error_value="failed")
 async def journaler_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("journaler", "active") - decorator
@@ -110,6 +109,8 @@ async def journaler_node(state: AgentState) -> dict:
         }
 
     except Exception as e:
+        # We catch internal exceptions to fail gracefully and allow the loop to continue.
+        # But if a node-level exception bubbles up (e.g. timeout), the decorator handles it.
         error_msg = f"Journaling failed gracefully: {e}"
         telemetry.log_info("journaler", f"\n{error_msg}\n")
         print(f"\n{error_msg}")
@@ -120,9 +121,6 @@ async def journaler_node(state: AgentState) -> dict:
         fallback_status = "journaled" if current_status == "pending" else current_status
         return {
             "journal_status": "failed",
-            "node_status": "infra_error"
-            if is_infrastructure_error(error_msg)
-            else "error",
             "review_status": fallback_status,
             "last_error": error_msg,
         }

@@ -3,7 +3,6 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
-from copium_loop.errors import is_infrastructure_error
 from copium_loop.nodes.utils import get_reviewer_prompt, node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -28,7 +27,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-@node_header("reviewer")
+@node_header("reviewer", status_key="review_status", error_value="error")
 async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("reviewer", "active") - handled by decorator
@@ -47,23 +46,7 @@ async def reviewer_node(state: AgentState) -> dict:
             "last_error": error_msg,
         }
 
-    try:
-        system_prompt = await get_reviewer_prompt(engine.engine_type, state)
-    except Exception as e:
-        msg = f"Error generating reviewer prompt: {e}\n"
-        telemetry.log_info("reviewer", msg)
-        print(msg, end="")
-        telemetry.log_status("reviewer", "error")
-        error_msg = f"Reviewer encountered an error: {e}"
-        return {
-            "review_status": "error",
-            "node_status": "infra_error"
-            if is_infrastructure_error(error_msg)
-            else "error",
-            "messages": [SystemMessage(content=error_msg)],
-            "retry_count": retry_count + 1,
-            "last_error": error_msg,
-        }
+    system_prompt = await get_reviewer_prompt(engine.engine_type, state)
 
     # Check for empty diff
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
@@ -79,30 +62,14 @@ async def reviewer_node(state: AgentState) -> dict:
             "retry_count": retry_count,
         }
 
-    try:
-        review_content = await engine.invoke(
-            system_prompt,
-            ["--yolo"],
-            models=MODELS,
-            verbose=state.get("verbose"),
-            label="Reviewer System",
-            node="reviewer",
-        )
-    except Exception as e:
-        msg = f"Error during review: {e}\n"
-        telemetry.log_info("reviewer", msg)
-        print(msg, end="")
-        telemetry.log_status("reviewer", "error")
-        error_msg = f"Reviewer encountered an error: {e}"
-        return {
-            "review_status": "error",
-            "node_status": "infra_error"
-            if is_infrastructure_error(error_msg)
-            else "error",
-            "messages": [SystemMessage(content=error_msg)],
-            "retry_count": retry_count + 1,
-            "last_error": error_msg,
-        }
+    review_content = await engine.invoke(
+        system_prompt,
+        ["--yolo"],
+        models=MODELS,
+        verbose=state.get("verbose"),
+        label="Reviewer System",
+        node="reviewer",
+    )
 
     verdict = _parse_verdict(review_content)
 

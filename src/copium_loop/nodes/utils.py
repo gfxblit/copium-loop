@@ -1,6 +1,8 @@
 import functools
 from typing import Any
 
+from langchain_core.messages import SystemMessage
+
 from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
@@ -41,9 +43,47 @@ def get_most_relevant_error(state: dict[str, Any]) -> str:
     return last_error
 
 
-def node_header(node_name: str):
+def handle_node_error(
+    state: dict,
+    _node_name: str,
+    msg: str,
+    trace: str | None = None,
+    status_key: str | None = None,
+    error_value: str = "error",
+) -> dict:
+    """
+    Standardized error handler for all nodes.
+    Returns a partial state with error statuses and messages.
+    """
+    is_infra = is_infrastructure_error(msg)
+    retry_count = state.get("retry_count", 0) + 1
+    last_error = msg
+    if trace:
+        last_error += f"\n{trace}"
+
+    response = {
+        "retry_count": retry_count,
+        "messages": [SystemMessage(content=msg)],
+        "last_error": last_error,
+        "node_status": "infra_error" if is_infra else "error",
+    }
+
+    if status_key:
+        if status_key == "test_output":
+            response[status_key] = f"FAIL (Infra):\n{msg}"
+        else:
+            response[status_key] = error_value
+
+    return response
+
+
+def node_header(
+    node_name: str, status_key: str | None = None, error_value: str = "error"
+):
     """
     Decorator to log status, log info, and print node headers consistently.
+    Attaches metadata for WorkflowManager to handle errors generically.
+    Also handles errors internally to return a standard error response.
     """
 
     def decorator(func):
@@ -78,10 +118,28 @@ def node_header(node_name: str):
 
             try:
                 return await func(*args, **kwargs)
-            except Exception:
-                telemetry.log_status(node_name, "failed")
-                raise
+            except Exception as e:
+                import traceback
 
+                telemetry.log_status(node_name, "failed")
+                error_trace = traceback.format_exc()
+                error_msg = str(e)
+
+                # args[0] is assumed to be the AgentState dict
+                state = args[0] if args else {}
+
+                return handle_node_error(
+                    state,
+                    node_name,
+                    error_msg,
+                    error_trace,
+                    status_key,
+                    error_value,
+                )
+
+        wrapper._node_name = node_name
+        wrapper._status_key = status_key
+        wrapper._error_value = error_value
         return wrapper
 
     return decorator

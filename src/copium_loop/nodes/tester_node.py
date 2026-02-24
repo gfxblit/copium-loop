@@ -57,7 +57,7 @@ async def _run_stage(
     return success, output
 
 
-@node_header("tester")
+@node_header("tester", status_key="test_output")
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("tester", "active") - removed as it's handled by decorator

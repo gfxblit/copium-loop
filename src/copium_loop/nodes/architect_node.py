@@ -3,7 +3,6 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
-from copium_loop.errors import is_infrastructure_error
 from copium_loop.nodes.utils import get_architect_prompt, node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -18,7 +17,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-@node_header("architect")
+@node_header("architect", status_key="architect_status", error_value="error")
 async def architect_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("architect", "active") - handled by decorator
@@ -26,23 +25,7 @@ async def architect_node(state: AgentState) -> dict:
     engine = state["engine"]
     retry_count = state.get("retry_count", 0)
 
-    try:
-        system_prompt = await get_architect_prompt(engine.engine_type, state)
-    except Exception as e:
-        msg = f"Error generating architect prompt: {e}\n"
-        telemetry.log_info("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        error_msg = f"Architect encountered an error: {e}"
-        return {
-            "architect_status": "error",
-            "node_status": "infra_error"
-            if is_infrastructure_error(error_msg)
-            else "error",
-            "messages": [SystemMessage(content=error_msg)],
-            "retry_count": retry_count + 1,
-            "last_error": error_msg,
-        }
+    system_prompt = await get_architect_prompt(engine.engine_type, state)
 
     # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
@@ -60,30 +43,14 @@ async def architect_node(state: AgentState) -> dict:
             "retry_count": retry_count,
         }
 
-    try:
-        architect_content = await engine.invoke(
-            system_prompt,
-            ["--yolo"],
-            models=MODELS,
-            verbose=state.get("verbose"),
-            label="Architect System",
-            node="architect",
-        )
-    except Exception as e:
-        msg = f"Error during architectural evaluation: {e}\n"
-        telemetry.log_info("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        error_msg = f"Architect encountered an error: {e}"
-        return {
-            "architect_status": "error",
-            "node_status": "infra_error"
-            if is_infrastructure_error(error_msg)
-            else "error",
-            "messages": [SystemMessage(content=error_msg)],
-            "retry_count": retry_count + 1,
-            "last_error": error_msg,
-        }
+    architect_content = await engine.invoke(
+        system_prompt,
+        ["--yolo"],
+        models=MODELS,
+        verbose=state.get("verbose"),
+        label="Architect System",
+        node="architect",
+    )
 
     verdict = _parse_verdict(architect_content)
     if not verdict:
