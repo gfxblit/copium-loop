@@ -52,7 +52,14 @@ class GeminiEngine(LLMEngine):
             }
         )
 
-        output, exit_code, timed_out, timeout_message = await stream_subprocess(
+        (
+            stdout,
+            stderr,
+            interleaved,
+            exit_code,
+            timed_out,
+            timeout_message,
+        ) = await stream_subprocess(
             "gemini",
             cmd_args,
             env,
@@ -68,10 +75,12 @@ class GeminiEngine(LLMEngine):
 
         if exit_code != 0:
             raise Exception(
-                f"Gemini CLI exited with code {exit_code}\nOutput:\n{output}"
+                f"Gemini CLI exited with code {exit_code}\n"
+                f"STDOUT:\n{stdout}\n"
+                f"STDERR:\n{stderr}"
             )
 
-        return output.strip()
+        return stdout.strip()
 
     async def invoke(
         self,

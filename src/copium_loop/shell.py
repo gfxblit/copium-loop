@@ -28,6 +28,37 @@ ANSI_ESCAPE_RE = re.compile(
 CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
 
+class StreamBuffer:
+    """Handles accumulation and truncation of stream output."""
+
+    def __init__(self, max_size: int, label: str):
+        self.max_size = max_size
+        self.label = label
+        self.chunks = []
+        self.current_size = 0
+        self.truncated = False
+
+    def append(self, chunk: str):
+        """Appends a chunk, truncating if max_size is exceeded."""
+        if self.truncated or not chunk:
+            return
+
+        self.chunks.append(chunk)
+        self.current_size += len(chunk)
+
+        if self.current_size > self.max_size:
+            full_text = "".join(self.chunks)
+            self.chunks = [
+                full_text[: self.max_size],
+                f"\n[... {self.label} Truncated ...]\n",
+            ]
+            self.truncated = True
+
+    def get_content(self) -> str:
+        """Returns the accumulated (and possibly truncated) content."""
+        return "".join(self.chunks)
+
+
 class StreamLogger:
     """Helper to buffer output for line-based logging while streaming to stdout."""
 
@@ -169,10 +200,10 @@ async def stream_subprocess(
     capture_stderr: bool = True,
     on_timeout_callback=None,
     source: str = "system",
-) -> tuple[str, int, bool, str]:
+) -> tuple[str, str, str, int, bool, str]:
     """
     Common helper to execute a subprocess and stream its output.
-    Returns (full_output, exit_code, timed_out, timeout_message).
+    Returns (stdout, stderr, interleaved, exit_code, timed_out, timeout_message).
     """
     stderr_target = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
 
@@ -180,10 +211,10 @@ async def stream_subprocess(
         command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env
     )
 
-    full_output = ""
-    output_chunks = []
-    current_output_size = 0
-    truncated = False
+    stdout_buffer = StreamBuffer(MAX_OUTPUT_SIZE, "Output")
+    stderr_buffer = StreamBuffer(MAX_OUTPUT_SIZE, "Error")
+    interleaved_buffer = StreamBuffer(MAX_OUTPUT_SIZE, "Combined")
+
     logger = StreamLogger(node, source=source)
     start_time = time.monotonic()
 
@@ -198,7 +229,6 @@ async def stream_subprocess(
     )
 
     async def read_stream(stream, is_stderr):
-        nonlocal current_output_size, truncated
         while True:
             try:
                 chunk = await stream.read(1024)
@@ -210,18 +240,12 @@ async def stream_subprocess(
             monitor.update_activity()
             decoded = _clean_chunk(chunk)
             if decoded:
+                interleaved_buffer.append(decoded)
                 if not is_stderr:
                     logger.process_chunk(decoded)
-
-                if not truncated and current_output_size < MAX_OUTPUT_SIZE:
-                    output_chunks.append(decoded)
-                    current_output_size += len(decoded)
-                    if current_output_size >= MAX_OUTPUT_SIZE:
-                        full_output_temp = "".join(output_chunks)
-                        output_chunks.clear()
-                        output_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
-                        output_chunks.append("\n[... Output Truncated ...]")
-                        truncated = True
+                    stdout_buffer.append(decoded)
+                else:
+                    stderr_buffer.append(decoded)
 
     read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
     read_stderr_task = None
@@ -272,14 +296,23 @@ async def stream_subprocess(
 
         logger.flush()
 
-    full_output = "".join(output_chunks)
+    stdout = stdout_buffer.get_content()
+    stderr = stderr_buffer.get_content()
+    interleaved = interleaved_buffer.get_content()
 
     if monitor.timed_out:
         exit_code = -1
     else:
         exit_code = process.returncode if process.returncode is not None else 0
 
-    return full_output, exit_code, monitor.timed_out, monitor.timeout_message
+    return (
+        stdout,
+        stderr,
+        interleaved,
+        exit_code,
+        monitor.timed_out,
+        monitor.timeout_message,
+    )
 
 
 async def run_command(
@@ -321,7 +354,14 @@ async def run_command(
     async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
-    output, exit_code, timed_out, timeout_message = await stream_subprocess(
+    (
+        stdout,
+        stderr,
+        interleaved,
+        exit_code,
+        timed_out,
+        timeout_message,
+    ) = await stream_subprocess(
         command,
         args,
         env,
@@ -333,8 +373,8 @@ async def run_command(
         source=source,
     )
 
-    # Combine streamed output with any timeout message
-    full_output = output
+    # Use interleaved output for backward compatibility
+    full_output = interleaved
     final_exit_code = exit_code
 
     if timed_out:
