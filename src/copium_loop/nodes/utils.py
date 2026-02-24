@@ -9,9 +9,8 @@ from copium_loop.telemetry import get_telemetry
 def get_most_relevant_error(state: dict[str, Any]) -> str:
     """
     Extracts the most relevant error content for prompt generation.
-    Prioritizes the latest message if it's a real failure to avoid stale last_error.
-    If the latest message is an infrastructure error, it tries to find a
-    previous real error in last_error.
+    Prioritizes the latest real failure to avoid reporting transient infra errors
+    when a real bug needs fixing.
     """
     messages = state.get("messages", [])
     last_error = state.get("last_error", "")
@@ -25,19 +24,20 @@ def get_most_relevant_error(state: dict[str, Any]) -> str:
     if latest_msg and not is_infrastructure_error(latest_msg):
         return latest_msg
 
-    # 2. If latest is infra but last_error is real, use last_error.
-    if (
-        is_infrastructure_error(latest_msg)
-        and last_error
-        and not is_infrastructure_error(last_error)
-    ):
+    # 2. If last_error is a real error, use it.
+    if last_error and not is_infrastructure_error(last_error):
         return last_error
 
-    # 3. Fallback to latest message if it exists (even if it's infra).
+    # 3. Search backwards through history for the first real error.
+    # We skip messages[0] as it's the initial human request.
+    for msg in reversed(messages[1:]):
+        content = getattr(msg, "content", str(msg))
+        if content and not is_infrastructure_error(content):
+            return content
+
+    # 4. Fallback: if everything is infra, return the most recent info we have.
     if latest_msg:
         return latest_msg
-
-    # 4. Otherwise, use whatever last_error we have.
     return last_error
 
 
@@ -369,8 +369,15 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     # Priority 2: Real implementation failures (tests, review, architect)
     if test_output and ("FAIL" in test_output or "failed" in test_output):
         # Skip error block if failure was due to infrastructure issues
-        if not is_infrastructure_error(test_output):
-            safe_test_output = engine.sanitize_for_prompt(test_output)
+        # BUT check if we have a real failure in history we should report instead
+        relevant_test_error = test_output
+        if is_infrastructure_error(test_output):
+            history_error = get_most_relevant_error(state)
+            if not is_infrastructure_error(history_error):
+                relevant_test_error = history_error
+
+        if not is_infrastructure_error(relevant_test_error):
+            safe_test_output = engine.sanitize_for_prompt(relevant_test_error)
             system_prompt = f"""Your previous implementation failed tests. (Current HEAD: {head_hash})
 
     <test_output>
