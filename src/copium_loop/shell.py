@@ -169,10 +169,10 @@ async def stream_subprocess(
     capture_stderr: bool = True,
     on_timeout_callback=None,
     source: str = "system",
-) -> tuple[str, int, bool, str]:
+) -> tuple[str, str, int, bool, str]:
     """
     Common helper to execute a subprocess and stream its output.
-    Returns (full_output, exit_code, timed_out, timeout_message).
+    Returns (stdout, stderr, exit_code, timed_out, timeout_message).
     """
     stderr_target = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
 
@@ -180,10 +180,13 @@ async def stream_subprocess(
         command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env
     )
 
-    full_output = ""
-    output_chunks = []
-    current_output_size = 0
-    truncated = False
+    stdout_chunks = []
+    stderr_chunks = []
+    current_stdout_size = 0
+    current_stderr_size = 0
+    stdout_truncated = False
+    stderr_truncated = False
+
     logger = StreamLogger(node, source=source)
     start_time = time.monotonic()
 
@@ -198,7 +201,11 @@ async def stream_subprocess(
     )
 
     async def read_stream(stream, is_stderr):
-        nonlocal current_output_size, truncated
+        nonlocal \
+            current_stdout_size, \
+            current_stderr_size, \
+            stdout_truncated, \
+            stderr_truncated
         while True:
             try:
                 chunk = await stream.read(1024)
@@ -213,15 +220,25 @@ async def stream_subprocess(
                 if not is_stderr:
                     logger.process_chunk(decoded)
 
-                if not truncated and current_output_size < MAX_OUTPUT_SIZE:
-                    output_chunks.append(decoded)
-                    current_output_size += len(decoded)
-                    if current_output_size >= MAX_OUTPUT_SIZE:
-                        full_output_temp = "".join(output_chunks)
-                        output_chunks.clear()
-                        output_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
-                        output_chunks.append("\n[... Output Truncated ...]")
-                        truncated = True
+                    if not stdout_truncated and current_stdout_size < MAX_OUTPUT_SIZE:
+                        stdout_chunks.append(decoded)
+                        current_stdout_size += len(decoded)
+                        if current_stdout_size >= MAX_OUTPUT_SIZE:
+                            full_output_temp = "".join(stdout_chunks)
+                            stdout_chunks.clear()
+                            stdout_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
+                            stdout_chunks.append("\n[... Output Truncated ...]")
+                            stdout_truncated = True
+                else:
+                    if not stderr_truncated and current_stderr_size < MAX_OUTPUT_SIZE:
+                        stderr_chunks.append(decoded)
+                        current_stderr_size += len(decoded)
+                        if current_stderr_size >= MAX_OUTPUT_SIZE:
+                            full_output_temp = "".join(stderr_chunks)
+                            stderr_chunks.clear()
+                            stderr_chunks.append(full_output_temp[:MAX_OUTPUT_SIZE])
+                            stderr_chunks.append("\n[... Output Truncated ...]")
+                            stderr_truncated = True
 
     read_stdout_task = asyncio.create_task(read_stream(process.stdout, False))
     read_stderr_task = None
@@ -272,14 +289,15 @@ async def stream_subprocess(
 
         logger.flush()
 
-    full_output = "".join(output_chunks)
+    stdout = "".join(stdout_chunks)
+    stderr = "".join(stderr_chunks)
 
     if monitor.timed_out:
         exit_code = -1
     else:
         exit_code = process.returncode if process.returncode is not None else 0
 
-    return full_output, exit_code, monitor.timed_out, monitor.timeout_message
+    return stdout, stderr, exit_code, monitor.timed_out, monitor.timeout_message
 
 
 async def run_command(
@@ -321,7 +339,7 @@ async def run_command(
     async def on_timeout(msg):
         timeout_msg_list.append(msg)
 
-    output, exit_code, timed_out, timeout_message = await stream_subprocess(
+    stdout, stderr, exit_code, timed_out, timeout_message = await stream_subprocess(
         command,
         args,
         env,
@@ -333,8 +351,8 @@ async def run_command(
         source=source,
     )
 
-    # Combine streamed output with any timeout message
-    full_output = output
+    # Combine stdout and stderr for backward compatibility
+    full_output = stdout + stderr
     final_exit_code = exit_code
 
     if timed_out:

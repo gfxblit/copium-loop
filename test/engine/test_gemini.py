@@ -11,7 +11,7 @@ async def test_gemini_engine_invoke():
     with patch(
         "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
     ) as mock_stream:
-        mock_stream.return_value = ("mocked response", 0, False, "")
+        mock_stream.return_value = ("mocked response", "", 0, False, "")
         engine = GeminiEngine()
         response = await engine.invoke("hello", verbose=True, node="test_node")
 
