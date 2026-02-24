@@ -51,7 +51,7 @@ def node_header(node_name: str):
     return decorator
 
 
-async def get_architect_prompt(engine_type: str, state: dict) -> str:
+async def get_architect_prompt(state: dict, engine) -> str:
     """Generates the architect system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:
@@ -61,7 +61,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if not head_hash:
         head_hash = await get_head(node="architect")
 
-    if engine_type == "jules":
+    if engine.engine_type == "jules":
         return f"""You are a senior software architect specializing in scalable, maintainable system design. Your task is to evaluate the code changes for architectural integrity. (Current HEAD: {head_hash})
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
@@ -104,7 +104,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="architect"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="architect")
 
-    safe_git_diff = git_diff  # We assume engine handles sanitization if needed, or we can sanitize here
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a software architect. Your task is to evaluate the code changes for architectural integrity.
 
@@ -132,7 +132,7 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
 
-async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
+async def get_reviewer_prompt(state: dict, engine) -> str:
     """Generates the reviewer system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:
@@ -142,7 +142,7 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if not head_hash:
         head_hash = await get_head(node="reviewer")
 
-    if engine_type == "jules":
+    if engine.engine_type == "jules":
         return f"""You are a Principal Software Engineer and a meticulous Code Review Architect. Your task is to review the implementation provided by the current branch. (Current HEAD: {head_hash})
 
     Please calculate the git diff for the current branch starting from commit {initial_commit_hash} to HEAD.
@@ -186,7 +186,7 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     if initial_commit_hash and await is_git_repo(node="reviewer"):
         git_diff = await get_diff(initial_commit_hash, head=None, node="reviewer")
 
-    safe_git_diff = git_diff
+    safe_git_diff = engine.sanitize_for_prompt(git_diff)
 
     return f"""You are a senior reviewer. Your task is to review the implementation provided by the current branch.
 
