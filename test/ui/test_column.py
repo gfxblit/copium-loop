@@ -90,6 +90,10 @@ def test_session_column_status_banners():
     # Success
     s.workflow_status = "success"
     layout = s.render()
+    header_panel = layout["header"].renderable
+    assert "cyan" in str(header_panel.renderable.style)
+    assert "cyan" in str(header_panel.border_style)
+
     console = Console()
     with console.capture() as capture:
         console.print(layout)
@@ -100,6 +104,10 @@ def test_session_column_status_banners():
     s = SessionColumn("test_fail")
     s.workflow_status = "failed"
     layout = s.render()
+    header_panel = layout["header"].renderable
+    assert "red" in str(header_panel.renderable.style)
+    assert "red" in str(header_panel.border_style)
+
     with console.capture() as capture:
         console.print(layout)
     output = capture.get()

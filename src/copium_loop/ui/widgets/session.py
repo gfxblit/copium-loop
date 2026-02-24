@@ -84,8 +84,8 @@ class SessionWidget(Vertical):
             status_suffix = ""
             if self.session_column.workflow_status == "success":
                 status_suffix = " ✓ SUCCESS"
-                header.styles.border = ("round", "green")
-                header.styles.color = "green"
+                header.styles.border = ("round", "cyan")
+                header.styles.color = "cyan"
             elif self.session_column.workflow_status == "failed":
                 status_suffix = " ⚠ FAILED"
                 header.styles.border = ("round", "red")

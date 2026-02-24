@@ -93,6 +93,8 @@ async def test_session_widget_header_status_extended():
         col.workflow_status = "success"
         await widget.refresh_ui()
         assert "✓ SUCCESS" in get_plain_content(header)
+        assert header.styles.border.top[1].rgb == (0, 255, 255)  # cyan
+        assert header.styles.color.rgb == (0, 255, 255)  # cyan
 
         # Test failed state
         col.workflow_status = "failed"

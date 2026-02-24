@@ -91,7 +91,7 @@ class SessionColumn:
         status_suffix = ""
         if self.workflow_status == "success":
             status_suffix = " ✓ SUCCESS"
-            header_style = "green"
+            header_style = "cyan"
         elif self.workflow_status == "failed":
             status_suffix = " ⚠ FAILED"
             header_style = "red"
