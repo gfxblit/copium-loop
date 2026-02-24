@@ -9,7 +9,12 @@ from copium_loop.telemetry import get_telemetry
 def _check_infra_error(state: AgentState, telemetry, node: str) -> str | None:
     """Centralized check for infrastructure errors."""
     last_error = state.get("last_error")
-    if last_error and is_infrastructure_error(last_error):
+    # Only fail if it's an infra error AND it happened in THIS node
+    if (
+        last_error
+        and is_infrastructure_error(last_error)
+        and f"Node '{node}'" in last_error
+    ):
         print(f"\nInfrastructure failure detected in {node}: {last_error}")
         print("Terminating workflow to prevent futile retries.")
         telemetry.log_status(node, "failed")

@@ -198,6 +198,21 @@ class TestWorkflowRun:
         mock_notify.assert_called_with("title", "message", 3)
 
     @pytest.mark.asyncio
+    async def test_wrap_node_clears_last_error_on_success(self, workflow):
+        async def successful_node(_state):
+            return {"status": "ok"}
+
+        # Simulate state with an existing error
+        state = {"last_error": "Some old error"}
+
+        with patch("copium_loop.copium_loop.SessionManager"):
+            wrapped = workflow._wrap_node("tester", successful_node)
+            result = await wrapped(state)
+
+        assert result["status"] == "ok"
+        assert result["last_error"] == ""
+
+    @pytest.mark.asyncio
     async def test_wrap_node_exception_handling(self, workflow):
         async def failing_node(_state, *_args, **_kwargs):
             raise ValueError("node failed")

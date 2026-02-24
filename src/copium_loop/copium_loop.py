@@ -69,6 +69,8 @@ class WorkflowManager:
 
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
+                if isinstance(result, dict):
+                    result["last_error"] = ""
                 self._persist_state(state, result)
                 return result
             except asyncio.TimeoutError:
