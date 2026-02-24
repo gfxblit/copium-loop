@@ -1,4 +1,5 @@
 from copium_loop.constants import MODELS
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.memory import MemoryManager
 from copium_loop.nodes.utils import node_header
 from copium_loop.state import AgentState
@@ -119,5 +120,9 @@ async def journaler_node(state: AgentState) -> dict:
         fallback_status = "journaled" if current_status == "pending" else current_status
         return {
             "journal_status": "failed",
+            "node_status": "infra_error"
+            if is_infrastructure_error(error_msg)
+            else "error",
             "review_status": fallback_status,
+            "last_error": error_msg,
         }

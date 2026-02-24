@@ -69,8 +69,9 @@ async def tester_node(state: AgentState) -> dict:
     success, output = await _run_stage("linting", lint_cmd, lint_args, telemetry)
     if not success:
         telemetry.log_status("tester", "failed")
+        error_msg = "FAIL (Lint):\n" + output
         return {
-            "test_output": "FAIL (Lint):\n" + output,
+            "test_output": error_msg,
             "retry_count": retry_count + 1,
             "messages": [
                 SystemMessage(
@@ -78,6 +79,7 @@ async def tester_node(state: AgentState) -> dict:
                     + output
                 )
             ],
+            "last_error": error_msg,
         }
 
     # 2. Build
@@ -86,8 +88,9 @@ async def tester_node(state: AgentState) -> dict:
         success, output = await _run_stage("build", build_cmd, build_args, telemetry)
         if not success:
             telemetry.log_status("tester", "failed")
+            error_msg = "FAIL (Build):\n" + output
             return {
-                "test_output": "FAIL (Build):\n" + output,
+                "test_output": error_msg,
                 "retry_count": retry_count + 1,
                 "messages": [
                     SystemMessage(
@@ -95,6 +98,7 @@ async def tester_node(state: AgentState) -> dict:
                         + output
                     )
                 ],
+                "last_error": error_msg,
             }
 
     # 3. Test
@@ -129,12 +133,14 @@ async def tester_node(state: AgentState) -> dict:
             )
 
         telemetry.log_info("tester", f"{message}\n")
+        error_msg = f"{fail_prefix}\n" + output
         return {
-            "test_output": f"{fail_prefix}\n" + output,
+            "test_output": error_msg,
             "retry_count": retry_count + 1,
             "messages": [
                 SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)
             ],
+            "last_error": error_msg,
         }
 
     telemetry.log_status("tester", "success")

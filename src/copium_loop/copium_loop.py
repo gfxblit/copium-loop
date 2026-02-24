@@ -73,7 +73,7 @@ class WorkflowManager:
 
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
-                if isinstance(result, dict):
+                if isinstance(result, dict) and "node_status" not in result:
                     result["node_status"] = "success"
                 self._persist_state(state, result)
                 return result

@@ -2,6 +2,7 @@ import re
 
 from langchain_core.messages import SystemMessage
 
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import (
     add,
     commit,
@@ -117,6 +118,9 @@ async def pr_creator_node(state: AgentState) -> dict:
         error_msg = f"Failed to create PR: {error}"
         return {
             "review_status": "pr_failed",
+            "node_status": "infra_error"
+            if is_infrastructure_error(error_msg)
+            else "error",
             "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
             "last_error": error_msg,

@@ -279,8 +279,10 @@ class TestGetCoderPrompt:
         assert "transient infrastructure failure" not in prompt
         assert infra_error not in prompt
 
-    async def test_get_coder_prompt_uses_last_error_if_latest_is_infra(self):
-        """Verify that if the latest message IS an infra error, but last_error is a REAL error, we use last_error."""
+    async def test_get_coder_prompt_prioritizes_real_error_over_infra_error(
+        self,
+    ):
+        """Verify that if a real error exists, it's prioritized over a more recent infra error for the coder prompt."""
         mock_engine = MagicMock()
         mock_engine.engine_type = "gemini"
         mock_engine.sanitize_for_prompt.side_effect = lambda x: x
@@ -306,9 +308,9 @@ class TestGetCoderPrompt:
 
         prompt = await utils.get_coder_prompt("gemini", state, mock_engine)
 
+        # Should NOT say transient infra failure if a real error is available to fix
+        assert "Coder encountered an unexpected failure" in prompt
         assert real_error in prompt
-        assert infra_error not in prompt
-        assert "transient infrastructure failure" not in prompt
 
 
 @pytest.mark.asyncio

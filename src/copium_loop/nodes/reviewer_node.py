@@ -3,6 +3,7 @@ import re
 from langchain_core.messages import SystemMessage
 
 from copium_loop.constants import MODELS
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.nodes.utils import get_reviewer_prompt, node_header
 from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
@@ -56,6 +57,9 @@ async def reviewer_node(state: AgentState) -> dict:
         error_msg = f"Reviewer encountered an error: {e}"
         return {
             "review_status": "error",
+            "node_status": "infra_error"
+            if is_infrastructure_error(error_msg)
+            else "error",
             "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
             "last_error": error_msg,
@@ -92,6 +96,9 @@ async def reviewer_node(state: AgentState) -> dict:
         error_msg = f"Reviewer encountered an error: {e}"
         return {
             "review_status": "error",
+            "node_status": "infra_error"
+            if is_infrastructure_error(error_msg)
+            else "error",
             "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
             "last_error": error_msg,
