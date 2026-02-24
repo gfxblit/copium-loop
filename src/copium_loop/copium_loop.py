@@ -10,11 +10,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from copium_loop.constants import (
     NODE_TIMEOUT,
     VALID_NODES,
-    is_infrastructure_error,
 )
 from copium_loop.discovery import get_test_command
 from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.factory import get_engine
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify

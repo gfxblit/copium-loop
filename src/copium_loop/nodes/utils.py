@@ -1,6 +1,6 @@
 import functools
 
-from copium_loop.constants import is_infrastructure_error
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
 
