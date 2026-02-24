@@ -1,12 +1,24 @@
+import os
+
 from copium_loop.shell import run_command
+
+# Caches - Keyed by (CWD, node) to handle directory changes and node context
+_IS_GIT_REPO_CACHE: dict[tuple[str, str | None], bool] = {}
+_REPO_NAME_CACHE: dict[tuple[str, str | None], str] = {}
 
 
 async def is_git_repo(node: str | None = None) -> bool:
     """Returns True if the current directory is inside a git repository."""
+    key = (os.getcwd(), node)
+    if key in _IS_GIT_REPO_CACHE:
+        return _IS_GIT_REPO_CACHE[key]
+
     res = await run_command(
         "git", ["rev-parse", "--is-inside-work-tree"], node=node, capture_stderr=False
     )
-    return res["exit_code"] == 0
+    result = res["exit_code"] == 0
+    _IS_GIT_REPO_CACHE[key] = result
+    return result
 
 
 async def get_current_branch(node: str | None = None) -> str:
@@ -124,6 +136,10 @@ async def commit(message: str, node: str | None = None) -> dict:
 
 async def get_repo_name(node: str | None = None) -> str:
     """Extracts owner/repo from git remotes."""
+    key = (os.getcwd(), node)
+    if key in _REPO_NAME_CACHE:
+        return _REPO_NAME_CACHE[key]
+
     import re
 
     # Get all remotes and their URLs in one go
@@ -158,6 +174,8 @@ async def get_repo_name(node: str | None = None) -> str:
     # The negative lookbehind (?<!/) ensures we don't match the protocol separator //
     match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
     if match:
-        return match.group(1)
+        result = match.group(1)
+        _REPO_NAME_CACHE[key] = result
+        return result
 
     raise ValueError(f"Could not parse repo name from remote URL: {url}")
