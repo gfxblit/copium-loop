@@ -81,18 +81,14 @@ class SessionWidget(Vertical):
             header.styles.border_subtitle_align = "center"
             header.border_title = ""
 
-            status_suffix = ""
-            if self.session_column.workflow_status == "success":
-                status_suffix = " ✓ SUCCESS"
-                header.styles.border = ("round", "cyan")
-                header.styles.color = "cyan"
-            elif self.session_column.workflow_status == "failed":
-                status_suffix = " ⚠ FAILED"
-                header.styles.border = ("round", "red")
-                header.styles.color = "red"
-            else:
-                header.styles.border = ("round", "yellow")
-                header.styles.color = "yellow"
+            from ..utils import get_workflow_status_style
+
+            style = get_workflow_status_style(self.session_column.workflow_status)
+            status_suffix = style["suffix"]
+            header_color = style["color"]
+
+            header.styles.border = ("round", header_color)
+            header.styles.color = header_color
 
             display_name = self.session_column.display_name
             header.update(f"{display_name}{status_suffix}")

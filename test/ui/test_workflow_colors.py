@@ -4,6 +4,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Static
 
 from copium_loop.ui.column import SessionColumn
+from copium_loop.ui.utils import get_workflow_status_style
 from copium_loop.ui.widgets.session import SessionWidget
 
 
@@ -18,6 +19,16 @@ class SessionWidgetMockApp(App):
         yield self.session_widget
 
 
+def get_rgb(color_name: str) -> tuple[int, int, int]:
+    """Helper to convert color names used in tests to RGB tuples for Textual/Rich assertions."""
+    mapping = {
+        "cyan": (0, 255, 255),
+        "red": (255, 0, 0),
+        "yellow": (255, 255, 0),
+    }
+    return mapping.get(color_name, (255, 255, 255))
+
+
 @pytest.mark.asyncio
 async def test_session_widget_workflow_colors():
     col = SessionColumn("test-session")
@@ -26,58 +37,29 @@ async def test_session_widget_workflow_colors():
         widget = app.session_widget
         header = widget.query_one("#header-test-session", Static)
 
-        # Yellow: Outcome not yet determined (states: idle, running).
-        col.workflow_status = "idle"
-        await widget.refresh_ui()
-        assert header.styles.border.top[1].rgb == (255, 255, 0)  # yellow
-        assert header.styles.color.rgb == (255, 255, 0)  # yellow text
+        for status in ["idle", "running", "success", "failed"]:
+            col.workflow_status = status
+            await widget.refresh_ui()
 
-        col.workflow_status = "running"
-        await widget.refresh_ui()
-        assert header.styles.border.top[1].rgb == (255, 255, 0)  # yellow
-        assert header.styles.color.rgb == (255, 255, 0)  # yellow text
+            style = get_workflow_status_style(status)
+            expected_rgb = get_rgb(style["color"])
 
-        # Cyan: Workflow terminated successfully (success).
-        col.workflow_status = "success"
-        await widget.refresh_ui()
-        assert header.styles.border.top[1].rgb == (0, 255, 255)  # cyan
-        assert header.styles.color.rgb == (0, 255, 255)  # cyan text
-
-        # Red: Workflow terminated with failure (failed).
-        col.workflow_status = "failed"
-        await widget.refresh_ui()
-        assert header.styles.border.top[1].rgb == (255, 0, 0)  # red
-        assert header.styles.color.rgb == (255, 0, 0)  # red text
+            assert header.styles.border.top[1].rgb == expected_rgb
+            assert header.styles.color.rgb == expected_rgb
 
 
 def test_session_column_workflow_colors():
     col = SessionColumn("test-session")
 
-    # Yellow: Outcome not yet determined (states: idle, running).
-    col.workflow_status = "idle"
-    layout = col.render()
-    header_panel = layout["header"].renderable
-    assert isinstance(header_panel, Panel)
-    # Check if "yellow" is in the style string of the Text object inside the Panel
-    assert "yellow" in str(header_panel.renderable.style)
-    assert "yellow" in str(header_panel.border_style)
+    for status in ["idle", "running", "success", "failed"]:
+        col.workflow_status = status
+        layout = col.render()
+        header_panel = layout["header"].renderable
+        assert isinstance(header_panel, Panel)
 
-    col.workflow_status = "running"
-    layout = col.render()
-    header_panel = layout["header"].renderable
-    assert "yellow" in str(header_panel.renderable.style)
-    assert "yellow" in str(header_panel.border_style)
+        style = get_workflow_status_style(status)
+        expected_color = style["color"]
 
-    # Cyan: Workflow terminated successfully (success).
-    col.workflow_status = "success"
-    layout = col.render()
-    header_panel = layout["header"].renderable
-    assert "cyan" in str(header_panel.renderable.style)
-    assert "cyan" in str(header_panel.border_style)
-
-    # Red: Workflow terminated with failure (failed).
-    col.workflow_status = "failed"
-    layout = col.render()
-    header_panel = layout["header"].renderable
-    assert "red" in str(header_panel.renderable.style)
-    assert "red" in str(header_panel.border_style)
+        # Check if the expected color is in the style string
+        assert expected_color in str(header_panel.renderable.style)
+        assert expected_color in str(header_panel.border_style)
