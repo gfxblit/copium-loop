@@ -246,6 +246,70 @@ class TestGetCoderPrompt:
             in prompt
         )
 
+    async def test_get_coder_prompt_prioritizes_latest_message_over_stale_last_error(
+        self,
+    ):
+        """Verify fix for issue #248: latest non-infra error preferred over stale infra last_error."""
+        mock_engine = MagicMock()
+        mock_engine.engine_type = "gemini"
+        mock_engine.sanitize_for_prompt.side_effect = lambda x: x
+
+        infra_error = "Connection refused: model server down"
+        rebase_error = "Automatic rebase on origin/main failed with the following error: ... conflict ..."
+
+        from langchain_core.messages import SystemMessage
+
+        state = {
+            "messages": [
+                HumanMessage(content="Implement feature X"),
+                SystemMessage(content=rebase_error),
+            ],
+            "test_output": "",
+            "review_status": "pr_failed",
+            "architect_status": "pending",
+            "code_status": "coded",
+            "head_hash": "abcdef123456",
+            "last_error": infra_error,  # Stale infra error
+            "engine": mock_engine,
+        }
+
+        prompt = await utils.get_coder_prompt("gemini", state, mock_engine)
+
+        assert rebase_error in prompt
+        assert "transient infrastructure failure" not in prompt
+        assert infra_error not in prompt
+
+    async def test_get_coder_prompt_uses_last_error_if_latest_is_infra(self):
+        """Verify that if the latest message IS an infra error, but last_error is a REAL error, we use last_error."""
+        mock_engine = MagicMock()
+        mock_engine.engine_type = "gemini"
+        mock_engine.sanitize_for_prompt.side_effect = lambda x: x
+
+        real_error = "SyntaxError: invalid syntax"
+        infra_error = "Connection refused"
+
+        from langchain_core.messages import SystemMessage
+
+        state = {
+            "messages": [
+                HumanMessage(content="Implement feature X"),
+                SystemMessage(content=infra_error),
+            ],
+            "test_output": "",
+            "review_status": "pending",
+            "architect_status": "pending",
+            "code_status": "failed",
+            "head_hash": "abcdef123456",
+            "last_error": real_error,  # Real error recorded previously
+            "engine": mock_engine,
+        }
+
+        prompt = await utils.get_coder_prompt("gemini", state, mock_engine)
+
+        assert real_error in prompt
+        assert infra_error not in prompt
+        assert "transient infrastructure failure" not in prompt
+
 
 @pytest.mark.asyncio
 class TestPromptsExtended:

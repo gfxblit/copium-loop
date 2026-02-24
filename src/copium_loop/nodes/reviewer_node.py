@@ -38,10 +38,12 @@ async def reviewer_node(state: AgentState) -> dict:
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
+        error_msg = "Tests failed."
         return {
             "review_status": "rejected",
-            "messages": [SystemMessage(content="Tests failed.")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
     try:
@@ -51,10 +53,12 @@ async def reviewer_node(state: AgentState) -> dict:
         telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "error")
+        error_msg = f"Reviewer encountered an error: {e}"
         return {
             "review_status": "error",
-            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
     # Check for empty diff
@@ -85,10 +89,12 @@ async def reviewer_node(state: AgentState) -> dict:
         telemetry.log_info("reviewer", msg)
         print(msg, end="")
         telemetry.log_status("reviewer", "error")
+        error_msg = f"Reviewer encountered an error: {e}"
         return {
             "review_status": "error",
-            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
     verdict = _parse_verdict(review_content)
@@ -102,6 +108,7 @@ async def reviewer_node(state: AgentState) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=review_content)],
             "retry_count": retry_count + 1,
+            "last_error": review_content,
         }
 
     is_approved = verdict == "APPROVED"
@@ -114,4 +121,5 @@ async def reviewer_node(state: AgentState) -> dict:
         "review_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
+        "last_error": "" if is_approved else review_content,
     }

@@ -29,14 +29,12 @@ async def pr_pre_checker_node(state: AgentState) -> dict:
             telemetry.log_info("pr_pre_checker", msg)
             print(msg, end="")
             telemetry.log_status("pr_pre_checker", "failed")
+            error_msg = "Uncommitted changes found. Please ensure all changes are committed before creating a PR."
             return {
                 "review_status": "needs_commit",
-                "messages": [
-                    SystemMessage(
-                        content="Uncommitted changes found. Please ensure all changes are committed before creating a PR."
-                    )
-                ],
+                "messages": [SystemMessage(content=error_msg)],
                 "retry_count": retry_count + 1,
+                "last_error": error_msg,
             }
 
         # 3. Attempt rebase on origin/main
@@ -57,6 +55,7 @@ async def pr_pre_checker_node(state: AgentState) -> dict:
                 "review_status": "pr_failed",
                 "messages": [SystemMessage(content=error_msg)],
                 "retry_count": retry_count + 1,
+                "last_error": error_msg,
             }
 
         telemetry.log_status("pr_pre_checker", "success")
@@ -67,8 +66,10 @@ async def pr_pre_checker_node(state: AgentState) -> dict:
         telemetry.log_info("pr_pre_checker", msg)
         print(msg, end="")
         telemetry.log_status("pr_pre_checker", "failed")
+        error_msg = f"PR Pre-Check failed: {error}"
         return {
             "review_status": "pr_failed",
-            "messages": [SystemMessage(content=f"PR Pre-Check failed: {error}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }

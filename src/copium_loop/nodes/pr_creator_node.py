@@ -114,8 +114,10 @@ async def pr_creator_node(state: AgentState) -> dict:
         telemetry.log_info("pr_creator", msg)
         print(msg, end="")
         telemetry.log_status("pr_creator", "failed")
+        error_msg = f"Failed to create PR: {error}"
         return {
             "review_status": "pr_failed",
-            "messages": [SystemMessage(content=f"Failed to create PR: {error}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }

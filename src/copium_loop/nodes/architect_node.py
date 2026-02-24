@@ -32,10 +32,12 @@ async def architect_node(state: AgentState) -> dict:
         telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "error")
+        error_msg = f"Architect encountered an error: {e}"
         return {
             "architect_status": "error",
-            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
     # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
@@ -68,10 +70,12 @@ async def architect_node(state: AgentState) -> dict:
         telemetry.log_info("architect", msg)
         print(msg, end="")
         telemetry.log_status("architect", "error")
+        error_msg = f"Architect encountered an error: {e}"
         return {
             "architect_status": "error",
-            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
     verdict = _parse_verdict(architect_content)
@@ -84,6 +88,7 @@ async def architect_node(state: AgentState) -> dict:
             "architect_status": "error",
             "messages": [SystemMessage(content=architect_content)],
             "retry_count": retry_count + 1,
+            "last_error": architect_content,
         }
 
     is_ok = verdict == "OK"
@@ -96,4 +101,5 @@ async def architect_node(state: AgentState) -> dict:
         "architect_status": "ok" if is_ok else "refactor",
         "messages": [SystemMessage(content=architect_content)],
         "retry_count": retry_count if is_ok else retry_count + 1,
+        "last_error": "" if is_ok else architect_content,
     }
