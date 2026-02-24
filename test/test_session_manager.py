@@ -170,3 +170,25 @@ def test_session_manager_engine_state(tmp_path):
     sm2._load()
 
     assert sm2.get_engine_state("jules", "node1") == {"session_id": "sess-123"}
+
+
+@pytest.mark.usefixtures("temp_session_dir")
+def test_session_manager_agent_state():
+    """Test updating and retrieving agent state."""
+    manager = SessionManager("test_session")
+    state = {"prompt": "test prompt", "retry_count": 5}
+    manager.update_agent_state(state)
+
+    assert manager.get_agent_state() == state
+
+
+@pytest.mark.usefixtures("temp_session_dir")
+def test_session_manager_get_resumed_state():
+    """Test that get_resumed_state resets retry_count to 0."""
+    manager = SessionManager("test_session")
+    state = {"prompt": "test prompt", "retry_count": 5}
+    manager.update_agent_state(state)
+
+    resumed_state = manager.get_resumed_state()
+    assert resumed_state["retry_count"] == 0
+    assert manager.get_agent_state()["retry_count"] == 0
