@@ -171,3 +171,45 @@ async def test_session_widget_handles_no_prefix():
         rendered = str(header.render())
 
         assert "simple-branch" in rendered
+
+
+@pytest.mark.asyncio
+async def test_session_widget_index_display():
+    """Test that SessionWidget correctly displays the index shortcut."""
+    col = SessionColumn("test-session")
+
+    # We need to manually initialize since our mock app doesn't support index argument yet
+    # or better, just create the widget and test its refresh logic
+
+    app = SessionWidgetMockApp(col)
+    async with app.run_test():
+        widget = app.query_one(SessionWidget)
+
+        # Test valid index
+        widget.index = 1
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[1]" in rendered
+        assert "test-session" in rendered
+
+        # Test another valid index
+        widget.index = 9
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[9]" in rendered
+
+        # Test invalid index (should not show)
+        widget.index = 10
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[10]" not in rendered
+
+        # Test None index
+        widget.index = None
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[" not in rendered or "[1]" not in rendered
