@@ -17,7 +17,7 @@ class TestExecuteGemini:
         with patch(
             "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream:
-            mock_stream.return_value = ("", "", 0, False, "")
+            mock_stream.return_value = ("", "", "", 0, False, "")
 
             engine = GeminiEngine()
             await engine._execute_gemini("test prompt", "test-model")
@@ -42,7 +42,7 @@ class TestExecuteGemini:
         with patch(
             "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
         ) as mock_stream:
-            mock_stream.return_value = ("", "", 0, False, "")
+            mock_stream.return_value = ("", "", "", 0, False, "")
 
             engine = GeminiEngine()
             await engine._execute_gemini("test prompt", None)

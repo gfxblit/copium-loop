@@ -40,7 +40,14 @@ async def test_issue249_integration_noise_reduction():
         "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
     ) as mock_stream:
         # Architect call
-        mock_stream.return_value = (architect_stdout, architect_stderr, 0, False, "")
+        mock_stream.return_value = (
+            architect_stdout,
+            architect_stderr,
+            f"{architect_stdout}\n{architect_stderr}",
+            0,
+            False,
+            "",
+        )
 
         # 3. Run ArchitectNode
         # We need to mock get_diff because ArchitectNode calls get_architect_prompt which calls get_diff
@@ -67,7 +74,7 @@ async def test_issue249_integration_noise_reduction():
 
         # 5. Mock stream_subprocess for CoderNode call
         coder_stdout = "Implementing feature X with better modularity..."
-        mock_stream.return_value = (coder_stdout, "", 0, False, "")
+        mock_stream.return_value = (coder_stdout, "", coder_stdout, 0, False, "")
 
         # 6. Run CoderNode and capture the prompt passed to engine.invoke
         with patch.object(engine, "invoke", wraps=engine.invoke) as spy_invoke:

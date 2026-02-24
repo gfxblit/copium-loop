@@ -52,7 +52,14 @@ class GeminiEngine(LLMEngine):
             }
         )
 
-        stdout, stderr, exit_code, timed_out, timeout_message = await stream_subprocess(
+        (
+            stdout,
+            stderr,
+            interleaved,
+            exit_code,
+            timed_out,
+            timeout_message,
+        ) = await stream_subprocess(
             "gemini",
             cmd_args,
             env,

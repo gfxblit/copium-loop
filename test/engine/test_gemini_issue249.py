@@ -14,8 +14,15 @@ async def test_gemini_engine_filters_stderr_on_success():
     with patch(
         "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
     ) as mock_stream:
-        # Mock returns (stdout, stderr, exit_code, timed_out, timeout_message)
-        mock_stream.return_value = ("clean response", "noisy warning", 0, False, "")
+        # Mock returns (stdout, stderr, interleaved, exit_code, timed_out, timeout_message)
+        mock_stream.return_value = (
+            "clean response",
+            "noisy warning",
+            "clean responsenoisy warning",
+            0,
+            False,
+            "",
+        )
 
         engine = GeminiEngine()
         response = await engine.invoke("hello", node="test_node")
@@ -33,7 +40,14 @@ async def test_gemini_engine_includes_stderr_on_failure():
     with patch(
         "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
     ) as mock_stream:
-        mock_stream.return_value = ("stdout content", "stderr content", 1, False, "")
+        mock_stream.return_value = (
+            "stdout content",
+            "stderr content",
+            "interleaved content",
+            1,
+            False,
+            "",
+        )
 
         engine = GeminiEngine()
         with pytest.raises(Exception) as excinfo:

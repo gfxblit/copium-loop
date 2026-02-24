@@ -19,20 +19,21 @@ async def test_stream_subprocess_segregation():
     args = ["-c", script]
     env = os.environ.copy()
 
-    # After refactor, this should return a 5-tuple:
-    # (stdout, stderr, exit_code, timed_out, timeout_message)
-    # But currently it returns a 4-tuple:
-    # (full_output, exit_code, timed_out, timeout_message)
+    # After refactor, this returns a 6-tuple:
+    # (stdout, stderr, interleaved, exit_code, timed_out, timeout_message)
 
     result = await stream_subprocess(
         command, args, env, node=None, command_timeout=10, capture_stderr=True
     )
 
-    # This assertion will fail because currently len(result) is 4
-    assert len(result) == 5
-    stdout, stderr, exit_code, timed_out, timeout_message = result
+    assert len(result) == 6
+    stdout, stderr, interleaved, exit_code, timed_out, timeout_message = result
 
     assert stdout.strip() == "out"
     assert stderr.strip() == "err"
+    assert interleaved.strip() in [
+        "out\nerr",
+        "err\nout",
+    ]  # Depends on timing, but both should be there
     assert exit_code == 0
     assert not timed_out

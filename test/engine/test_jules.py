@@ -508,7 +508,7 @@ async def test_jules_api_invoke_success():
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
-        mock_stream.return_value = ("output", 0, False, "")
+        mock_stream.return_value = ("output", "", "output", 0, False, "")
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
 
@@ -569,7 +569,7 @@ async def test_jules_api_invoke_success_200():
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
-        mock_stream.return_value = ("output", 0, False, "")
+        mock_stream.return_value = ("output", "", "output", 0, False, "")
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
 
@@ -686,7 +686,7 @@ async def test_jules_api_polling_retries():
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
-        mock_stream.return_value = ("output", 0, False, "")
+        mock_stream.return_value = ("output", "", "output", 0, False, "")
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
 
@@ -918,7 +918,7 @@ async def test_jules_api_pull_failure():
         ) as mock_stream,
     ):
         mock_push.return_value = {"exit_code": 0, "output": ""}
-        mock_stream.return_value = ("output", 0, False, "")
+        mock_stream.return_value = ("output", "", "output", 0, False, "")
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
 
