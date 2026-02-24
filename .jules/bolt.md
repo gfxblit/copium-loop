@@ -9,3 +9,7 @@
 ## 2025-02-18 - Optimize Git Remote Checks
 **Learning:** Checking for git remotes using sequential subprocess calls (`git remote` list then `git remote get-url` per remote) is inefficient (N+1 problem).
 **Action:** Use `git remote -v` to fetch all remote URLs in a single subprocess call and parse the output. This reduces overhead significantly, especially in environments where process spawning is expensive.
+
+## 2025-02-18 - Caching Git Branch with Directory Context
+**Learning:** Caching `git branch --show-current` reduced overhead by ~17x, but a global cache caused test failures when tests switched branches or directories.
+**Action:** Key git state caches by `(os.getcwd(), node)` and use a short TTL (1.0s) to balance performance with correctness during branch switches. Ensure tests clear this cache to prevent state leakage.
