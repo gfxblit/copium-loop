@@ -21,6 +21,12 @@ async def journaler_node(state: AgentState) -> dict:
         git_diff = state.get("git_diff", "")
         telemetry_log = telemetry.get_formatted_log()
 
+        # Sanitize inputs to prevent prompt injection
+        safe_test_output = engine.sanitize_for_prompt(test_output)
+        safe_review_status = engine.sanitize_for_prompt(review_status)
+        safe_git_diff = engine.sanitize_for_prompt(git_diff)
+        safe_telemetry_log = engine.sanitize_for_prompt(telemetry_log)
+
         # Get current git HEAD hash to force cache-miss in Jules
         head_hash = state.get("head_hash")
 
@@ -60,14 +66,14 @@ async def journaler_node(state: AgentState) -> dict:
     {existing_memories_str if existing_memories_str else "None yet."}
 
     SESSION OUTCOME:
-    Review Status: {review_status}
-    Test Output: {test_output}
+    Review Status: {safe_review_status}
+    Test Output: {safe_test_output}
 
     CHANGES MADE (Diff):
-    {git_diff}
+    {safe_git_diff}
 
     TELEMETRY LOG:
-    {telemetry_log}
+    {safe_telemetry_log}
 
     Output ONLY the project lesson or "NO_LESSON"."""
 

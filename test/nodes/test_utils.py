@@ -67,6 +67,7 @@ class TestGetCoderPrompt:
     async def test_get_coder_prompt_jules_tdd(self):
         # Setup state with jules engine
         engine = MagicMock()
+        engine.engine_type = "jules"
         engine.sanitize_for_prompt.side_effect = lambda x: x
         message = MagicMock()
         message.content = "Implement feature X"
@@ -91,6 +92,7 @@ class TestGetCoderPrompt:
     async def test_get_coder_prompt_gemini_tdd(self):
         # Setup state with gemini engine
         engine = MagicMock()
+        engine.engine_type = "gemini"
         engine.sanitize_for_prompt.side_effect = lambda x: x
         message = MagicMock()
         message.content = "Implement feature X"
@@ -253,7 +255,10 @@ class TestPromptsExtended:
     @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
     async def test_get_architect_prompt_jules(self, _mock_get_diff, _mock_is_git):
         state = {"initial_commit_hash": "abc"}
-        prompt = await utils.get_architect_prompt("jules", state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_architect_prompt(state, engine)
         assert "You are a senior software architect" in prompt
         assert "VERDICT: OK" in prompt
 
@@ -263,20 +268,28 @@ class TestPromptsExtended:
         mock_is_git.return_value = True
         mock_get_diff.return_value = "some diff"
         state = {"initial_commit_hash": "abc"}
-        prompt = await utils.get_architect_prompt("gemini", state)
+        engine = MagicMock()
+        engine.engine_type = "gemini"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_architect_prompt(state, engine)
         assert "You are a software architect" in prompt
         assert "some diff" in prompt
         assert "VERDICT: OK" in prompt
 
     async def test_get_architect_prompt_missing_hash(self):
+        engine = MagicMock()
+        engine.engine_type = "jules"
         with pytest.raises(ValueError, match="Missing initial commit hash"):
-            await utils.get_architect_prompt("jules", {})
+            await utils.get_architect_prompt({}, engine)
 
     @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
     async def test_get_reviewer_prompt_jules(self, _mock_get_diff, _mock_is_git):
         state = {"initial_commit_hash": "abc"}
-        prompt = await utils.get_reviewer_prompt("jules", state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_reviewer_prompt(state, engine)
         assert "You are a Principal Software Engineer" in prompt
         assert "VERDICT: APPROVED" in prompt
 
@@ -286,14 +299,19 @@ class TestPromptsExtended:
         mock_is_git.return_value = True
         mock_get_diff.return_value = "some diff"
         state = {"initial_commit_hash": "abc"}
-        prompt = await utils.get_reviewer_prompt("gemini", state)
+        engine = MagicMock()
+        engine.engine_type = "gemini"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_reviewer_prompt(state, engine)
         assert "You are a senior reviewer" in prompt
         assert "some diff" in prompt
         assert "VERDICT: APPROVED" in prompt
 
     async def test_get_reviewer_prompt_missing_hash(self):
+        engine = MagicMock()
+        engine.engine_type = "jules"
         with pytest.raises(ValueError, match="Missing initial commit hash"):
-            await utils.get_reviewer_prompt("jules", {})
+            await utils.get_reviewer_prompt({}, engine)
 
 
 @pytest.mark.asyncio
@@ -303,7 +321,10 @@ async def test_get_architect_prompt_legacy(agent_state):
 
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        jules_prompt = await utils.get_architect_prompt("jules", agent_state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        jules_prompt = await utils.get_architect_prompt(agent_state, engine)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
@@ -315,7 +336,10 @@ async def test_get_architect_prompt_legacy(agent_state):
             "copium_loop.nodes.utils.get_diff", return_value="some diff"
         ) as mock_get_diff,
     ):
-        gemini_prompt = await utils.get_architect_prompt("gemini", agent_state)
+        engine = MagicMock()
+        engine.engine_type = "gemini"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        gemini_prompt = await utils.get_architect_prompt(agent_state, engine)
         assert "some diff" in gemini_prompt
         mock_get_diff.assert_called_with("sha123", head=None, node="architect")
 
@@ -328,7 +352,10 @@ async def test_get_reviewer_prompt_legacy(agent_state):
 
     # Test Jules prompt
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        jules_prompt = await utils.get_reviewer_prompt("jules", agent_state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        jules_prompt = await utils.get_reviewer_prompt(agent_state, engine)
         assert "sha123" in jules_prompt
         assert "git diff" in jules_prompt.lower()
         assert "JULES_OUTPUT.txt" not in jules_prompt
@@ -340,7 +367,10 @@ async def test_get_reviewer_prompt_legacy(agent_state):
             "copium_loop.nodes.utils.get_diff", return_value="some diff"
         ) as mock_get_diff,
     ):
-        gemini_prompt = await utils.get_reviewer_prompt("gemini", agent_state)
+        engine = MagicMock()
+        engine.engine_type = "gemini"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        gemini_prompt = await utils.get_reviewer_prompt(agent_state, engine)
         assert "some diff" in gemini_prompt
         mock_get_diff.assert_called_with("sha123", head=None, node="reviewer")
 
@@ -397,12 +427,18 @@ async def test_reviewer_node_engine_agnostic(agent_state):
 class TestConvergencePrompts:
     async def test_architect_prompt_contains_head_hash_from_state(self):
         state = {"initial_commit_hash": "abc", "head_hash": "deadbeef"}
-        prompt = await utils.get_architect_prompt("jules", state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_architect_prompt(state, engine)
         assert "(Current HEAD: deadbeef)" in prompt
 
     async def test_reviewer_prompt_contains_head_hash_from_state(self):
         state = {"initial_commit_hash": "abc", "head_hash": "deadbeef"}
-        prompt = await utils.get_reviewer_prompt("jules", state)
+        engine = MagicMock()
+        engine.engine_type = "jules"
+        engine.sanitize_for_prompt.side_effect = lambda x: x
+        prompt = await utils.get_reviewer_prompt(state, engine)
         assert "(Current HEAD: deadbeef)" in prompt
 
     async def test_coder_prompt_contains_head_hash_from_state(self):
