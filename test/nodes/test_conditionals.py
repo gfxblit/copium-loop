@@ -265,20 +265,17 @@ class TestConditionalLogic:
         assert result == END
 
     def test_should_continue_infrastructure_error(self):
-        """Test END transition on infrastructure errors across all nodes."""
-        from langgraph.graph import END
-
+        """Test that infrastructure errors now trigger a retry instead of END."""
         # coder
         assert (
             should_continue_from_coder(
                 {
                     "code_status": "failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "coder",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
         # test
@@ -287,11 +284,10 @@ class TestConditionalLogic:
                 {
                     "test_output": "FAIL",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "tester",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
         # architect
@@ -300,11 +296,10 @@ class TestConditionalLogic:
                 {
                     "architect_status": "refactor",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "architect",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
         # reviewer
@@ -313,11 +308,10 @@ class TestConditionalLogic:
                 {
                     "review_status": "rejected",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "reviewer",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
         # pr_pre_checker
@@ -326,11 +320,10 @@ class TestConditionalLogic:
                 {
                     "review_status": "pr_failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "pr_pre_checker",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
         # pr_creator
@@ -339,11 +332,10 @@ class TestConditionalLogic:
                 {
                     "review_status": "pr_failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
-                    "last_error_node": "pr_creator",
                     "retry_count": 0,
                 }
             )
-            == END
+            == "coder"
         )
 
 

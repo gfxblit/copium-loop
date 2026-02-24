@@ -111,6 +111,13 @@ class WorkflowManager:
         self, state: AgentState, node_name: str, msg: str, trace: str | None = None
     ):
         """Handles node errors by updating state and retry counts."""
+        from copium_loop.nodes.utils import is_infrastructure_error
+
+        if is_infrastructure_error(msg):
+            print(
+                f"\n[INFRA ERROR] Transient failure detected in {node_name}. Retrying..."
+            )
+
         retry_count = state.get("retry_count", 0) + 1
         last_error = msg
         if trace:
@@ -121,14 +128,12 @@ class WorkflowManager:
                 "test_output": f"FAIL: {msg}",
                 "retry_count": retry_count,
                 "last_error": last_error,
-                "last_error_node": node_name,
             }
 
         response = {
             "retry_count": retry_count,
             "messages": [SystemMessage(content=msg)],
             "last_error": last_error,
-            "last_error_node": node_name,
         }
 
         if node_name == "reviewer":
@@ -316,7 +321,6 @@ class WorkflowManager:
             "git_diff": "",
             "verbose": self.verbose,
             "last_error": "",
-            "last_error_node": "",
             "journal_status": "pending",
         }
 

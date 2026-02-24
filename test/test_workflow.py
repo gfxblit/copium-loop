@@ -225,7 +225,6 @@ class TestWorkflowRun:
 
         assert result["code_status"] == "failed"
         assert "ValueError: node failed" in result["last_error"]
-        assert result["last_error_node"] == "coder"
 
     @pytest.mark.asyncio
     async def test_run_baseline_test_failure(
