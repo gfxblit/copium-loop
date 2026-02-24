@@ -154,7 +154,7 @@ class GeminiStatsClient:
         }
 
         # Pro models in priority order
-        for model in ["gemini-3-pro-preview", "gemini-2.5-pro"]:
+        for model in ["gemini-3.1-pro-preview", "gemini-2.5-pro"]:
             pro_match = re.search(
                 rf"{model}\s+(?:-|\d+)\s+([\d\.]+)%\s+resets in\s+([^│\n\r]+)",
                 output,
