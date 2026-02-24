@@ -1,6 +1,6 @@
 import functools
 
-from copium_loop.errors import is_infrastructure_error
+from copium_loop.errors import get_most_relevant_error, is_infrastructure_error
 from copium_loop.git import get_current_branch, get_diff, get_head, is_git_repo
 from copium_loop.telemetry import get_telemetry
 
@@ -253,33 +253,6 @@ async def validate_git_context(node: str) -> str | None:
     return branch_name
 
 
-def _get_error_content(state: dict) -> str:
-    """Helper to extract the most relevant error content, avoiding stale infra errors."""
-    messages = state.get("messages", [])
-    last_error = state.get("last_error", "")
-    # The first message is always the initial human request, ignore it for error context.
-    latest_msg = messages[-1].content if len(messages) > 1 else ""
-
-    # 1. Prefer the latest message if it's a real failure (not infra).
-    if latest_msg and not is_infrastructure_error(latest_msg):
-        return latest_msg
-
-    # 2. Otherwise, if we have a recorded last_error that is a real failure, use that.
-    if last_error and not is_infrastructure_error(last_error):
-        return last_error
-
-    # 3. If we only have infrastructure errors, prefer the latest message's if it is one.
-    if is_infrastructure_error(latest_msg):
-        return latest_msg
-
-    # 4. Fall back to last_error if it's an infra error.
-    if is_infrastructure_error(last_error):
-        return last_error
-
-    # 5. Final fallback to latest message (might be empty).
-    return latest_msg
-
-
 async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     """Generates the coder system prompt based on engine type."""
     messages = state["messages"]
@@ -343,7 +316,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     system_prompt = f"You are a software engineer. (Current HEAD: {head_hash}) Implement the following request: {user_request_block}\n\n{mandatory_instructions}"
 
     if code_status == "failed":
-        error_content = _get_error_content(state)
+        error_content = get_most_relevant_error(state)
         # Skip error block if failure was due to infrastructure issues
         if not is_infrastructure_error(error_content):
             safe_error = engine.sanitize_for_prompt(error_content)
@@ -381,7 +354,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif review_status == "rejected":
-        feedback_content = _get_error_content(state)
+        feedback_content = get_most_relevant_error(state)
         safe_feedback = engine.sanitize_for_prompt(feedback_content)
         system_prompt = f"""Your previous implementation was rejected by the reviewer. (Current HEAD: {head_hash})
 
@@ -394,7 +367,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif architect_status == "refactor":
-        feedback_content = _get_error_content(state)
+        feedback_content = get_most_relevant_error(state)
         safe_feedback = engine.sanitize_for_prompt(feedback_content)
         system_prompt = f"""Your previous implementation was flagged for architectural improvement by the architect. (Current HEAD: {head_hash})
 
@@ -407,7 +380,7 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
 
     {mandatory_instructions}"""
     elif review_status == "pr_failed":
-        error_content = _get_error_content(state)
+        error_content = get_most_relevant_error(state)
         if not is_infrastructure_error(error_content):
             safe_error = engine.sanitize_for_prompt(error_content)
             system_prompt = f"""Your previous attempt to create a PR failed. (Current HEAD: {head_hash})
