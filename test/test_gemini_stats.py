@@ -29,7 +29,7 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
     def test_fetch_success(self):
         # Mock tmux behavior
         self.mock_tmux.has_window.return_value = True
-        stats_output = "gemini-3-pro-preview 0 80.0% resets in 1h"
+        stats_output = "gemini-3.1-pro-preview 0 80.0% resets in 1h"
         self.mock_tmux.capture_pane.return_value = stats_output
 
         with patch("time.sleep", return_value=None):
@@ -65,7 +65,7 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_async(self):
         # Mock tmux behavior
         self.mock_tmux.has_window.return_value = True
-        stats_output = "gemini-3-pro-preview 0 80.0% resets in 1h"
+        stats_output = "gemini-3.1-pro-preview 0 80.0% resets in 1h"
         self.mock_tmux.capture_pane.return_value = stats_output
 
         with patch("time.sleep", return_value=None):
@@ -94,7 +94,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
 
     def test_get_usage_success(self):
         stats_output = """
-│  gemini-3-pro-preview           -      80.0% resets in 12h 25m                                                                            │
+│  gemini-3.1-pro-preview           -      80.0% resets in 12h 25m                                                                            │
 """
         self.mock_fetcher.fetch.return_value = stats_output
 
@@ -118,7 +118,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         mock_logger.error.assert_called_with("Failed to get usage: %s", "Fetch error")
 
     async def test_get_usage_async_success(self):
-        stats_output = "gemini-3-pro-preview 0 80.0% resets in 1h"
+        stats_output = "gemini-3.1-pro-preview 0 80.0% resets in 1h"
         self.mock_fetcher.fetch_async.return_value = stats_output
 
         usage = await self.client.get_usage_async()
@@ -143,7 +143,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
     def test_caching(self):
         # Mock successful fetch first
         self.mock_fetcher.fetch.return_value = (
-            "gemini-3-pro-preview 0 100.0% resets in 1h"
+            "gemini-3.1-pro-preview 0 100.0% resets in 1h"
         )
 
         self.client.get_usage()
@@ -156,7 +156,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
     async def test_caching_async(self):
         # Mock successful fetch first
         self.mock_fetcher.fetch_async.return_value = (
-            "gemini-3-pro-preview 0 100.0% resets in 1h"
+            "gemini-3.1-pro-preview 0 100.0% resets in 1h"
         )
 
         await self.client.get_usage_async()
@@ -202,7 +202,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
             max_active_calls = max(max_active_calls, active_calls)
             await asyncio.sleep(0.01)
             active_calls -= 1
-            return "gemini-3-pro-preview 0 80.0% resets in 1h"
+            return "gemini-3.1-pro-preview 0 80.0% resets in 1h"
 
         self.mock_fetcher.fetch_async = AsyncMock(side_effect=slow_fetch)
         self.client._cache_ttl = 0

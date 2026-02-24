@@ -2,7 +2,7 @@
 # share the same quota, so no point in add those as
 # fallbacks.
 MODELS = [
-    "gemini-3-pro-preview",
+    "gemini-3.1-pro-preview",
     "gemini-3-flash-preview",
 ]
 
