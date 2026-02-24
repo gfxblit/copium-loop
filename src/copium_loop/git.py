@@ -1,4 +1,10 @@
+import os
+import time
+
 from copium_loop.shell import run_command
+
+_BRANCH_CACHE: dict[tuple[str, str | None], tuple[float, str]] = {}
+_BRANCH_CACHE_TTL = 1.0
 
 
 async def is_git_repo(node: str | None = None) -> bool:
@@ -11,10 +17,22 @@ async def is_git_repo(node: str | None = None) -> bool:
 
 async def get_current_branch(node: str | None = None) -> str:
     """Returns the current git branch name."""
+    cwd = os.getcwd()
+    key = (cwd, node)
+    now = time.monotonic()
+
+    if key in _BRANCH_CACHE:
+        timestamp, value = _BRANCH_CACHE[key]
+        if now - timestamp < _BRANCH_CACHE_TTL:
+            return value
+
     res = await run_command(
         "git", ["branch", "--show-current"], node=node, capture_stderr=False
     )
-    return res["output"].strip()
+    branch = res["output"].strip()
+
+    _BRANCH_CACHE[key] = (now, branch)
+    return branch
 
 
 async def get_diff(
