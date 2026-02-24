@@ -123,6 +123,10 @@ async def async_main():
             )
             reconstructed_state = telemetry.reconstruct_state()
 
+        # Reset retry count on resume (Issue #255)
+        if reconstructed_state:
+            reconstructed_state["retry_count"] = 0
+
         # Determine where to resume from
         resume_node, metadata = telemetry.get_last_incomplete_node()
 
