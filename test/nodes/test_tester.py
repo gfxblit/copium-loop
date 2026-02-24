@@ -440,3 +440,12 @@ class TestTesterNode:
             agent_state["retry_count"] = 0
             result = await tester(agent_state)
             assert "FAIL (Lint)" in result["test_output"]
+
+            # 5. Case insensitivity check
+            mock_run.side_effect = [
+                {"output": "ERROR: fatal flaw", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+            agent_state["retry_count"] = 0
+            result = await tester(agent_state)
+            assert "FAIL (Lint)" in result["test_output"]
