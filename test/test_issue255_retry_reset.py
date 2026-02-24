@@ -40,10 +40,18 @@ async def test_retry_count_reset_on_explicit_continue():
                 mock_sm.get_branch_name.return_value = "current-branch"
                 mock_sm.get_repo_root.return_value = "/test/repo"
                 # Mock state with max retries
-                mock_sm.get_agent_state.return_value = {
+                stored_state = {
                     "prompt": "foo",
                     "retry_count": 10,
                 }
+
+                def get_agent_state_mock(reset_retries=False):
+                    state = stored_state.copy()
+                    if reset_retries:
+                        state["retry_count"] = 0
+                    return state
+
+                mock_sm.get_agent_state.side_effect = get_agent_state_mock
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 
@@ -96,11 +104,19 @@ async def test_retry_count_reset_on_explicit_node():
                 mock_sm = MagicMock()
                 mock_sm.get_branch_name.return_value = "current-branch"
                 mock_sm.get_repo_root.return_value = "/test/repo"
-                # Implicit resume happens because session exists and no prompt provided
-                mock_sm.get_agent_state.return_value = {
+                # Mock state with max retries
+                stored_state = {
                     "prompt": "foo",
                     "retry_count": 10,
                 }
+
+                def get_agent_state_mock(reset_retries=False):
+                    state = stored_state.copy()
+                    if reset_retries:
+                        state["retry_count"] = 0
+                    return state
+
+                mock_sm.get_agent_state.side_effect = get_agent_state_mock
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 
@@ -153,10 +169,19 @@ async def test_retry_count_reset_on_implicit_resume():
                 mock_sm = MagicMock()
                 mock_sm.get_branch_name.return_value = "current-branch"
                 mock_sm.get_repo_root.return_value = "/test/repo"
-                mock_sm.get_agent_state.return_value = {
+                # Mock state with max retries
+                stored_state = {
                     "prompt": "foo",
                     "retry_count": 10,
                 }
+
+                def get_agent_state_mock(reset_retries=False):
+                    state = stored_state.copy()
+                    if reset_retries:
+                        state["retry_count"] = 0
+                    return state
+
+                mock_sm.get_agent_state.side_effect = get_agent_state_mock
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 

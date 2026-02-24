@@ -161,11 +161,15 @@ class SessionManager:
         self._data.agent_state = state
         self._save()
 
-    def get_agent_state(self) -> dict[str, Any]:
+    def get_agent_state(self, reset_retries: bool = False) -> dict[str, Any]:
         """Retrieves the full AgentState."""
         if not self._data:
             self._load()
-        return self._data.agent_state
+        state = self._data.agent_state
+        if reset_retries and state:
+            state["retry_count"] = 0
+            self._save()
+        return state
 
     def get_branch_name(self) -> str | None:
         """Retrieves the branch name."""

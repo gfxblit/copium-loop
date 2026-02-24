@@ -114,7 +114,7 @@ async def async_main():
             sys.exit(1)
 
         # Load persisted AgentState
-        reconstructed_state = session_manager.get_agent_state()
+        reconstructed_state = session_manager.get_agent_state(reset_retries=True)
 
         if not reconstructed_state:
             # Fallback to telemetry reconstruction if AgentState is missing (legacy)
@@ -122,10 +122,6 @@ async def async_main():
                 "Warning: No persisted AgentState found, falling back to telemetry..."
             )
             reconstructed_state = telemetry.reconstruct_state()
-
-        # Reset retry count on resume (Issue #255)
-        if reconstructed_state:
-            reconstructed_state["retry_count"] = 0
 
         # Determine where to resume from
         resume_node, metadata = telemetry.get_last_incomplete_node()
