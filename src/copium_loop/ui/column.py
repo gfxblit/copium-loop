@@ -87,14 +87,11 @@ class SessionColumn:
         else:
             header_text = display_name
 
-        header_style = "yellow"
-        status_suffix = ""
-        if self.workflow_status == "success":
-            status_suffix = " ✓ SUCCESS"
-            header_style = "green"
-        elif self.workflow_status == "failed":
-            status_suffix = " ⚠ FAILED"
-            header_style = "red"
+        from .utils import get_workflow_status_style
+
+        style = get_workflow_status_style(self.workflow_status)
+        header_style = style["color"]
+        status_suffix = style["suffix"]
 
         full_header_text = Text(
             f"{header_text}{status_suffix}",
