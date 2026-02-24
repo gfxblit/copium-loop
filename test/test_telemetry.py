@@ -316,6 +316,25 @@ class TestReconstructState:
         state = telemetry_with_temp_dir.reconstruct_state()
         assert state["engine_name"] == "jules"
 
+    def test_reconstruct_state_resets_retries_by_default(self, telemetry_with_temp_dir):
+        """Test that reconstruct_state resets retry_count to 0 by default."""
+        # Simulate some events
+        telemetry_with_temp_dir.log_status("coder", "active")
+
+        state = telemetry_with_temp_dir.reconstruct_state()
+        assert state["retry_count"] == 0
+
+    def test_reconstruct_state_optional_reset_retries(self, telemetry_with_temp_dir):
+        """
+        Test that reconstruct_state(reset_retries=False) does NOT reset retry_count.
+        """
+        # Simulate some events
+        telemetry_with_temp_dir.log_status("coder", "active")
+
+        # This should NOT reset retry_count to 0 if we don't want it to.
+        state = telemetry_with_temp_dir.reconstruct_state(reset_retries=False)
+        assert "retry_count" not in state
+
     def test_reconstruct_retry_count(self, telemetry_with_temp_dir):
         """Test that retry count is reset to 0 upon reconstruction."""
         telemetry_with_temp_dir.log_status("coder", "active")

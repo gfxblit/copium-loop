@@ -263,9 +263,12 @@ class Telemetry:
         # Default to coder if we can't determine
         return "coder", {"reason": "uncertain", "last_statuses": node_statuses}
 
-    def reconstruct_state(self) -> dict:
+    def reconstruct_state(self, reset_retries: bool = True) -> dict:
         """
         Reconstructs workflow state from log events.
+
+        Args:
+            reset_retries (bool): Whether to reset retry_count to 0. Defaults to True.
 
         Returns:
             dict: Partial state that can be merged with initial state
@@ -289,7 +292,8 @@ class Telemetry:
             state["engine_name"] = "gemini"
 
         # We start with 0 retries on continue to give the resumed session a fresh budget
-        state["retry_count"] = 0
+        if reset_retries:
+            state["retry_count"] = 0
 
         node_statuses = {}
         for event in events:

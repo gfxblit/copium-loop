@@ -161,14 +161,22 @@ class SessionManager:
         self._data.agent_state = state
         self._save()
 
-    def get_agent_state(self, reset_retries: bool = False) -> dict[str, Any]:
+    def get_agent_state(self) -> dict[str, Any]:
         """Retrieves the full AgentState."""
         if not self._data:
             self._load()
-        state = self._data.agent_state
-        if reset_retries and state:
+        return self._data.agent_state
+
+    def get_resumed_state(self) -> dict[str, Any]:
+        """
+        Retrieves the AgentState for a resumed session, resetting retry budget.
+
+        This encapsulates the 'resume' state transition.
+        """
+        state = self.get_agent_state()
+        if state:
             state["retry_count"] = 0
-            self._save()
+            self.update_agent_state(state)
         return state
 
     def get_branch_name(self) -> str | None:

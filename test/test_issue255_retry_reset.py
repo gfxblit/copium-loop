@@ -45,13 +45,13 @@ async def test_retry_count_reset_on_explicit_continue():
                     "retry_count": 10,
                 }
 
-                def get_agent_state_mock(reset_retries=False):
+                def get_resumed_state_mock():
                     state = stored_state.copy()
-                    if reset_retries:
-                        state["retry_count"] = 0
+                    state["retry_count"] = 0
                     return state
 
-                mock_sm.get_agent_state.side_effect = get_agent_state_mock
+                mock_sm.get_resumed_state.side_effect = get_resumed_state_mock
+                mock_sm.get_agent_state.return_value = stored_state
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 
@@ -110,13 +110,13 @@ async def test_retry_count_reset_on_explicit_node():
                     "retry_count": 10,
                 }
 
-                def get_agent_state_mock(reset_retries=False):
+                def get_resumed_state_mock():
                     state = stored_state.copy()
-                    if reset_retries:
-                        state["retry_count"] = 0
+                    state["retry_count"] = 0
                     return state
 
-                mock_sm.get_agent_state.side_effect = get_agent_state_mock
+                mock_sm.get_resumed_state.side_effect = get_resumed_state_mock
+                mock_sm.get_agent_state.return_value = stored_state
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 
@@ -175,13 +175,13 @@ async def test_retry_count_reset_on_implicit_resume():
                     "retry_count": 10,
                 }
 
-                def get_agent_state_mock(reset_retries=False):
+                def get_resumed_state_mock():
                     state = stored_state.copy()
-                    if reset_retries:
-                        state["retry_count"] = 0
+                    state["retry_count"] = 0
                     return state
 
-                mock_sm.get_agent_state.side_effect = get_agent_state_mock
+                mock_sm.get_resumed_state.side_effect = get_resumed_state_mock
+                mock_sm.get_agent_state.return_value = stored_state
                 mock_sm.get_original_prompt.return_value = "foo"
                 mock_sm_cls.return_value = mock_sm
 
