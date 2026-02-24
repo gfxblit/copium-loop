@@ -14,7 +14,6 @@ async def test_gemini_engine_invoke():
         mock_stream.return_value = ("mocked response", "", "", 0, False, "")
         engine = GeminiEngine()
         response = await engine.invoke("hello", verbose=True, node="test_node")
-
         assert response == "mocked response"
         # Verify it was called with "gemini"
         assert mock_stream.call_args[0][0] == "gemini"

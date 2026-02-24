@@ -9,9 +9,9 @@ from copium_loop.telemetry import get_telemetry
 
 
 def _parse_verdict(content: str) -> str | None:
-    """Parses the review content for the final verdict (APPROVED or REJECTED)."""
-    # Look for "VERDICT: APPROVED" or "VERDICT: REJECTED"
-    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED)", content.upper())
+    """Parses the review content for the final verdict (APPROVED, REJECTED, or REFACTOR)."""
+    # Look for "VERDICT: APPROVED", "VERDICT: REJECTED", or "VERDICT: REFACTOR"
+    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED|REFACTOR)", content.upper())
     if matches:
         return matches[-1]
 
@@ -112,13 +112,25 @@ async def reviewer_node(state: AgentState) -> dict:
         }
 
     is_approved = verdict == "APPROVED"
-    msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
+    is_refactor = verdict == "REFACTOR"
+
+    if is_approved:
+        decision = "Approved"
+        status = "approved"
+    elif is_refactor:
+        decision = "Refactor"
+        status = "refactor"
+    else:
+        decision = "Rejected"
+        status = "rejected"
+
+    msg = f"\nReview decision: {decision}\n"
     telemetry.log_info("reviewer", msg)
     print(msg, end="")
-    telemetry.log_status("reviewer", "approved" if is_approved else "rejected")
+    telemetry.log_status("reviewer", status)
 
     return {
-        "review_status": "approved" if is_approved else "rejected",
+        "review_status": status,
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
         "last_error": "" if is_approved else review_content,

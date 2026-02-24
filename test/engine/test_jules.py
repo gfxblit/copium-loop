@@ -895,7 +895,9 @@ async def test_jules_api_network_error_polling():
         with pytest.raises(
             JulesSessionError, match="Network error polling Jules session"
         ):
-            await engine.invoke("Test prompt")
+            await engine._poll_session(
+                client, "sessions/123", timeout=10, inactivity_timeout=5
+            )
 
 
 @pytest.mark.asyncio

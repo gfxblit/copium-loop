@@ -379,10 +379,11 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     Please try again to satisfy the original request: {user_request_block}
 
     {mandatory_instructions}"""
-    elif review_status == "rejected":
+    elif review_status in ["rejected", "refactor"]:
         feedback_content = get_most_relevant_error(state)
         safe_feedback = engine.sanitize_for_prompt(feedback_content)
-        system_prompt = f"""Your previous implementation was rejected by the reviewer. (Current HEAD: {head_hash})
+        verb = "rejected" if review_status == "rejected" else "flagged for refactoring"
+        system_prompt = f"""Your previous implementation was {verb} by the reviewer. (Current HEAD: {head_hash})
 
     <reviewer_feedback>
     {safe_feedback}

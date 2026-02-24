@@ -75,6 +75,7 @@ def should_continue_from_review(state: AgentState) -> str:
     if status == "pr_failed":
         return "pr_failed"
 
+    # Both "rejected" and "refactor" return to coder
     return "coder"
 
 
