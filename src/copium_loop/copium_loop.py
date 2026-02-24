@@ -69,8 +69,6 @@ class WorkflowManager:
 
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
-                if isinstance(result, dict):
-                    result["last_error"] = ""
                 self._persist_state(state, result)
                 return result
             except asyncio.TimeoutError:
@@ -123,12 +121,14 @@ class WorkflowManager:
                 "test_output": f"FAIL: {msg}",
                 "retry_count": retry_count,
                 "last_error": last_error,
+                "last_error_node": node_name,
             }
 
         response = {
             "retry_count": retry_count,
             "messages": [SystemMessage(content=msg)],
             "last_error": last_error,
+            "last_error_node": node_name,
         }
 
         if node_name == "reviewer":
@@ -316,6 +316,7 @@ class WorkflowManager:
             "git_diff": "",
             "verbose": self.verbose,
             "last_error": "",
+            "last_error_node": "",
             "journal_status": "pending",
         }
 

@@ -22,5 +22,6 @@ class AgentState(TypedDict):
     git_diff: str
     verbose: bool
     last_error: str
+    last_error_node: str
     journal_status: str
     head_hash: str

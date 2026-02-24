@@ -198,7 +198,9 @@ class TestWorkflowRun:
         mock_notify.assert_called_with("title", "message", 3)
 
     @pytest.mark.asyncio
-    async def test_wrap_node_clears_last_error_on_success(self, workflow):
+    async def test_wrap_node_does_not_implicitly_clear_last_error(self, workflow):
+        """Verify that the wrapper doesn't 'magically' clear last_error anymore."""
+
         async def successful_node(_state):
             return {"status": "ok"}
 
@@ -210,7 +212,8 @@ class TestWorkflowRun:
             result = await wrapped(state)
 
         assert result["status"] == "ok"
-        assert result["last_error"] == ""
+        # It should NOT be in the result at all if the node didn't return it
+        assert "last_error" not in result
 
     @pytest.mark.asyncio
     async def test_wrap_node_exception_handling(self, workflow):
@@ -222,6 +225,7 @@ class TestWorkflowRun:
 
         assert result["code_status"] == "failed"
         assert "ValueError: node failed" in result["last_error"]
+        assert result["last_error_node"] == "coder"
 
     @pytest.mark.asyncio
     async def test_run_baseline_test_failure(

@@ -273,7 +273,8 @@ class TestConditionalLogic:
             should_continue_from_coder(
                 {
                     "code_status": "failed",
-                    "last_error": "Node 'coder' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "coder",
                     "retry_count": 0,
                 }
             )
@@ -285,7 +286,8 @@ class TestConditionalLogic:
             should_continue_from_test(
                 {
                     "test_output": "FAIL",
-                    "last_error": "Node 'tester' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "tester",
                     "retry_count": 0,
                 }
             )
@@ -297,7 +299,8 @@ class TestConditionalLogic:
             should_continue_from_architect(
                 {
                     "architect_status": "refactor",
-                    "last_error": "Node 'architect' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "architect",
                     "retry_count": 0,
                 }
             )
@@ -309,7 +312,8 @@ class TestConditionalLogic:
             should_continue_from_review(
                 {
                     "review_status": "rejected",
-                    "last_error": "Node 'reviewer' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "reviewer",
                     "retry_count": 0,
                 }
             )
@@ -321,7 +325,8 @@ class TestConditionalLogic:
             should_continue_from_pr_pre_checker(
                 {
                     "review_status": "pr_failed",
-                    "last_error": "Node 'pr_pre_checker' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "pr_pre_checker",
                     "retry_count": 0,
                 }
             )
@@ -333,7 +338,8 @@ class TestConditionalLogic:
             should_continue_from_pr_creator(
                 {
                     "review_status": "pr_failed",
-                    "last_error": "Node 'pr_creator' failed with error: fatal: unable to access 'https://github.com/...' ",
+                    "last_error": "fatal: unable to access 'https://github.com/...' ",
+                    "last_error_node": "pr_creator",
                     "retry_count": 0,
                 }
             )
