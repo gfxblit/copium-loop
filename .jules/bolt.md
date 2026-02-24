@@ -9,3 +9,7 @@
 ## 2025-02-18 - Optimize Git Remote Checks
 **Learning:** Checking for git remotes using sequential subprocess calls (`git remote` list then `git remote get-url` per remote) is inefficient (N+1 problem).
 **Action:** Use `git remote -v` to fetch all remote URLs in a single subprocess call and parse the output. This reduces overhead significantly, especially in environments where process spawning is expensive.
+
+## 2025-02-23 - Caching Static Git Properties
+**Learning:** Repeatedly spawning subprocesses for static properties like `git remote -v` or `git rev-parse --is-inside-work-tree` adds measurable overhead (~4-6ms per call). However, caching must respect context (CWD and node) to be correct.
+**Action:** Cache static git properties (`is_git_repo`, `get_repo_name`) using a dictionary keyed by `(os.getcwd(), node)`. Do NOT cache volatile properties like `current_branch` unless invalidation is robust.

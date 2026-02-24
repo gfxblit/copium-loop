@@ -159,3 +159,15 @@ def agent_state(mock_engine):
         "head_hash": "",
     }
     return state
+
+
+@pytest.fixture(autouse=True)
+def reset_git_cache():
+    """Reset the git cache before each test."""
+    from copium_loop import git
+
+    git._IS_GIT_REPO_CACHE = {}
+    git._REPO_NAME_CACHE = {}
+    yield
+    git._IS_GIT_REPO_CACHE = {}
+    git._REPO_NAME_CACHE = {}
