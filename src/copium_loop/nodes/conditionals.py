@@ -8,6 +8,9 @@ from copium_loop.telemetry import get_telemetry
 def should_continue_from_test(state: AgentState) -> str:
     telemetry = get_telemetry()
 
+    if state.get("node_status") == "infra_error":
+        return "tester"
+
     if state.get("test_output") == "PASS":
         telemetry.log_status("tester", "success")
         return "architect"
@@ -24,6 +27,9 @@ def should_continue_from_test(state: AgentState) -> str:
 
 def should_continue_from_architect(state: AgentState) -> str:
     telemetry = get_telemetry()
+
+    if state.get("node_status") == "infra_error":
+        return "architect"
 
     status = state.get("architect_status")
 
@@ -46,6 +52,9 @@ def should_continue_from_architect(state: AgentState) -> str:
 
 def should_continue_from_review(state: AgentState) -> str:
     telemetry = get_telemetry()
+
+    if state.get("node_status") == "infra_error":
+        return "reviewer"
 
     status = state.get("review_status")
 
@@ -71,6 +80,9 @@ def should_continue_from_review(state: AgentState) -> str:
 
 def should_continue_from_pr_creator(state: AgentState) -> str:
     telemetry = get_telemetry()
+
+    if state.get("node_status") == "infra_error":
+        return "pr_creator"
 
     status = state.get("review_status")
 
@@ -98,6 +110,9 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
 def should_continue_from_pr_pre_checker(state: AgentState) -> str:
     telemetry = get_telemetry()
 
+    if state.get("node_status") == "infra_error":
+        return "pr_pre_checker"
+
     status = state.get("review_status")
 
     if status == "pre_check_passed":
@@ -124,6 +139,11 @@ def should_continue_from_pr_pre_checker(state: AgentState) -> str:
 def should_continue_from_journaler(state: AgentState) -> str:
     telemetry = get_telemetry()
 
+    if state.get("node_status") == "infra_error":
+        # Journaler is special, it doesn't have a direct loop usually,
+        # but let's retry it anyway if it failed.
+        return "journaler"
+
     telemetry.log_status("journaler", "success")
     status = state.get("review_status")
 
@@ -134,6 +154,9 @@ def should_continue_from_journaler(state: AgentState) -> str:
 
 def should_continue_from_coder(state: AgentState) -> str:
     telemetry = get_telemetry()
+
+    if state.get("node_status") == "infra_error":
+        return "coder"
 
     telemetry.log_status("coder", "success")
     status = state.get("code_status")

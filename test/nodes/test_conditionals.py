@@ -265,11 +265,12 @@ class TestConditionalLogic:
         assert result == END
 
     def test_should_continue_infrastructure_error(self):
-        """Test that infrastructure errors now trigger a retry instead of END."""
+        """Test that infrastructure errors now trigger a retry of the current node."""
         # coder
         assert (
             should_continue_from_coder(
                 {
+                    "node_status": "infra_error",
                     "code_status": "failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
@@ -282,60 +283,65 @@ class TestConditionalLogic:
         assert (
             should_continue_from_test(
                 {
+                    "node_status": "infra_error",
                     "test_output": "FAIL",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
             )
-            == "coder"
+            == "tester"
         )
 
         # architect
         assert (
             should_continue_from_architect(
                 {
+                    "node_status": "infra_error",
                     "architect_status": "refactor",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
             )
-            == "coder"
+            == "architect"
         )
 
         # reviewer
         assert (
             should_continue_from_review(
                 {
+                    "node_status": "infra_error",
                     "review_status": "rejected",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
             )
-            == "coder"
+            == "reviewer"
         )
 
         # pr_pre_checker
         assert (
             should_continue_from_pr_pre_checker(
                 {
+                    "node_status": "infra_error",
                     "review_status": "pr_failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
             )
-            == "coder"
+            == "pr_pre_checker"
         )
 
         # pr_creator
         assert (
             should_continue_from_pr_creator(
                 {
+                    "node_status": "infra_error",
                     "review_status": "pr_failed",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
             )
-            == "coder"
+            == "pr_creator"
         )
 
 

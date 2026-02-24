@@ -24,3 +24,4 @@ class AgentState(TypedDict):
     last_error: str
     journal_status: str
     head_hash: str
+    node_status: str
