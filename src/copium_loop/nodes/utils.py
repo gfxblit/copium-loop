@@ -253,6 +253,33 @@ async def validate_git_context(node: str) -> str | None:
     return branch_name
 
 
+def _get_error_content(state: dict) -> str:
+    """Helper to extract the most relevant error content, avoiding stale infra errors."""
+    messages = state.get("messages", [])
+    last_error = state.get("last_error", "")
+    # The first message is always the initial human request, ignore it for error context.
+    latest_msg = messages[-1].content if len(messages) > 1 else ""
+
+    # 1. Prefer the latest message if it's a real failure (not infra).
+    if latest_msg and not is_infrastructure_error(latest_msg):
+        return latest_msg
+
+    # 2. Otherwise, if we have a recorded last_error that is a real failure, use that.
+    if last_error and not is_infrastructure_error(last_error):
+        return last_error
+
+    # 3. If we only have infrastructure errors, prefer the latest message's if it is one.
+    if is_infrastructure_error(latest_msg):
+        return latest_msg
+
+    # 4. Fall back to last_error if it's an infra error.
+    if is_infrastructure_error(last_error):
+        return last_error
+
+    # 5. Final fallback to latest message (might be empty).
+    return latest_msg
+
+
 async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     """Generates the coder system prompt based on engine type."""
     messages = state["messages"]
@@ -260,32 +287,6 @@ async def get_coder_prompt(engine_type: str, state: dict, engine) -> str:
     review_status = state.get("review_status", "")
     architect_status = state.get("architect_status", "")
     code_status = state.get("code_status", "")
-
-    def _get_error_content(state: dict) -> str:
-        """Helper to extract the most relevant error content, avoiding stale infra errors."""
-        messages = state.get("messages", [])
-        last_error = state.get("last_error", "")
-        # The first message is always the initial human request, ignore it for error context.
-        latest_msg = messages[-1].content if len(messages) > 1 else ""
-
-        # 1. Prefer the latest message if it's a real failure (not infra).
-        if latest_msg and not is_infrastructure_error(latest_msg):
-            return latest_msg
-
-        # 2. Otherwise, if we have a recorded last_error that is a real failure, use that.
-        if last_error and not is_infrastructure_error(last_error):
-            return last_error
-
-        # 3. If we only have infrastructure errors, prefer the latest message's if it is one.
-        if is_infrastructure_error(latest_msg):
-            return latest_msg
-
-        # 4. Fall back to last_error if it's an infra error.
-        if is_infrastructure_error(last_error):
-            return last_error
-
-        # 5. Final fallback to latest message (might be empty).
-        return latest_msg
 
     # Get current git HEAD hash to force cache-miss in Jules
     head_hash = state.get("head_hash")

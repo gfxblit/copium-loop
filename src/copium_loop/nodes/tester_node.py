@@ -27,15 +27,15 @@ async def _run_stage(
     # Special failure detection for linting and unit tests
     if (stage_name == "linting" or stage_name == "unit tests") and success:
         failure_patterns = [
-            r"\b[1-9]\d* failed\b",
+            r"\b[1-9]\d* (failed|failing)\b",
             r"\b[1-9]\d* errors?\b",
             r"Found \d+ errors?",
-            r"\bFAILURES\b",
-            r"\bERRORS\b",
+            r"^={3,}\s+ERRORS\s+={3,}$",
+            r"^={3,}\s+FAILURES\s+={3,}$",
             r"^\s*FAIL\b",
             r"^\s*FAILED\b",
             r"^\s*error:",
-            r"\berror:",
+            r"(?<!/)(?<!\\)\berror:",
             r"\bUnreachable code\b",
         ]
 

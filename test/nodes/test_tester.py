@@ -394,3 +394,49 @@ class TestTesterNode:
 
             assert "FAIL (Lint)" in result["test_output"]
             assert "F401" in result["test_output"]
+
+    @pytest.mark.asyncio
+    async def test_tester_error_regex_logic(self, agent_state):
+        """Verify the regex for 'error:' correctly handles paths and real errors."""
+        with (
+            patch.object(
+                tester_module, "run_command", new_callable=AsyncMock
+            ) as mock_run,
+            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_telemetry"),
+        ):
+            # 1. Real error: "error: something went wrong"
+            mock_run.side_effect = [
+                {"output": "error: something went wrong", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+            agent_state["retry_count"] = 0
+            result = await tester(agent_state)
+            assert "FAIL (Lint)" in result["test_output"]
+
+            # 2. Path containing error: "/path/to/error_log.txt" should NOT trigger
+            mock_run.side_effect = [
+                {"output": "Output saved to /path/to/error_log.txt", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+            agent_state["retry_count"] = 0
+            result = await tester(agent_state)
+            assert result["test_output"] == "PASS"
+
+            # 3. Path containing error (Windows): "C:\\error_log.txt" should NOT trigger
+            mock_run.side_effect = [
+                {"output": "Output saved to C:\\error_log.txt", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+            agent_state["retry_count"] = 0
+            result = await tester(agent_state)
+            assert result["test_output"] == "PASS"
+
+            # 4. Leading space error: "  error: indent error" should trigger
+            mock_run.side_effect = [
+                {"output": "  error: indent error", "exit_code": 0},
+                {"output": "Tests passed", "exit_code": 0},
+            ]
+            agent_state["retry_count"] = 0
+            result = await tester(agent_state)
+            assert "FAIL (Lint)" in result["test_output"]
