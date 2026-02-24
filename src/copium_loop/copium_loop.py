@@ -7,10 +7,14 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from copium_loop.constants import NODE_TIMEOUT, VALID_NODES
+from copium_loop.constants import (
+    NODE_TIMEOUT,
+    VALID_NODES,
+)
 from copium_loop.discovery import get_test_command
 from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.factory import get_engine
+from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
@@ -69,6 +73,8 @@ class WorkflowManager:
 
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
+                if isinstance(result, dict):
+                    result["node_status"] = "success"
                 self._persist_state(state, result)
                 return result
             except asyncio.TimeoutError:
@@ -111,6 +117,12 @@ class WorkflowManager:
         self, state: AgentState, node_name: str, msg: str, trace: str | None = None
     ):
         """Handles node errors by updating state and retry counts."""
+        is_infra = is_infrastructure_error(msg)
+        if is_infra:
+            print(
+                f"\n[INFRA ERROR] Transient failure detected in {node_name}. Retrying..."
+            )
+
         retry_count = state.get("retry_count", 0) + 1
         last_error = msg
         if trace:
@@ -121,12 +133,14 @@ class WorkflowManager:
                 "test_output": f"FAIL: {msg}",
                 "retry_count": retry_count,
                 "last_error": last_error,
+                "node_status": "infra_error" if is_infra else "error",
             }
 
         response = {
             "retry_count": retry_count,
             "messages": [SystemMessage(content=msg)],
             "last_error": last_error,
+            "node_status": "infra_error" if is_infra else "error",
         }
 
         if node_name == "reviewer":
@@ -315,6 +329,7 @@ class WorkflowManager:
             "verbose": self.verbose,
             "last_error": "",
             "journal_status": "pending",
+            "node_status": "pending",
         }
 
         # Merge reconstructed state if provided

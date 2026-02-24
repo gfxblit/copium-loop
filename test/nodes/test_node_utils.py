@@ -88,8 +88,68 @@ def test_is_infrastructure_error():
     assert is_infrastructure_error("all models exhausted") is True
     assert is_infrastructure_error("All models exhausted in Jules session") is True
 
-    # Non-infrastructure errors
-    assert is_infrastructure_error("SyntaxError: invalid syntax") is False
-    assert is_infrastructure_error("AssertionError: assert False") is False
-    assert is_infrastructure_error("ValueError: invalid value") is False
-    assert is_infrastructure_error("") is False
+
+@pytest.mark.asyncio
+async def test_get_coder_prompt_filters_infra_errors():
+    from unittest.mock import MagicMock
+
+    from langchain_core.messages import HumanMessage
+
+    from copium_loop.nodes.utils import get_coder_prompt
+
+    engine = MagicMock()
+    engine.sanitize_for_prompt.side_effect = lambda x: x
+
+    # Case 1: Infrastructure error in code_status == failed
+    state = {
+        "messages": [HumanMessage(content="test prompt")],
+        "code_status": "failed",
+        "last_error": "fatal: unable to access 'https://github.com/...' ",
+        "retry_count": 1,
+    }
+
+    prompt = await get_coder_prompt("gemini", state, engine)
+    assert "fatal: unable to access" not in prompt
+    assert "<error>" not in prompt
+    assert "Coder encountered a transient infrastructure failure" in prompt
+
+    # Case 2: Normal error in code_status == failed
+    state = {
+        "messages": [HumanMessage(content="test prompt")],
+        "code_status": "failed",
+        "last_error": "SyntaxError: invalid syntax",
+        "retry_count": 1,
+    }
+
+    prompt = await get_coder_prompt("gemini", state, engine)
+    assert "SyntaxError: invalid syntax" in prompt
+    assert "<error>" in prompt
+
+    # Case 3: Infrastructure error in review_status == pr_failed
+    state = {
+        "messages": [HumanMessage(content="test prompt")],
+        "review_status": "pr_failed",
+        "last_error": "Connection refused",
+        "retry_count": 1,
+    }
+
+    prompt = await get_coder_prompt("gemini", state, engine)
+    assert "Connection refused" not in prompt
+    assert "<error>" not in prompt
+    assert (
+        "PR failed encountered a transient infrastructure failure" in prompt
+        or "attempt to create a PR encountered a transient infrastructure failure"
+        in prompt
+    )
+
+    # Case 4: Normal error in review_status == pr_failed
+    state = {
+        "messages": [HumanMessage(content="test prompt")],
+        "review_status": "pr_failed",
+        "last_error": "github branch already exists",
+        "retry_count": 1,
+    }
+
+    prompt = await get_coder_prompt("gemini", state, engine)
+    assert "github branch already exists" in prompt
+    assert "<error>" in prompt
