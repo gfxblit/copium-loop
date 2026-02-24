@@ -35,7 +35,7 @@ async def _run_stage(
             r"^\s*FAIL\b",
             r"^\s*FAILED\b",
             r"^\s*error:",
-            r"(?<!/)(?<!\\)\berror:",
+            r"(?<![/\\])\berror:",
             r"\bUnreachable code\b",
         ]
 
