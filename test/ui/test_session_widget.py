@@ -10,13 +10,14 @@ from copium_loop.ui.widgets.session import SessionWidget
 
 
 class SessionWidgetMockApp(App):
-    def __init__(self, column=None):
+    def __init__(self, column=None, index=None):
         super().__init__()
         self.session_column = column or SessionColumn("test-session")
         self.session_widget = None
+        self.index = index
 
     def compose(self) -> ComposeResult:
-        self.session_widget = SessionWidget(self.session_column)
+        self.session_widget = SessionWidget(self.session_column, index=self.index)
         yield self.session_widget
 
 
@@ -79,7 +80,8 @@ async def test_session_widget_header_status_extended():
             if not content:
                 return ""
             s = str(content.plain) if hasattr(content, "plain") else str(content)
-            return re.sub(r"\[.*?\]", "", s)
+            # Remove ANSI codes if any, but render() usually returns Text or string
+            return s
 
         # Test running state
         col.workflow_status = "running"
@@ -171,3 +173,46 @@ async def test_session_widget_handles_no_prefix():
         rendered = str(header.render())
 
         assert "simple-branch" in rendered
+
+
+@pytest.mark.asyncio
+async def test_session_widget_displays_index():
+    col = SessionColumn("test-session")
+
+    # Test with index 1
+    app1 = SessionWidgetMockApp(col, index=1)
+    async with app1.run_test():
+        widget = app1.query_one(SessionWidget)
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[1] test-session" in rendered
+
+    # Test with index 9
+    app9 = SessionWidgetMockApp(col, index=9)
+    async with app9.run_test():
+        widget = app9.query_one(SessionWidget)
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[9] test-session" in rendered
+
+    # Test with index 10 (should not display)
+    app10 = SessionWidgetMockApp(col, index=10)
+    async with app10.run_test():
+        widget = app10.query_one(SessionWidget)
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[10]" not in rendered
+        assert "test-session" in rendered
+
+    # Test without index (should not display)
+    app_none = SessionWidgetMockApp(col)
+    async with app_none.run_test():
+        widget = app_none.query_one(SessionWidget)
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+        assert "[]" not in rendered
+        assert "test-session" in rendered
