@@ -47,6 +47,7 @@ def should_continue_from_architect(state: AgentState) -> str:
     if status == "error":
         return "architect"
 
+    # Verdict: rejected returns to coder
     return "coder"
 
 
@@ -75,7 +76,7 @@ def should_continue_from_review(state: AgentState) -> str:
     if status == "pr_failed":
         return "pr_failed"
 
-    # Both "rejected" and "refactor" return to coder
+    # Verdict: rejected returns to coder
     return "coder"
 
 

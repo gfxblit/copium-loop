@@ -328,9 +328,9 @@ async def test_pr_creation_failure(mock_instructions):
 
 @pytest.mark.usefixtures("temp_repo", "mock_bin")
 @pytest.mark.asyncio
-async def test_architect_refactor_loop(mock_instructions):
+async def test_architect_rejected_loop(mock_instructions):
     """
-    Test workflow looping from architect back to coder on REFACTOR verdict.
+    Test workflow looping from architect back to coder on REJECTED verdict.
     """
     instructions = {
         "gemini": [
@@ -342,17 +342,17 @@ async def test_architect_refactor_loop(mock_instructions):
                 },
                 "shell": "git add . && git commit -m 'feat: initial implementation'",
             },
-            # 2. Architect: requests refactor
+            # 2. Architect: requests rejection/fix
             {
-                "stdout": "Please remove the print statement. VERDICT: REFACTOR",
+                "stdout": "Please remove the print statement. VERDICT: REJECTED",
             },
-            # 3. Coder: refactors
+            # 3. Coder: fixes
             {
                 "stdout": "I removed the print statement.",
                 "write_files": {
                     "src/feature.py": "def hello():\n    return 'world'",
                 },
-                "shell": "git add . && git commit -m 'refactor: remove print'",
+                "shell": "git add . && git commit -m 'fix: remove print'",
             },
             # 4. Architect: approves
             {
@@ -392,4 +392,4 @@ async def test_architect_refactor_loop(mock_instructions):
 
     assert result["architect_status"] == "ok"
     assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/125"
-    assert result["retry_count"] == 1  # One retry due to architect refactor
+    assert result["retry_count"] == 1  # One retry due to architect rejection

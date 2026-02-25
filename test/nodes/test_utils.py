@@ -115,7 +115,7 @@ class TestGetCoderPrompt:
             not in prompt
         )
 
-    async def test_get_coder_prompt_with_git_hash_on_refactor(self):
+    async def test_get_coder_prompt_with_git_hash_on_rejected(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -124,7 +124,7 @@ class TestGetCoderPrompt:
         architect_message.content = "Architect feedback: please refactor"
         state = {
             "messages": [initial_message, architect_message],
-            "architect_status": "refactor",
+            "architect_status": "rejected",
             "head_hash": "abc1234567890",
         }
 
@@ -132,7 +132,7 @@ class TestGetCoderPrompt:
 
         assert "abc1234567890" in prompt
         assert (
-            "Your previous implementation was flagged for architectural improvement"
+            "Your previous implementation was rejected by the architect"
             in prompt
         )
         assert (

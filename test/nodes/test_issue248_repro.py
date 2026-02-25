@@ -44,14 +44,14 @@ async def test_get_coder_prompt_repro_issue_248():
 
 @pytest.mark.asyncio
 async def test_get_coder_prompt_handles_review_refactor():
-    """Test that get_coder_prompt handles review_status='refactor' correctly."""
+    """Test that get_coder_prompt handles review_status='rejected' correctly."""
     engine = MagicMock()
     engine.engine_type = "gemini"
     engine.sanitize_for_prompt.side_effect = lambda x: x
 
     state = {
         "messages": [HumanMessage(content="Original request")],
-        "review_status": "refactor",
+        "review_status": "rejected",
         "last_error": "Code is correct but needs refactoring for better readability.",
         "engine": engine,
         "head_hash": "mock_hash",
@@ -59,8 +59,8 @@ async def test_get_coder_prompt_handles_review_refactor():
 
     prompt = await get_coder_prompt("gemini", state, engine)
 
-    # It should mention it was flagged for refactor by the reviewer.
-    assert "flagged for refactoring by the reviewer" in prompt
+    # It should mention it was rejected by the reviewer.
+    assert "rejected by the reviewer" in prompt
     assert "Code is correct but needs refactoring" in prompt
 
 

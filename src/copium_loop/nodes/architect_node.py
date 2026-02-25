@@ -9,9 +9,9 @@ from copium_loop.telemetry import get_telemetry
 
 
 def _parse_verdict(content: str) -> str | None:
-    """Parses the architect content for the final verdict (OK or REFACTOR)."""
-    # Look for "VERDICT: OK" or "VERDICT: REFACTOR"
-    matches = re.findall(r"VERDICT:\s*(OK|REFACTOR)", content.upper())
+    """Parses the architect content for the final verdict (OK or REJECTED)."""
+    # Look for "VERDICT: OK" or "VERDICT: REJECTED"
+    matches = re.findall(r"VERDICT:\s*(OK|REJECTED)", content.upper())
     if matches:
         return matches[-1]
     return None
@@ -66,13 +66,13 @@ async def architect_node(state: AgentState) -> dict:
         }
 
     is_ok = verdict == "OK"
-    msg = f"\nArchitectural decision: {'OK' if is_ok else 'REFACTOR'}\n"
+    msg = f"\nArchitectural decision: {'OK' if is_ok else 'REJECTED'}\n"
     telemetry.log_info("architect", msg)
     print(msg, end="")
-    telemetry.log_status("architect", "ok" if is_ok else "refactor")
+    telemetry.log_status("architect", "ok" if is_ok else "rejected")
 
     return {
-        "architect_status": "ok" if is_ok else "refactor",
+        "architect_status": "ok" if is_ok else "rejected",
         "messages": [SystemMessage(content=architect_content)],
         "retry_count": retry_count if is_ok else retry_count + 1,
         "last_error": "" if is_ok else architect_content,

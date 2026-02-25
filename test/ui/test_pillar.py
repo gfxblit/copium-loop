@@ -333,24 +333,24 @@ def test_matrix_pillar_architect_statuses():
     assert "10s" in output_ok
     assert "@" in output_ok
 
-    pillar_refactor = MatrixPillar("Architect")
-    pillar_refactor.set_status("active", timestamp_start)
+    pillar_rejected = MatrixPillar("Architect")
+    pillar_rejected.set_status("active", timestamp_start)
 
-    timestamp_end_refactor = "2026-02-03T10:00:15"
-    pillar_refactor.set_status("refactor", timestamp_end_refactor)
+    timestamp_end_rejected = "2026-02-03T10:00:15"
+    pillar_rejected.set_status("rejected", timestamp_end_rejected)
 
-    assert pillar_refactor.status == "refactor"
-    assert pillar_refactor.duration == 15.0
-    assert pillar_refactor.completion_time is not None
+    assert pillar_rejected.status == "rejected"
+    assert pillar_rejected.duration == 15.0
+    assert pillar_rejected.completion_time is not None
 
-    panel_refactor = pillar_refactor.render()
+    panel_rejected = pillar_rejected.render()
     with console.capture() as capture:
-        console.print(panel_refactor)
-    output_refactor = capture.get()
+        console.print(panel_rejected)
+    output_rejected = capture.get()
 
-    assert "✘" in output_refactor
-    assert "15s" in output_refactor
-    assert "@" in output_refactor
+    assert "✘" in output_rejected
+    assert "15s" in output_rejected
+    assert "@" in output_rejected
 
 
 def test_pillar_set_status_invalid_timestamp():
@@ -501,11 +501,11 @@ async def test_pillar_weighting_active_node(tmp_path):
 
 class TestPillarStatusNames:
     def test_pillar_shows_specific_failure_status_names(self):
-        # Architect REFACTOR
+        # Architect REJECTED
         pillar = MatrixPillar("Architect")
-        pillar.status = "refactor"
+        pillar.status = "rejected"
         subtitle = pillar.get_subtitle_text()
-        assert "REFACTOR" in subtitle.plain
+        assert "REJECTED" in subtitle.plain
         assert "FAILED" not in subtitle.plain
 
         # Reviewer REJECTED

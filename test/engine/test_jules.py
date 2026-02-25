@@ -39,7 +39,7 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REJECTED because of reasons.",
                             },
                         }
                     ]
@@ -56,7 +56,7 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REJECTED because of reasons.",
                             },
                         },
                         {"id": "act2", "sessionCompleted": {}},
@@ -76,11 +76,11 @@ async def test_poll_session_verdict_preservation():
             verbose=True,
         )
 
-        # The summary should be from act1 because it contains VERDICT: REFACTOR
+        # The summary should be from act1 because it contains VERDICT: REJECTED
         # even though act2 came after it.
         assert "activities" in status_data
         summary = status_data["activities"][0]["description"]
-        assert "VERDICT: REFACTOR" in summary
+        assert "VERDICT: REJECTED" in summary
         assert "Session completed" not in summary
 
 

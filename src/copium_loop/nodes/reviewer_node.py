@@ -9,9 +9,9 @@ from copium_loop.telemetry import get_telemetry
 
 
 def _parse_verdict(content: str) -> str | None:
-    """Parses the review content for the final verdict (APPROVED, REJECTED, or REFACTOR)."""
-    # Look for "VERDICT: APPROVED", "VERDICT: REJECTED", or "VERDICT: REFACTOR"
-    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED|REFACTOR)", content.upper())
+    """Parses the review content for the final verdict (APPROVED or REJECTED)."""
+    # Look for "VERDICT: APPROVED" or "VERDICT: REJECTED"
+    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED)", content.upper())
     if matches:
         return matches[-1]
 
@@ -86,14 +86,10 @@ async def reviewer_node(state: AgentState) -> dict:
         }
 
     is_approved = verdict == "APPROVED"
-    is_refactor = verdict == "REFACTOR"
 
     if is_approved:
         decision = "Approved"
         status = "approved"
-    elif is_refactor:
-        decision = "Refactor"
-        status = "refactor"
     else:
         decision = "Rejected"
         status = "rejected"

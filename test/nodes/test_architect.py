@@ -46,19 +46,19 @@ class TestArchitectNode:
         assert result["retry_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_architect_returns_refactor(self, agent_state):
-        """Test that architect returns refactor status."""
+    async def test_architect_returns_rejected(self, agent_state):
+        """Test that architect returns rejected status."""
         agent_state[
             "engine"
         ].invoke.return_value = (
-            "VERDICT: REFACTOR\nToo many responsibilities in one file."
+            "VERDICT: REJECTED\nToo many responsibilities in one file."
         )
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
         result = await architect(agent_state)
 
-        assert result["architect_status"] == "refactor"
+        assert result["architect_status"] == "rejected"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
@@ -66,7 +66,7 @@ class TestArchitectNode:
         """Test that architect takes the last verdict found in the content."""
         agent_state[
             "engine"
-        ].invoke.return_value = "VERDICT: REFACTOR\nActually, it is fine.\nVERDICT: OK"
+        ].invoke.return_value = "VERDICT: REJECTED\nActually, it is fine.\nVERDICT: OK"
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
@@ -233,7 +233,7 @@ async def test_jules_architect_prompt_robustness(agent_state):
         # New requirements from Issue #170
         assert "SUMMARY: [Your detailed analysis here]" in prompt
         assert "VERDICT: OK" in prompt
-        assert "VERDICT: REFACTOR" in prompt
+        assert "VERDICT: REJECTED" in prompt
         assert "bulleted list" in prompt.lower()
         assert "technical debt" in prompt.lower()
         assert "architectural violations" in prompt.lower()
@@ -256,13 +256,13 @@ async def test_coder_receives_consolidated_architect_feedback(agent_state):
 - Lack of clear interface for the Journaler node.
 - Tight coupling between Coder and Tester nodes.
 
-VERDICT: REFACTOR"""
+VERDICT: REJECTED"""
 
     agent_state["messages"] = [
         HumanMessage(content="Original request"),
         SystemMessage(content=architect_feedback),
     ]
-    agent_state["architect_status"] = "refactor"
+    agent_state["architect_status"] = "rejected"
     agent_state["code_status"] = "ok"
     agent_state["review_status"] = "ok"
     agent_state["test_output"] = "PASS"
@@ -272,4 +272,4 @@ VERDICT: REFACTOR"""
     assert "<architect_feedback>" in prompt
     assert architect_feedback in prompt
     assert "Duplicate SessionManager classes" in prompt
-    assert "VERDICT: REFACTOR" in prompt
+    assert "VERDICT: REJECTED" in prompt
