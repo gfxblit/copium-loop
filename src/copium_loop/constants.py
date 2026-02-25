@@ -3,6 +3,7 @@
 # fallbacks.
 MODELS = [
     "gemini-3.1-pro-preview",
+    "gemini-3-pro-preview",
     "gemini-3-flash-preview",
 ]
 

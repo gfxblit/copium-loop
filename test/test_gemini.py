@@ -169,6 +169,27 @@ class TestInvokeGemini:
             assert mock_exec.call_args_list[1][0][1] == "backup-model"
 
     @pytest.mark.asyncio
+    async def test_invoke_falls_through_all_models(self):
+        """Test that invoke falls through all models in MODELS before failing."""
+        from copium_loop.constants import MODELS
+
+        engine = GeminiEngine()
+        with patch.object(
+            engine, "_execute_gemini", new_callable=AsyncMock
+        ) as mock_exec:
+            # All models fail
+            mock_exec.side_effect = [Exception(f"Fail {m}") for m in MODELS]
+
+            with pytest.raises(Exception) as excinfo:
+                await engine.invoke("Hello")
+
+            assert "All models exhausted" in str(excinfo.value)
+            assert mock_exec.call_count == len(MODELS)
+            # Verify they were called in the correct order
+            for i, model in enumerate(MODELS):
+                assert mock_exec.call_args_list[i][0][1] == model
+
+    @pytest.mark.asyncio
     async def test_invoke_verbose_output(self, capsys):
         """Test that invoke prints prompt when verbose is True."""
         engine = GeminiEngine()

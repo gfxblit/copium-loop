@@ -174,6 +174,16 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(usage["flash"], 30.0)
         self.assertEqual(usage["reset_flash"], "30m")
 
+    def test_parse_output_gemini_3_pro(self):
+        stats_output = "gemini-3-pro-preview 0 85.0% resets in 4h 20m"
+        self.mock_fetcher.fetch.return_value = stats_output
+
+        usage = self.client.get_usage()
+        self.assertIsNotNone(usage)
+        # 85.0% remaining means 15.0% used.
+        self.assertAlmostEqual(usage["pro"], 15.0)
+        self.assertEqual(usage["reset_pro"], "4h 20m")
+
     def test_backward_compatibility(self):
         mock_tmux = MagicMock()
         client = GeminiStatsClient(session_name="test-session", tmux=mock_tmux)
