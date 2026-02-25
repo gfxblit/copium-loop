@@ -60,14 +60,39 @@ Sessions are automatically named based on your repository and current branch (e.
 
 When you switch branches, `copium-loop` will naturally find or create the session associated with that branch.
 
-## How It Works
+## Architecture
 
-1. **Coder** → Implements using Gemini or Jules API.
-2. **Test Runner** → Runs `npm test`, `pnpm test`, or `pytest`. Automatically detects the project type and package manager.
-3. **Reviewer** → Reviews commits/diffs using Gemini Pro or Jules API.
-4. **PR Creator** → Pushes to a feature branch & creates a Pull Request via `gh` CLI. If a GitHub issue URL is found in the prompt, it automatically links the PR to that issue.
+Copium Loop is built on a robust architecture leveraging **LangGraph** for state management and **Gemini** (or **Jules**) for intelligent decision-making.
 
-Loops on failures (max 10 retries total).
+Key components include:
+- **Workflow Graph**: Defined in `graph.py`, this state machine orchestrates the development lifecycle.
+- **Nodes**: specialized agents performing distinct tasks:
+  - **Coder**: Implements features and fixes bugs.
+  - **Tester**: Validates changes using the project's test suite.
+  - **Architect**: Reviews changes for high-level design compliance.
+  - **Reviewer**: Performs detailed code reviews.
+  - **PR Creator**: Handles git operations and PR creation.
+- **Engine**: The LLM interface (`src/copium_loop/engine/`) managing interactions with Gemini/Jules models.
+- **UI**: A **Textual**-based TUI dashboard (`src/copium_loop/ui/`) for real-time monitoring and interaction.
+
+## Flows
+
+The workflow follows a rigorous TDD loop:
+
+1. **Coder**: Receives the user prompt and modifies the codebase.
+2. **Tester** (Test Runner): Runs tests (`pytest`, `npm test`, etc.).
+   - *Pass*: Advances to **Architect**.
+   - *Fail*: Returns to **Coder** for remediation (up to `MAX_RETRIES`).
+3. **Architect**: Analyzes the structural impact of changes.
+   - *Approved*: Proceed to **Reviewer**.
+   - *Rejected*: Sent back to **Coder**.
+4. **Reviewer**: Conducts a line-by-line code review.
+   - *Approved*: Moves to **PR Pre-Checker**.
+   - *Rejected*: Returns to **Coder**.
+5. **PR Pre-Checker**: Ensures the environment is clean and ready for a PR.
+   - *Pass*: Triggers **PR Creator**.
+   - *Fail*: Returns to **Coder**.
+6. **PR Creator**: Pushes the branch and opens a Pull Request. If a GitHub issue URL is found in the prompt, it automatically links the PR to that issue.
 
 ### Custom Commands
 
