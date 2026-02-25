@@ -28,6 +28,7 @@ def test_agent_state_has_architect_status():
 
 def test_models_defined():
     assert "gemini-3.1-pro-preview" in MODELS
+    assert "gemini-3-pro-preview" in MODELS
     assert "gemini-3-flash-preview" in MODELS
 
 
