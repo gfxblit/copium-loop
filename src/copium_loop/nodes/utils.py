@@ -184,13 +184,13 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
 
     You MUST provide your final response in a single, final message using the format:
     "SUMMARY: [Your detailed analysis here]
-    VERDICT: OK"
+    VERDICT: APPROVED"
     OR
     "SUMMARY: [Your detailed analysis here]
     VERDICT: REJECTED"
 
     Do not make any fixes or changes yourself. Based on your evaluation, determine the final status.
-    If the changes are architecturally sound, respond with "VERDICT: OK".
+    If the changes are architecturally sound, respond with "VERDICT: APPROVED".
     If the changes introduce significant architectural debt or violate the principles above, respond with "VERDICT: REJECTED" and explain why."""
 
     # Default/Gemini prompt
@@ -216,13 +216,13 @@ async def get_architect_prompt(engine_type: str, state: dict) -> str:
     6. Modularity: The code should be well-organized and modular.
     7. File Size: Ensure files are not becoming too large and unwieldy.
 
-    You MUST provide your final verdict in the format: "VERDICT: OK" or "VERDICT: REJECTED".
+    You MUST provide your final verdict in the format: "VERDICT: APPROVED" or "VERDICT: REJECTED".
 
     CRITICAL: You MUST NOT use any tools to modify the filesystem (e.g., 'write_file', 'replace'). You are an evaluator only.
 
     To do this, you MUST activate the 'architect' skill and provide it with the necessary context, including the git diff above.
     Instruct the skill to evaluate the diff for all SOLID principles, modularity, and overall architecture.
-    After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("OK" or "REJECTED"),
+    After the skill completes its evaluation, you will receive its output. Based solely on the skill's verdict ("APPROVED" or "REJECTED"),
     determine the final status. Do not make any fixes or changes yourself; rely entirely on the 'architect' skill's output."""
 
 

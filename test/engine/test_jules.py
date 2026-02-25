@@ -108,7 +108,7 @@ async def test_poll_session_verdict_anywhere_in_text():
                         {
                             "id": "act1",
                             "progressUpdated": {
-                                "title": "Final Verdict: VERDICT: OK",
+                                "title": "Final Verdict: VERDICT: APPROVED",
                             },
                         }
                     ]
@@ -123,7 +123,7 @@ async def test_poll_session_verdict_anywhere_in_text():
                         {
                             "id": "act1",
                             "progressUpdated": {
-                                "title": "Final Verdict: VERDICT: OK",
+                                "title": "Final Verdict: VERDICT: APPROVED",
                             },
                         },
                         {
@@ -143,7 +143,7 @@ async def test_poll_session_verdict_anywhere_in_text():
         )
 
         summary = status_data["activities"][0]["description"]
-        assert "VERDICT: OK" in summary
+        assert "VERDICT: APPROVED" in summary
         assert "Cleaning up" not in summary
 
 

@@ -145,7 +145,7 @@ async def test_happy_path(mock_instructions):
             },
             # Architect: approves
             {
-                "stdout": "Structure looks good. VERDICT: OK",
+                "stdout": "Structure looks good. VERDICT: APPROVED",
             },
             # Reviewer: approves
             {
@@ -209,7 +209,7 @@ async def test_retry_loop(mock_instructions):
             },
             # Architect: approves
             {
-                "stdout": "Structure looks good. VERDICT: OK",
+                "stdout": "Structure looks good. VERDICT: APPROVED",
             },
             # Reviewer: approves
             {
@@ -303,7 +303,7 @@ async def test_pr_creation_failure(mock_instructions):
                 "shell": "git add . && git commit -m 'feat'",
             },
             {
-                "stdout": "Architect: OK. VERDICT: OK",
+                "stdout": "Architect: APPROVED. VERDICT: APPROVED",
             },
             {
                 "stdout": "VERDICT: APPROVED",
@@ -356,7 +356,7 @@ async def test_architect_rejected_loop(mock_instructions):
             },
             # 4. Architect: approves
             {
-                "stdout": "Looks better. VERDICT: OK",
+                "stdout": "Looks better. VERDICT: APPROVED",
             },
             # 5. Reviewer: approves
             {
@@ -390,6 +390,6 @@ async def test_architect_rejected_loop(mock_instructions):
     wm = WorkflowManager()
     result = await wm.run("Implement hello without prints")
 
-    assert result["architect_status"] == "ok"
+    assert result["architect_status"] == "approved"
     assert result["pr_url"] == "https://github.com/gfxblit/copium-loop/pull/125"
     assert result["retry_count"] == 1  # One retry due to architect rejection

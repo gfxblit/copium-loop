@@ -44,9 +44,9 @@ class TestConditionalLogic:
             == END
         )
 
-    def test_should_continue_from_architect_on_ok(self):
-        """Test transition from architect to reviewer on ok."""
-        assert should_continue_from_architect({"architect_status": "ok"}) == "reviewer"
+    def test_should_continue_from_architect_on_approved(self):
+        """Test transition from architect to reviewer on approved."""
+        assert should_continue_from_architect({"architect_status": "approved"}) == "reviewer"
 
     def test_should_continue_from_architect_on_rejected(self):
         """Test transition from architect to coder on rejected."""
@@ -374,8 +374,8 @@ class TestConditionalTelemetry:
         mock_telemetry = MagicMock()
         mock_get_telemetry.return_value = mock_telemetry
 
-        # ok -> success
-        should_continue_from_architect({"architect_status": "ok"})
+        # approved -> success
+        should_continue_from_architect({"architect_status": "approved"})
         mock_telemetry.log_status.assert_called_with("architect", "success")
 
         # rejected -> rejected

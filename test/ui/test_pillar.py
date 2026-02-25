@@ -312,26 +312,26 @@ async def test_dynamic_node_discovery_in_ui(tmp_path):
 
 def test_matrix_pillar_architect_statuses():
     """Test that architect statuses correctly trigger completion metrics."""
-    pillar_ok = MatrixPillar("Architect")
+    pillar_approved = MatrixPillar("Architect")
     timestamp_start = "2026-02-03T10:00:00"
-    pillar_ok.set_status("active", timestamp_start)
+    pillar_approved.set_status("active", timestamp_start)
 
-    timestamp_end_ok = "2026-02-03T10:00:10"
-    pillar_ok.set_status("ok", timestamp_end_ok)
+    timestamp_end_approved = "2026-02-03T10:00:10"
+    pillar_approved.set_status("approved", timestamp_end_approved)
 
-    assert pillar_ok.status == "ok"
-    assert pillar_ok.duration == 10.0
-    assert pillar_ok.completion_time is not None
+    assert pillar_approved.status == "approved"
+    assert pillar_approved.duration == 10.0
+    assert pillar_approved.completion_time is not None
 
-    panel_ok = pillar_ok.render()
+    panel_approved = pillar_approved.render()
     console = Console()
     with console.capture() as capture:
-        console.print(panel_ok)
-    output_ok = capture.get()
+        console.print(panel_approved)
+    output_approved = capture.get()
 
-    assert "✔" in output_ok
-    assert "10s" in output_ok
-    assert "@" in output_ok
+    assert "✔" in output_approved
+    assert "10s" in output_approved
+    assert "@" in output_approved
 
     pillar_rejected = MatrixPillar("Architect")
     pillar_rejected.set_status("active", timestamp_start)

@@ -39,7 +39,7 @@ def should_continue_from_architect(state: AgentState) -> str:
 
     status = state.get("architect_status")
 
-    if status == "ok":
+    if status == "approved":
         telemetry.log_status("architect", "success")
         return "reviewer"
 

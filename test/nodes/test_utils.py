@@ -321,7 +321,7 @@ class TestPromptsExtended:
         state = {"initial_commit_hash": "abc"}
         prompt = await utils.get_architect_prompt("jules", state)
         assert "You are a senior software architect" in prompt
-        assert "VERDICT: OK" in prompt
+        assert "VERDICT: APPROVED" in prompt
 
     @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
@@ -332,7 +332,7 @@ class TestPromptsExtended:
         prompt = await utils.get_architect_prompt("gemini", state)
         assert "You are a software architect" in prompt
         assert "some diff" in prompt
-        assert "VERDICT: OK" in prompt
+        assert "VERDICT: APPROVED" in prompt
 
     async def test_get_architect_prompt_missing_hash(self):
         with pytest.raises(ValueError, match="Missing initial commit hash"):
@@ -415,7 +415,7 @@ async def test_get_reviewer_prompt_legacy(agent_state):
 async def test_architect_node_engine_agnostic(agent_state):
     """Verify Architect node is engine-agnostic and doesn't use JULES_OUTPUT.txt."""
     agent_state["engine"].engine_type = "jules"
-    agent_state["engine"].invoke.return_value = "VERDICT: OK"
+    agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
     agent_state["messages"] = [HumanMessage(content="test")]
     agent_state["initial_commit_hash"] = "sha123"
 
@@ -432,7 +432,7 @@ async def test_architect_node_engine_agnostic(agent_state):
         args, kwargs = agent_state["engine"].invoke.call_args
         assert args[0] == "mock prompt"
         assert "sync_strategy" not in kwargs
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
 
 
 @pytest.mark.asyncio
