@@ -71,16 +71,14 @@ async def journaler_node(state: AgentState) -> dict:
 
     Output ONLY the project lesson or "NO_LESSON"."""
 
-        models = [None] + MODELS
         lesson = await engine.invoke(
             prompt,
             ["--yolo"],
-            models=models,
+            models=MODELS,
             verbose=state.get("verbose"),
             label="Journaler System",
             node="journaler",
         )
-
         lesson = lesson.strip().strip('"').strip("'")
 
         review_status = state.get("review_status", "pending")
