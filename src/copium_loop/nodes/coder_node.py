@@ -13,12 +13,10 @@ async def coder_node(state: AgentState) -> dict:
     engine = state["engine"]
     system_prompt = await get_coder_prompt(engine.engine_type, state, engine)
 
-    # Start with "auto" (None), then fallback to default models
-    coder_models = [None] + MODELS
     code_content = await engine.invoke(
         system_prompt,
         ["--yolo"],
-        models=coder_models,
+        models=MODELS,
         verbose=state.get("verbose"),
         label="Coder System",
         node="coder",
