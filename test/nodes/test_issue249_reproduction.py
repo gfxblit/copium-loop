@@ -30,7 +30,7 @@ async def test_issue249_integration_noise_reduction():
     # 2. Mock stream_subprocess for ArchitectNode call
     # It should return clean stdout but noisy stderr, and exit_code 0 (success)
     architect_stdout = (
-        "Architectural review complete. VERDICT: REFACTOR. Please improve modularity."
+        "Architectural review complete. VERDICT: REJECTED. Please improve modularity."
     )
     architect_stderr = (
         "[WARNING] Missing gemini extension 'foo'. Some features may be disabled."
@@ -65,11 +65,11 @@ async def test_issue249_integration_noise_reduction():
         architect_message = result["messages"][-1].content
         assert architect_stdout in architect_message
         assert architect_stderr not in architect_message
-        assert result["architect_status"] == "refactor"
+        assert result["architect_status"] == "rejected"
 
         # 4. Update state with ArchitectNode result and prepare for CoderNode
         state.update(result)
-        # In actual workflow, last message is used for feedback if architect_status is refactor
+        # In actual workflow, last message is used for feedback if architect_status is rejected
         state["messages"].append(result["messages"][-1])
 
         # 5. Mock stream_subprocess for CoderNode call

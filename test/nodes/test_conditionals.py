@@ -44,15 +44,18 @@ class TestConditionalLogic:
             == END
         )
 
-    def test_should_continue_from_architect_on_ok(self):
-        """Test transition from architect to reviewer on ok."""
-        assert should_continue_from_architect({"architect_status": "ok"}) == "reviewer"
+    def test_should_continue_from_architect_on_approved(self):
+        """Test transition from architect to reviewer on approved."""
+        assert (
+            should_continue_from_architect({"architect_status": "approved"})
+            == "reviewer"
+        )
 
-    def test_should_continue_from_architect_on_refactor(self):
-        """Test transition from architect to coder on refactor."""
+    def test_should_continue_from_architect_on_rejected(self):
+        """Test transition from architect to coder on rejected."""
         assert (
             should_continue_from_architect(
-                {"architect_status": "refactor", "retry_count": 0}
+                {"architect_status": "rejected", "retry_count": 0}
             )
             == "coder"
         )
@@ -71,7 +74,7 @@ class TestConditionalLogic:
         assert (
             should_continue_from_architect(
                 {
-                    "architect_status": "refactor",
+                    "architect_status": "rejected",
                     "retry_count": constants.MAX_RETRIES,
                 }
             )
@@ -80,7 +83,7 @@ class TestConditionalLogic:
         assert (
             should_continue_from_architect(
                 {
-                    "architect_status": "refactor",
+                    "architect_status": "rejected",
                     "retry_count": constants.MAX_RETRIES + 1,
                 }
             )
@@ -297,7 +300,7 @@ class TestConditionalLogic:
             should_continue_from_architect(
                 {
                     "node_status": "infra_error",
-                    "architect_status": "refactor",
+                    "architect_status": "rejected",
                     "last_error": "fatal: unable to access 'https://github.com/...' ",
                     "retry_count": 0,
                 }
@@ -374,16 +377,16 @@ class TestConditionalTelemetry:
         mock_telemetry = MagicMock()
         mock_get_telemetry.return_value = mock_telemetry
 
-        # ok -> success
-        should_continue_from_architect({"architect_status": "ok"})
+        # approved -> success
+        should_continue_from_architect({"architect_status": "approved"})
         mock_telemetry.log_status.assert_called_with("architect", "success")
 
-        # refactor -> refactor
+        # rejected -> rejected
         mock_telemetry.reset_mock()
         should_continue_from_architect(
-            {"architect_status": "refactor", "retry_count": 0}
+            {"architect_status": "rejected", "retry_count": 0}
         )
-        mock_telemetry.log_status.assert_called_with("architect", "refactor")
+        mock_telemetry.log_status.assert_called_with("architect", "rejected")
 
         # error -> error
         mock_telemetry.reset_mock()

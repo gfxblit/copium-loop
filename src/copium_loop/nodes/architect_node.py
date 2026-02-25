@@ -9,15 +9,15 @@ from copium_loop.telemetry import get_telemetry
 
 
 def _parse_verdict(content: str) -> str | None:
-    """Parses the architect content for the final verdict (OK or REFACTOR)."""
-    # Look for "VERDICT: OK" or "VERDICT: REFACTOR"
-    matches = re.findall(r"VERDICT:\s*(OK|REFACTOR)", content.upper())
+    """Parses the architect content for the final verdict (APPROVED or REJECTED)."""
+    # Look for "VERDICT: APPROVED" or "VERDICT: REJECTED"
+    matches = re.findall(r"VERDICT:\s*(APPROVED|REJECTED)", content.upper())
     if matches:
         return matches[-1]
     return None
 
 
-@node_header("architect")
+@node_header("architect", status_key="architect_status", error_value="error")
 async def architect_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("architect", "active") - handled by decorator
@@ -25,27 +25,16 @@ async def architect_node(state: AgentState) -> dict:
     engine = state["engine"]
     retry_count = state.get("retry_count", 0)
 
-    try:
-        system_prompt = await get_architect_prompt(engine.engine_type, state)
-    except Exception as e:
-        msg = f"Error generating architect prompt: {e}\n"
-        telemetry.log_info("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        return {
-            "architect_status": "error",
-            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
-            "retry_count": retry_count + 1,
-        }
+    system_prompt = await get_architect_prompt(engine.engine_type, state)
 
     # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
-        msg = "\nArchitectural decision: OK (no changes to review)\n"
+        msg = "\nArchitectural decision: APPROVED (no changes to review)\n"
         telemetry.log_info("architect", msg)
         print(msg, end="")
-        telemetry.log_status("architect", "ok")
+        telemetry.log_status("architect", "approved")
         return {
-            "architect_status": "ok",
+            "architect_status": "approved",
             "messages": [
                 SystemMessage(
                     content="No changes detected. Skipping architectural review."
@@ -54,25 +43,14 @@ async def architect_node(state: AgentState) -> dict:
             "retry_count": retry_count,
         }
 
-    try:
-        architect_content = await engine.invoke(
-            system_prompt,
-            ["--yolo"],
-            models=MODELS,
-            verbose=state.get("verbose"),
-            label="Architect System",
-            node="architect",
-        )
-    except Exception as e:
-        msg = f"Error during architectural evaluation: {e}\n"
-        telemetry.log_info("architect", msg)
-        print(msg, end="")
-        telemetry.log_status("architect", "error")
-        return {
-            "architect_status": "error",
-            "messages": [SystemMessage(content=f"Architect encountered an error: {e}")],
-            "retry_count": retry_count + 1,
-        }
+    architect_content = await engine.invoke(
+        system_prompt,
+        ["--yolo"],
+        models=MODELS,
+        verbose=state.get("verbose"),
+        label="Architect System",
+        node="architect",
+    )
 
     verdict = _parse_verdict(architect_content)
     if not verdict:
@@ -84,16 +62,18 @@ async def architect_node(state: AgentState) -> dict:
             "architect_status": "error",
             "messages": [SystemMessage(content=architect_content)],
             "retry_count": retry_count + 1,
+            "last_error": architect_content,
         }
 
-    is_ok = verdict == "OK"
-    msg = f"\nArchitectural decision: {'OK' if is_ok else 'REFACTOR'}\n"
+    is_approved = verdict == "APPROVED"
+    msg = f"\nArchitectural decision: {'APPROVED' if is_approved else 'REJECTED'}\n"
     telemetry.log_info("architect", msg)
     print(msg, end="")
-    telemetry.log_status("architect", "ok" if is_ok else "refactor")
+    telemetry.log_status("architect", "approved" if is_approved else "rejected")
 
     return {
-        "architect_status": "ok" if is_ok else "refactor",
+        "architect_status": "approved" if is_approved else "rejected",
         "messages": [SystemMessage(content=architect_content)],
-        "retry_count": retry_count if is_ok else retry_count + 1,
+        "retry_count": retry_count if is_approved else retry_count + 1,
+        "last_error": "" if is_approved else architect_content,
     }

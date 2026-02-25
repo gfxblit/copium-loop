@@ -39,7 +39,7 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REJECTED because of reasons.",
                             },
                         }
                     ]
@@ -56,7 +56,7 @@ async def test_poll_session_verdict_preservation():
                             "id": "act1",
                             "progressUpdated": {
                                 "title": "Reviewing code",
-                                "description": "User's Goal: ... Analysis: ... VERDICT: REFACTOR because of reasons.",
+                                "description": "User's Goal: ... Analysis: ... VERDICT: REJECTED because of reasons.",
                             },
                         },
                         {"id": "act2", "sessionCompleted": {}},
@@ -76,11 +76,11 @@ async def test_poll_session_verdict_preservation():
             verbose=True,
         )
 
-        # The summary should be from act1 because it contains VERDICT: REFACTOR
+        # The summary should be from act1 because it contains VERDICT: REJECTED
         # even though act2 came after it.
         assert "activities" in status_data
         summary = status_data["activities"][0]["description"]
-        assert "VERDICT: REFACTOR" in summary
+        assert "VERDICT: REJECTED" in summary
         assert "Session completed" not in summary
 
 
@@ -108,7 +108,7 @@ async def test_poll_session_verdict_anywhere_in_text():
                         {
                             "id": "act1",
                             "progressUpdated": {
-                                "title": "Final Verdict: VERDICT: OK",
+                                "title": "Final Verdict: VERDICT: APPROVED",
                             },
                         }
                     ]
@@ -123,7 +123,7 @@ async def test_poll_session_verdict_anywhere_in_text():
                         {
                             "id": "act1",
                             "progressUpdated": {
-                                "title": "Final Verdict: VERDICT: OK",
+                                "title": "Final Verdict: VERDICT: APPROVED",
                             },
                         },
                         {
@@ -143,7 +143,7 @@ async def test_poll_session_verdict_anywhere_in_text():
         )
 
         summary = status_data["activities"][0]["description"]
-        assert "VERDICT: OK" in summary
+        assert "VERDICT: APPROVED" in summary
         assert "Cleaning up" not in summary
 
 
@@ -895,7 +895,9 @@ async def test_jules_api_network_error_polling():
         with pytest.raises(
             JulesSessionError, match="Network error polling Jules session"
         ):
-            await engine.invoke("Test prompt")
+            await engine._poll_session(
+                client, "sessions/123", timeout=10, inactivity_timeout=5
+            )
 
 
 @pytest.mark.asyncio

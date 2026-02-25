@@ -27,7 +27,7 @@ def _parse_verdict(content: str) -> str | None:
     return None
 
 
-@node_header("reviewer")
+@node_header("reviewer", status_key="review_status", error_value="error")
 async def reviewer_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
     # telemetry.log_status("reviewer", "active") - handled by decorator
@@ -38,24 +38,15 @@ async def reviewer_node(state: AgentState) -> dict:
 
     if test_output and "PASS" not in test_output:
         telemetry.log_status("reviewer", "rejected")
+        error_msg = "Tests failed."
         return {
             "review_status": "rejected",
-            "messages": [SystemMessage(content="Tests failed.")],
+            "messages": [SystemMessage(content=error_msg)],
             "retry_count": retry_count + 1,
+            "last_error": error_msg,
         }
 
-    try:
-        system_prompt = await get_reviewer_prompt(engine.engine_type, state)
-    except Exception as e:
-        msg = f"Error generating reviewer prompt: {e}\n"
-        telemetry.log_info("reviewer", msg)
-        print(msg, end="")
-        telemetry.log_status("reviewer", "error")
-        return {
-            "review_status": "error",
-            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
-            "retry_count": retry_count + 1,
-        }
+    system_prompt = await get_reviewer_prompt(engine.engine_type, state)
 
     # Check for empty diff
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
@@ -71,25 +62,14 @@ async def reviewer_node(state: AgentState) -> dict:
             "retry_count": retry_count,
         }
 
-    try:
-        review_content = await engine.invoke(
-            system_prompt,
-            ["--yolo"],
-            models=MODELS,
-            verbose=state.get("verbose"),
-            label="Reviewer System",
-            node="reviewer",
-        )
-    except Exception as e:
-        msg = f"Error during review: {e}\n"
-        telemetry.log_info("reviewer", msg)
-        print(msg, end="")
-        telemetry.log_status("reviewer", "error")
-        return {
-            "review_status": "error",
-            "messages": [SystemMessage(content=f"Reviewer encountered an error: {e}")],
-            "retry_count": retry_count + 1,
-        }
+    review_content = await engine.invoke(
+        system_prompt,
+        ["--yolo"],
+        models=MODELS,
+        verbose=state.get("verbose"),
+        label="Reviewer System",
+        node="reviewer",
+    )
 
     verdict = _parse_verdict(review_content)
 
@@ -102,16 +82,26 @@ async def reviewer_node(state: AgentState) -> dict:
             "review_status": "error",
             "messages": [SystemMessage(content=review_content)],
             "retry_count": retry_count + 1,
+            "last_error": review_content,
         }
 
     is_approved = verdict == "APPROVED"
-    msg = f"\nReview decision: {'Approved' if is_approved else 'Rejected'}\n"
+
+    if is_approved:
+        decision = "Approved"
+        status = "approved"
+    else:
+        decision = "Rejected"
+        status = "rejected"
+
+    msg = f"\nReview decision: {decision}\n"
     telemetry.log_info("reviewer", msg)
     print(msg, end="")
-    telemetry.log_status("reviewer", "approved" if is_approved else "rejected")
+    telemetry.log_status("reviewer", status)
 
     return {
-        "review_status": "approved" if is_approved else "rejected",
+        "review_status": status,
         "messages": [SystemMessage(content=review_content)],
         "retry_count": retry_count if is_approved else retry_count + 1,
+        "last_error": "" if is_approved else review_content,
     }

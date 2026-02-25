@@ -110,25 +110,22 @@ class TestCoderNode:
         assert "Code is too complex." in prompt
 
     @pytest.mark.asyncio
-    async def test_coder_handles_architect_refactor(self, agent_state):
-        """Test that coder node handles refactor status from architect."""
+    async def test_coder_handles_architect_rejected(self, agent_state):
+        """Test that coder node handles rejected status from architect."""
         agent_state["engine"].invoke.return_value = "Refactoring code..."
 
         agent_state["messages"] = [
             HumanMessage(content="Original request"),
             SystemMessage(content="Architecture needs improvement: file too large."),
         ]
-        agent_state["architect_status"] = "refactor"
+        agent_state["architect_status"] = "rejected"
 
         await coder(agent_state)
 
         # Check that the prompt contains the architect feedback
         call_args = agent_state["engine"].invoke.call_args[0]
         prompt = call_args[0]
-        assert (
-            "Your previous implementation was flagged for architectural improvement by the architect."
-            in prompt
-        )
+        assert "Your previous implementation was rejected by the architect." in prompt
         assert "Architecture needs improvement: file too large." in prompt
 
     @pytest.mark.asyncio

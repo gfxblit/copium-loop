@@ -115,7 +115,7 @@ class TestGetCoderPrompt:
             not in prompt
         )
 
-    async def test_get_coder_prompt_with_git_hash_on_refactor(self):
+    async def test_get_coder_prompt_with_git_hash_on_rejected(self):
         engine = MagicMock()
         engine.sanitize_for_prompt.side_effect = lambda x: x
         initial_message = MagicMock()
@@ -124,17 +124,14 @@ class TestGetCoderPrompt:
         architect_message.content = "Architect feedback: please refactor"
         state = {
             "messages": [initial_message, architect_message],
-            "architect_status": "refactor",
+            "architect_status": "rejected",
             "head_hash": "abc1234567890",
         }
 
         prompt = await utils.get_coder_prompt("jules", state, engine)
 
         assert "abc1234567890" in prompt
-        assert (
-            "Your previous implementation was flagged for architectural improvement"
-            in prompt
-        )
+        assert "Your previous implementation was rejected by the architect" in prompt
         assert (
             "CRITICAL: You MUST follow Test-Driven Development (TDD) methodology"
             in prompt
@@ -246,6 +243,72 @@ class TestGetCoderPrompt:
             in prompt
         )
 
+    async def test_get_coder_prompt_prioritizes_latest_message_over_stale_last_error(
+        self,
+    ):
+        """Verify fix for issue #248: latest non-infra error preferred over stale infra last_error."""
+        mock_engine = MagicMock()
+        mock_engine.engine_type = "gemini"
+        mock_engine.sanitize_for_prompt.side_effect = lambda x: x
+
+        infra_error = "Connection refused: model server down"
+        rebase_error = "Automatic rebase on origin/main failed with the following error: ... conflict ..."
+
+        from langchain_core.messages import SystemMessage
+
+        state = {
+            "messages": [
+                HumanMessage(content="Implement feature X"),
+                SystemMessage(content=rebase_error),
+            ],
+            "test_output": "",
+            "review_status": "pr_failed",
+            "architect_status": "pending",
+            "code_status": "coded",
+            "head_hash": "abcdef123456",
+            "last_error": infra_error,  # Stale infra error
+            "engine": mock_engine,
+        }
+
+        prompt = await utils.get_coder_prompt("gemini", state, mock_engine)
+
+        assert rebase_error in prompt
+        assert "transient infrastructure failure" not in prompt
+        assert infra_error not in prompt
+
+    async def test_get_coder_prompt_prioritizes_real_error_over_infra_error(
+        self,
+    ):
+        """Verify that if a real error exists, it's prioritized over a more recent infra error for the coder prompt."""
+        mock_engine = MagicMock()
+        mock_engine.engine_type = "gemini"
+        mock_engine.sanitize_for_prompt.side_effect = lambda x: x
+
+        real_error = "SyntaxError: invalid syntax"
+        infra_error = "Connection refused"
+
+        from langchain_core.messages import SystemMessage
+
+        state = {
+            "messages": [
+                HumanMessage(content="Implement feature X"),
+                SystemMessage(content=infra_error),
+            ],
+            "test_output": "",
+            "review_status": "pending",
+            "architect_status": "pending",
+            "code_status": "failed",
+            "head_hash": "abcdef123456",
+            "last_error": real_error,  # Real error recorded previously
+            "engine": mock_engine,
+        }
+
+        prompt = await utils.get_coder_prompt("gemini", state, mock_engine)
+
+        # Should NOT say transient infra failure if a real error is available to fix
+        assert "Coder encountered an unexpected failure" in prompt
+        assert real_error in prompt
+
 
 @pytest.mark.asyncio
 class TestPromptsExtended:
@@ -255,7 +318,7 @@ class TestPromptsExtended:
         state = {"initial_commit_hash": "abc"}
         prompt = await utils.get_architect_prompt("jules", state)
         assert "You are a senior software architect" in prompt
-        assert "VERDICT: OK" in prompt
+        assert "VERDICT: APPROVED" in prompt
 
     @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
     @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
@@ -266,7 +329,7 @@ class TestPromptsExtended:
         prompt = await utils.get_architect_prompt("gemini", state)
         assert "You are a software architect" in prompt
         assert "some diff" in prompt
-        assert "VERDICT: OK" in prompt
+        assert "VERDICT: APPROVED" in prompt
 
     async def test_get_architect_prompt_missing_hash(self):
         with pytest.raises(ValueError, match="Missing initial commit hash"):
@@ -349,7 +412,7 @@ async def test_get_reviewer_prompt_legacy(agent_state):
 async def test_architect_node_engine_agnostic(agent_state):
     """Verify Architect node is engine-agnostic and doesn't use JULES_OUTPUT.txt."""
     agent_state["engine"].engine_type = "jules"
-    agent_state["engine"].invoke.return_value = "VERDICT: OK"
+    agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
     agent_state["messages"] = [HumanMessage(content="test")]
     agent_state["initial_commit_hash"] = "sha123"
 
@@ -366,7 +429,7 @@ async def test_architect_node_engine_agnostic(agent_state):
         args, kwargs = agent_state["engine"].invoke.call_args
         assert args[0] == "mock prompt"
         assert "sync_strategy" not in kwargs
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
 
 
 @pytest.mark.asyncio

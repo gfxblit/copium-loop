@@ -5,7 +5,7 @@ import re
 import traceback
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 
 from copium_loop.constants import (
     NODE_TIMEOUT,
@@ -14,7 +14,6 @@ from copium_loop.constants import (
 from copium_loop.discovery import get_test_command
 from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.factory import get_engine
-from copium_loop.errors import is_infrastructure_error
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
 from copium_loop.graph import create_graph
 from copium_loop.notifications import notify
@@ -65,6 +64,10 @@ class WorkflowManager:
 
         async def wrapper(state: AgentState):
             telemetry = get_telemetry()
+            # Extract metadata from node_func
+            status_key = getattr(node_func, "_status_key", None)
+            error_value = getattr(node_func, "_error_value", "error")
+
             # Refresh head_hash before node execution for cache-busting accuracy
             try:
                 state["head_hash"] = await get_head(node=node_name)
@@ -73,7 +76,7 @@ class WorkflowManager:
 
             try:
                 result = await asyncio.wait_for(node_func(state), timeout=NODE_TIMEOUT)
-                if isinstance(result, dict):
+                if isinstance(result, dict) and "node_status" not in result:
                     result["node_status"] = "success"
                 self._persist_state(state, result)
                 return result
@@ -82,7 +85,13 @@ class WorkflowManager:
                 print(f"\n[TIMEOUT] {msg}")
                 telemetry.log_info(node_name, f"\n[TIMEOUT] {msg}\n")
                 telemetry.log_status(node_name, "failed")
-                result = self._handle_error(state, node_name, msg)
+                result = self._handle_error(
+                    state,
+                    node_name,
+                    msg,
+                    status_key=status_key,
+                    error_value=error_value,
+                )
                 self._persist_state(state, result)
                 return result
             except Exception as e:
@@ -91,7 +100,14 @@ class WorkflowManager:
                 print(f"\n[ERROR] {msg}")
                 telemetry.log_info(node_name, f"\n[ERROR] {msg}\n{error_trace}\n")
                 telemetry.log_status(node_name, "failed")
-                result = self._handle_error(state, node_name, msg, error_trace)
+                result = self._handle_error(
+                    state,
+                    node_name,
+                    msg,
+                    error_trace,
+                    status_key=status_key,
+                    error_value=error_value,
+                )
                 self._persist_state(state, result)
                 return result
 
@@ -114,45 +130,33 @@ class WorkflowManager:
             self.session_manager.update_agent_state(serializable_state)
 
     def _handle_error(
-        self, state: AgentState, node_name: str, msg: str, trace: str | None = None
+        self,
+        state: AgentState,
+        node_name: str,
+        msg: str,
+        trace: str | None = None,
+        status_key: str | None = None,
+        error_value: str = "error",
     ):
         """Handles node errors by updating state and retry counts."""
-        is_infra = is_infrastructure_error(msg)
-        if is_infra:
-            print(
-                f"\n[INFRA ERROR] Transient failure detected in {node_name}. Retrying..."
-            )
+        # Fallback for tests or calls without explicit metadata
+        if status_key is None:
+            if node_name == "reviewer":
+                status_key = "review_status"
+            elif node_name == "architect":
+                status_key = "architect_status"
+            elif node_name in ["pr_creator", "pr_pre_checker"]:
+                status_key = "review_status"
+                error_value = "pr_failed"
+            elif node_name == "coder":
+                status_key = "code_status"
+                error_value = "failed"
+            elif node_name == "tester":
+                status_key = "test_output"
 
-        retry_count = state.get("retry_count", 0) + 1
-        last_error = msg
-        if trace:
-            last_error += f"\n{trace}"
+        from copium_loop.nodes.utils import handle_node_error
 
-        if node_name == "tester":
-            return {
-                "test_output": f"FAIL: {msg}",
-                "retry_count": retry_count,
-                "last_error": last_error,
-                "node_status": "infra_error" if is_infra else "error",
-            }
-
-        response = {
-            "retry_count": retry_count,
-            "messages": [SystemMessage(content=msg)],
-            "last_error": last_error,
-            "node_status": "infra_error" if is_infra else "error",
-        }
-
-        if node_name == "reviewer":
-            response["review_status"] = "error"
-        elif node_name == "architect":
-            response["architect_status"] = "error"
-        elif node_name in ["pr_creator", "pr_pre_checker"]:
-            response["review_status"] = "pr_failed"
-        elif node_name == "coder":
-            response["code_status"] = "failed"
-
-        return response
+        return handle_node_error(state, node_name, msg, trace, status_key, error_value)
 
     async def verify_environment(self, engine: LLMEngine) -> bool:
         """Verifies that the necessary CLI tools are installed."""

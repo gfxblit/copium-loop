@@ -6,7 +6,7 @@ from copium_loop.state import AgentState
 from copium_loop.telemetry import get_telemetry
 
 
-@node_header("coder")
+@node_header("coder", status_key="code_status", error_value="failed")
 async def coder_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
 

@@ -63,8 +63,11 @@ async def test_node_header_exception_handling():
     with patch("copium_loop.nodes.utils.get_telemetry") as mock_get_telemetry:
         mock_telemetry = mock_get_telemetry.return_value
 
-        with pytest.raises(ValueError, match="Something went wrong"):
-            await failing_node(state)
+        result = await failing_node(state)
+
+        # Check that it returns the error status from handle_node_error
+        assert result["node_status"] == "error"
+        assert "Something went wrong" in result["last_error"]
 
         # Should have logged active, then failed
         mock_telemetry.log_status.assert_any_call("error_node", "active")

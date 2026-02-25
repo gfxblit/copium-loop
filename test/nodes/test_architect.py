@@ -36,29 +36,30 @@ class TestArchitectNode:
         self.mock_is_git_repo_patcher.stop()
 
     @pytest.mark.asyncio
-    async def test_architect_returns_ok(self, agent_state):
-        """Test that architect returns ok status."""
+    async def test_architect_returns_approved(self, agent_state):
+        """Test that architect returns approved status."""
+        agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
         result = await architect(agent_state)
 
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
         assert result["retry_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_architect_returns_refactor(self, agent_state):
-        """Test that architect returns refactor status."""
+    async def test_architect_returns_rejected(self, agent_state):
+        """Test that architect returns rejected status."""
         agent_state[
             "engine"
         ].invoke.return_value = (
-            "VERDICT: REFACTOR\nToo many responsibilities in one file."
+            "VERDICT: REJECTED\nToo many responsibilities in one file."
         )
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
         result = await architect(agent_state)
 
-        assert result["architect_status"] == "refactor"
+        assert result["architect_status"] == "rejected"
         assert result["retry_count"] == 1
 
     @pytest.mark.asyncio
@@ -66,13 +67,15 @@ class TestArchitectNode:
         """Test that architect takes the last verdict found in the content."""
         agent_state[
             "engine"
-        ].invoke.return_value = "VERDICT: REFACTOR\nActually, it is fine.\nVERDICT: OK"
+        ].invoke.return_value = (
+            "VERDICT: REJECTED\nActually, it is fine.\nVERDICT: APPROVED"
+        )
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
         result = await architect(agent_state)
 
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
 
     @pytest.mark.asyncio
     async def test_architect_returns_error_on_exception(self, agent_state):
@@ -155,7 +158,7 @@ class TestArchitectNode:
         # Verify
         self.mock_get_diff.assert_called_once()
         agent_state["engine"].invoke.assert_not_called()
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
         assert result["retry_count"] == 0
 
     @pytest.mark.asyncio
@@ -209,6 +212,7 @@ class TestArchitectNode:
 
         # Mock state
         agent_state["initial_commit_hash"] = initial_commit
+        agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
 
         # Run architect node
         result = await architect(agent_state)
@@ -219,7 +223,7 @@ class TestArchitectNode:
 
         # Verify that the uncommitted changes are in the prompt
         assert "modified content" in system_prompt
-        assert result["architect_status"] == "ok"
+        assert result["architect_status"] == "approved"
 
 
 @pytest.mark.asyncio
@@ -232,8 +236,8 @@ async def test_jules_architect_prompt_robustness(agent_state):
 
         # New requirements from Issue #170
         assert "SUMMARY: [Your detailed analysis here]" in prompt
-        assert "VERDICT: OK" in prompt
-        assert "VERDICT: REFACTOR" in prompt
+        assert "VERDICT: APPROVED" in prompt
+        assert "VERDICT: REJECTED" in prompt
         assert "bulleted list" in prompt.lower()
         assert "technical debt" in prompt.lower()
         assert "architectural violations" in prompt.lower()
@@ -256,15 +260,15 @@ async def test_coder_receives_consolidated_architect_feedback(agent_state):
 - Lack of clear interface for the Journaler node.
 - Tight coupling between Coder and Tester nodes.
 
-VERDICT: REFACTOR"""
+VERDICT: REJECTED"""
 
     agent_state["messages"] = [
         HumanMessage(content="Original request"),
         SystemMessage(content=architect_feedback),
     ]
-    agent_state["architect_status"] = "refactor"
-    agent_state["code_status"] = "ok"
-    agent_state["review_status"] = "ok"
+    agent_state["architect_status"] = "rejected"
+    agent_state["code_status"] = "approved"
+    agent_state["review_status"] = "approved"
     agent_state["test_output"] = "PASS"
 
     prompt = await get_coder_prompt("jules", agent_state, agent_state["engine"])
@@ -272,4 +276,4 @@ VERDICT: REFACTOR"""
     assert "<architect_feedback>" in prompt
     assert architect_feedback in prompt
     assert "Duplicate SessionManager classes" in prompt
-    assert "VERDICT: REFACTOR" in prompt
+    assert "VERDICT: REJECTED" in prompt
