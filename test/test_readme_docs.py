@@ -23,4 +23,5 @@ def test_readme_contains_architecture_and_flows():
     assert "Tester" in content, "Flows section should mention Tester"
     assert "Architect" in content, "Flows section should mention Architect"
     assert "Reviewer" in content, "Flows section should mention Reviewer"
+    assert "PR Pre-Checker" in content, "Flows section should mention PR Pre-Checker"
     assert "PR Creator" in content, "Flows section should mention PR Creator"
