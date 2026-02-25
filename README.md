@@ -71,6 +71,7 @@ Key components include:
   - **Tester**: Validates changes using the project's test suite.
   - **Architect**: Reviews changes for high-level design compliance.
   - **Reviewer**: Performs detailed code reviews.
+  - **PR Pre-Checker**: Ensures the environment is ready for a PR.
   - **PR Creator**: Handles git operations and PR creation.
 - **Engine**: The LLM interface (`src/copium_loop/engine/`) managing interactions with Gemini/Jules models.
 - **UI**: A **Textual**-based TUI dashboard (`src/copium_loop/ui/`) for real-time monitoring and interaction.
