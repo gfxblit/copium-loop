@@ -22,7 +22,7 @@ VALID_NODES = [
 LEAN_NODES = {"tester", "pr_pre_checker", "pr_creator"}
 
 # Max retries for the workflow
-MAX_RETRIES = 10
+MAX_RETRIES = 30
 
 # Inactivity timeout in seconds (10 minutes)
 INACTIVITY_TIMEOUT = 600
