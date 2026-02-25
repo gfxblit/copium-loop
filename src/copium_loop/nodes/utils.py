@@ -312,7 +312,6 @@ async def get_reviewer_prompt(engine_type: str, state: dict) -> str:
     determine the final status of the review. Do not make any fixes or changes yourself; rely entirely on the 'code-reviewer' skill's output."""
 
 
-
 async def validate_git_context(node: str) -> str | None:
     """
     Validates that the current directory is a git repository and that

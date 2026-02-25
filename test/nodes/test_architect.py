@@ -67,7 +67,9 @@ class TestArchitectNode:
         """Test that architect takes the last verdict found in the content."""
         agent_state[
             "engine"
-        ].invoke.return_value = "VERDICT: REJECTED\nActually, it is fine.\nVERDICT: APPROVED"
+        ].invoke.return_value = (
+            "VERDICT: REJECTED\nActually, it is fine.\nVERDICT: APPROVED"
+        )
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"

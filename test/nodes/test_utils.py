@@ -131,10 +131,7 @@ class TestGetCoderPrompt:
         prompt = await utils.get_coder_prompt("jules", state, engine)
 
         assert "abc1234567890" in prompt
-        assert (
-            "Your previous implementation was rejected by the architect"
-            in prompt
-        )
+        assert "Your previous implementation was rejected by the architect" in prompt
         assert (
             "CRITICAL: You MUST follow Test-Driven Development (TDD) methodology"
             in prompt

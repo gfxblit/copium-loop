@@ -46,7 +46,10 @@ class TestConditionalLogic:
 
     def test_should_continue_from_architect_on_approved(self):
         """Test transition from architect to reviewer on approved."""
-        assert should_continue_from_architect({"architect_status": "approved"}) == "reviewer"
+        assert (
+            should_continue_from_architect({"architect_status": "approved"})
+            == "reviewer"
+        )
 
     def test_should_continue_from_architect_on_rejected(self):
         """Test transition from architect to coder on rejected."""

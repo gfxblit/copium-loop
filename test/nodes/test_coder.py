@@ -125,10 +125,7 @@ class TestCoderNode:
         # Check that the prompt contains the architect feedback
         call_args = agent_state["engine"].invoke.call_args[0]
         prompt = call_args[0]
-        assert (
-            "Your previous implementation was rejected by the architect."
-            in prompt
-        )
+        assert "Your previous implementation was rejected by the architect." in prompt
         assert "Architecture needs improvement: file too large." in prompt
 
     @pytest.mark.asyncio
