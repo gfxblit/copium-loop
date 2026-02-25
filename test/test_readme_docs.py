@@ -13,7 +13,9 @@ def test_readme_contains_architecture_and_flows():
 
     # Check for Architecture components
     assert "LangGraph" in content, "Architecture section should mention LangGraph"
-    assert "Gemini" in content or "Jules" in content, "Architecture section should mention LLM engine (Gemini/Jules)"
+    assert "Gemini" in content or "Jules" in content, (
+        "Architecture section should mention LLM engine (Gemini/Jules)"
+    )
     assert "Textual" in content, "Architecture section should mention Textual UI"
 
     # Check for Flow components
