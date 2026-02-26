@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 from rich.text import Text
@@ -7,7 +7,6 @@ from textual.widgets import Static
 
 from copium_loop.ui.footer_stats import GeminiStatsStrategy
 from copium_loop.ui.textual_dashboard import TextualDashboard
-
 
 class TestGeminiStatsStrategy:
     def _stats_to_text(self, stats: list | None) -> str:

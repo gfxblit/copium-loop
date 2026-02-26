@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import pytest
 from textual.widgets import Static
@@ -8,7 +8,6 @@ from textual.widgets import Static
 from copium_loop.ui.textual_dashboard import TextualDashboard
 from copium_loop.ui.widgets.pillar import PillarWidget
 from copium_loop.ui.widgets.session import SessionWidget
-
 
 @pytest.mark.asyncio
 async def test_textual_dashboard_discovery(tmp_path):

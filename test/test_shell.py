@@ -121,7 +121,7 @@ except KeyboardInterrupt:
         task = asyncio.create_task(shell.run_command(cmd[0], cmd[1:]))
 
         # Give it time to start
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
 
         assert "process" in process_spy, "Subprocess should have started"
         proc = process_spy["process"]
@@ -140,7 +140,7 @@ except KeyboardInterrupt:
             await task
 
         # Give it a moment to cleanup
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
 
         # Check if process is still running
         is_running = True

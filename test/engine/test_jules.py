@@ -3,14 +3,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from tenacity import wait_none
 
+from copium_loop.engine import jules
 from copium_loop.engine.base import LLMError
 from copium_loop.engine.jules import (
-    MAX_API_RETRIES,
     JulesEngine,
     JulesSessionError,
     JulesTimeoutError,
 )
+
+@pytest.fixture(autouse=True)
+def fast_retries():
+    with patch("copium_loop.engine.jules.wait_exponential", return_value=wait_none()), \
+         patch("copium_loop.engine.jules.MAX_API_RETRIES", 3):
+        yield
+
 
 
 @pytest.mark.asyncio
@@ -787,7 +795,6 @@ async def test_jules_api_creation_error():
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
         patch("httpx.AsyncClient") as mock_client,
-        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
@@ -856,7 +863,6 @@ async def test_jules_api_network_error_creation():
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
         patch("httpx.AsyncClient") as mock_client,
-        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         client = AsyncMock()
         mock_client.return_value.__aenter__.return_value = client
@@ -1097,7 +1103,6 @@ async def test_request_with_retry_success_after_failure():
     with (
         patch("asyncio.sleep", return_value=None),
         patch("copium_loop.engine.jules.get_telemetry"),
-        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         mock_client = AsyncMock(spec=httpx.AsyncClient)
 
@@ -1122,7 +1127,6 @@ async def test_request_with_retry_exhaustion():
     with (
         patch("asyncio.sleep", return_value=None),
         patch("copium_loop.engine.jules.get_telemetry"),
-        patch("copium_loop.engine.jules.wait_exponential", return_value=MagicMock()),
     ):
         mock_client = AsyncMock(spec=httpx.AsyncClient)
 
@@ -1133,7 +1137,7 @@ async def test_request_with_retry_exhaustion():
                 "Context", mock_client.get, "http://example.com"
             )
 
-        assert mock_client.get.call_count == MAX_API_RETRIES
+        assert mock_client.get.call_count == jules.MAX_API_RETRIES
 
 
 @pytest.mark.asyncio
