@@ -193,6 +193,7 @@ class WorkflowManager:
             self.session_id = telemetry.session_id
 
         print(f"Starting workflow at node: {self.start_node}")
+        telemetry.log_workflow_status("started")
         telemetry.log_workflow_status("running")
         telemetry.log_status(self.start_node, "active")
         telemetry.log_info(

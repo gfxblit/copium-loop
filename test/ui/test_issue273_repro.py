@@ -17,6 +17,12 @@ def test_issue273_stale_failed_status(tmp_path):
             "data": "running",
         },
         {
+            "timestamp": "2026-02-25T10:00:30",
+            "node": "coder",
+            "event_type": "output",
+            "data": "writing some code",
+        },
+        {
             "timestamp": "2026-02-25T10:01:00",
             "node": "workflow",
             "event_type": "workflow_status",
@@ -33,14 +39,14 @@ def test_issue273_stale_failed_status(tmp_path):
 
     session = manager.sessions["test-repo-branch"]
     assert session.workflow_status == "failed"
+    assert len(session.get_pillar("coder").buffer) > 0
 
-    # Now simulate a NEW run starting but NOT YET having logged "running"
-    # It just logged an info message or something
+    # Now simulate a NEW run starting with explicit "started" telemetry event
     new_event = {
         "timestamp": "2026-02-25T11:00:00",
-        "node": "coder",
-        "event_type": "info",
-        "data": "INIT: Starting workflow with prompt: fix bug",
+        "node": "workflow",
+        "event_type": "workflow_status",
+        "data": "started",
     }
 
     with open(log_file, "a") as f:
@@ -49,7 +55,8 @@ def test_issue273_stale_failed_status(tmp_path):
     manager.update_from_logs()
     session = manager.sessions["test-repo-branch"]
 
-    # CURRENT BEHAVIOR: It is still "failed" because the INIT event didn't reset it
-    # and the new "running" status hasn't been logged yet.
-    # AFTER FIX: It should be "running"
-    assert session.workflow_status == "running"
+    # AFTER FIX: It should have reset the session for the new run
+    assert session.workflow_status == "running", "Session should be running after reset"
+    assert len(session.get_pillar("coder").buffer) == 0, (
+        "Pillars should be cleared after reset"
+    )

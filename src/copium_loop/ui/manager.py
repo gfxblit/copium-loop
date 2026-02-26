@@ -134,13 +134,16 @@ class SessionManager:
                 pass
 
         if node == "workflow" and etype == "workflow_status":
-            session.workflow_status = data
-            if data in ["success", "failed"] and ts_str:
-                try:
-                    ts = datetime.fromisoformat(ts_str).timestamp()
-                    session.completed_at = ts
-                except (ValueError, TypeError):
-                    pass
+            if data == "started":
+                session.reset_for_new_run()
+            else:
+                session.workflow_status = data
+                if data in ["success", "failed"] and ts_str:
+                    try:
+                        ts = datetime.fromisoformat(ts_str).timestamp()
+                        session.completed_at = ts
+                    except (ValueError, TypeError):
+                        pass
         elif node and node != "workflow":
             pillar = session.get_pillar(node)
             if etype in ["output", "info"]:
@@ -148,13 +151,6 @@ class SessionManager:
                 source = event.get("source")
                 if not source:
                     source = "llm" if etype == "output" else "system"
-
-                if (
-                    etype == "info"
-                    and data
-                    and data.startswith("INIT: Starting workflow with prompt:")
-                ):
-                    session.reset_for_new_run()
 
                 for line in data.splitlines():
                     if line.strip():
