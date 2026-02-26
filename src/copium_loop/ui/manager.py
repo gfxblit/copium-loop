@@ -149,6 +149,13 @@ class SessionManager:
                 if not source:
                     source = "llm" if etype == "output" else "system"
 
+                if (
+                    etype == "info"
+                    and data
+                    and data.startswith("INIT: Starting workflow with prompt:")
+                ):
+                    session.reset_for_new_run()
+
                 for line in data.splitlines():
                     if line.strip():
                         pillar.add_line(line, source=source)

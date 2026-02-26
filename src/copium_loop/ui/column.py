@@ -50,6 +50,17 @@ class SessionColumn:
             self.pillars[node_id] = MatrixPillar(node_id)
         return self.pillars[node_id]
 
+    def reset_for_new_run(self):
+        """Clears the visual state of all pillars for a new workflow run."""
+        self.workflow_status = "running"
+        self.completed_at = 0
+        for pillar in self.pillars.values():
+            pillar.buffer = []
+            pillar.status = "idle"
+            pillar.start_time = None
+            pillar.duration = None
+            pillar.completion_time = None
+
     def render(self, column_width: int | None = None) -> Layout:
         col_layout = Layout()
 

@@ -184,10 +184,20 @@ class WorkflowManager:
                 f"Invalid start node: {self.start_node}. Valid nodes are: {', '.join(VALID_NODES)}"
             )
 
+        if not self.start_node:
+            self.start_node = "coder"
+
         # Initialize telemetry and session manager
         telemetry = get_telemetry()
         if not self.session_id:
             self.session_id = telemetry.session_id
+
+        print(f"Starting workflow at node: {self.start_node}")
+        telemetry.log_workflow_status("running")
+        telemetry.log_status(self.start_node, "active")
+        telemetry.log_info(
+            self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}"
+        )
 
         self.session_manager = SessionManager(self.session_id)
 
@@ -226,16 +236,6 @@ class WorkflowManager:
             return {"error": "Environment verification failed."}
 
         issue_match = re.search(r"https://github\.com/[^\s]+/issues/\d+", input_prompt)
-
-        if not self.start_node:
-            self.start_node = "coder"
-
-        print(f"Starting workflow at node: {self.start_node}")
-        telemetry.log_workflow_status("running")
-        telemetry.log_status(self.start_node, "active")
-        telemetry.log_info(
-            self.start_node, f"INIT: Starting workflow with prompt: {input_prompt}"
-        )
 
         if not self.graph:
             self.graph = create_graph(self._wrap_node, self.start_node)
