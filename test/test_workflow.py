@@ -167,7 +167,6 @@ class TestWorkflowRun:
         mock_os_path_exists,
         mock_create_graph,
         mock_run_command,
-        mock_get_test_command,
         mock_get_head,
         mock_verify_environment,
         workflow,
@@ -175,8 +174,7 @@ class TestWorkflowRun:
         mock_verify_environment.return_value = True
         mock_os_path_exists.return_value = True
         mock_get_head.return_value = "commit123"
-        mock_get_test_command.return_value = ("pytest", [])
-        mock_run_command.return_value = {"exit_code": 0, "output": "tests passed"}
+        mock_run_command.return_value = {"exit_code": 0, "output": "ok"}
 
         mock_graph = AsyncMock()
         mock_graph.ainvoke.return_value = {"status": "completed"}
@@ -227,54 +225,6 @@ class TestWorkflowRun:
         assert "ValueError: node failed" in result["last_error"]
 
     @pytest.mark.asyncio
-    async def test_run_baseline_test_failure(
-        self,
-        mock_os_path_exists,
-        mock_create_graph,
-        mock_run_command,
-        mock_get_head,
-        mock_verify_environment,
-        mock_get_test_command,
-        workflow,
-    ):
-        mock_verify_environment.return_value = True
-        mock_os_path_exists.return_value = True
-        mock_get_head.return_value = "commit123"
-        mock_get_test_command.return_value = ("pytest", [])
-        mock_run_command.return_value = {"exit_code": 1, "output": "baseline failed"}
-
-        mock_graph = AsyncMock()
-        mock_graph.ainvoke.return_value = {"status": "completed"}
-        mock_create_graph.return_value = mock_graph
-
-        result = await workflow.run("test prompt")
-        assert result == {"status": "completed"}
-
-    @pytest.mark.asyncio
-    async def test_run_baseline_test_exception(
-        self,
-        mock_os_path_exists,
-        mock_create_graph,
-        mock_get_head,
-        mock_verify_environment,
-        mock_get_test_command,
-        mock_run_command,
-        workflow,
-    ):
-        mock_verify_environment.return_value = True
-        mock_os_path_exists.return_value = True
-        mock_get_head.return_value = "commit123"
-        mock_get_test_command.return_value = ("pytest", [])
-        mock_run_command.side_effect = Exception("baseline error")
-
-        mock_graph = AsyncMock()
-        mock_graph.ainvoke.return_value = {"status": "completed"}
-        mock_create_graph.return_value = mock_graph
-
-        result = await workflow.run("test prompt")
-        assert result == {"status": "completed"}
-
-    @pytest.mark.asyncio
     async def test_run_get_head_exception(
         self,
         mock_os_path_exists,
@@ -295,6 +245,45 @@ class TestWorkflowRun:
 
         result = await workflow.run("test prompt")
         assert result == {"status": "completed"}
+
+    @pytest.mark.asyncio
+    async def test_run_does_not_call_baseline_tests(
+        self,
+        mock_os_path_exists,
+        mock_create_graph,
+        mock_run_command,
+        mock_get_head,
+        mock_verify_environment,
+        workflow_manager_factory,
+    ):
+        """
+        Test that WorkflowManager.run() no longer calls run_command() for baseline tests at startup.
+        """
+        mock_verify_environment.return_value = True
+        mock_os_path_exists.return_value = True
+        mock_get_head.return_value = "commit123"
+
+        # Mock run_command to return success for all calls
+        mock_run_command.return_value = {"exit_code": 0, "output": "ok"}
+
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {"status": "completed"}
+        mock_create_graph.return_value = mock_graph
+
+        # Initialize workflow starting at 'coder' node
+        workflow = workflow_manager_factory(start_node="coder")
+
+        with (
+            patch("copium_loop.copium_loop.SessionManager"),
+            patch("copium_loop.copium_loop.is_git_repo", return_value=True),
+            patch("copium_loop.copium_loop.get_current_branch", return_value="main"),
+        ):
+            await workflow.run("test prompt")
+
+        # ASSERTION: run_command should NOT be called with 'pytest' (default test runner)
+        for call in mock_run_command.call_args_list:
+            # call.args[0] is the command string
+            assert "pytest" not in str(call.args[0])
 
     @pytest.mark.asyncio
     async def test_run_with_initial_state_engine_override(

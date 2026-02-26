@@ -11,7 +11,6 @@ from copium_loop.constants import (
     NODE_TIMEOUT,
     VALID_NODES,
 )
-from copium_loop.discovery import get_test_command
 from copium_loop.engine.base import LLMEngine
 from copium_loop.engine.factory import get_engine
 from copium_loop.git import get_current_branch, get_head, is_git_repo, resolve_ref
@@ -280,30 +279,6 @@ class WorkflowManager:
                 print(msg, end="")
             except Exception as e:
                 msg = f"Warning: Failed to capture initial commit hash: {e}\n"
-                telemetry.log_info(self.start_node, msg)
-                print(msg, end="")
-
-        # Ensure existing tests run successfully if starting from coder
-        if self.start_node == "coder":
-            msg = "Verifying baseline tests...\n"
-            telemetry.log_info(self.start_node, msg)
-            print(msg, end="")
-            test_cmd, test_args = get_test_command()
-            try:
-                msg = f"Running {test_cmd} {' '.join(test_args)}...\n"
-                telemetry.log_info(self.start_node, msg)
-                print(msg, end="")
-                res = await run_command(test_cmd, test_args, node=self.start_node)
-                if res["exit_code"] != 0:
-                    msg = "Warning: Baseline tests failed. Proceeding anyway, but be aware.\n"
-                    telemetry.log_info(self.start_node, msg)
-                    print(msg, end="")
-                else:
-                    msg = "Baseline tests passed.\n"
-                    telemetry.log_info(self.start_node, msg)
-                    print(msg, end="")
-            except Exception as e:
-                msg = f"Warning: Could not run baseline tests: {e}\n"
                 telemetry.log_info(self.start_node, msg)
                 print(msg, end="")
 

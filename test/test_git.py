@@ -389,7 +389,6 @@ async def test_initial_commit_hash_for_coder_stays_head(
     mock_verify_environment,
     mock_create_graph,
     mock_get_head,
-    mock_get_test_command,
     mock_run_command,
 ):
     """
@@ -398,7 +397,6 @@ async def test_initial_commit_hash_for_coder_stays_head(
     """
     mock_verify_environment.return_value = True
     mock_get_head.return_value = "head_hash"
-    mock_get_test_command.return_value = ("pytest", [])
     mock_run_command.return_value = {"exit_code": 0, "output": ""}
 
     with patch(
