@@ -14,8 +14,10 @@ async def test_session_id_auto_derivation():
     import copium_loop.telemetry
     from copium_loop.telemetry import get_telemetry
 
-    # Reset singleton for testing
+    # Reset singleton and caches for testing
     copium_loop.telemetry._telemetry_instance = None
+    copium_loop.telemetry._repo_name_cache = None
+    copium_loop.telemetry._branch_name_cache = None
 
     with patch("subprocess.run") as mock_run:
 

@@ -16,10 +16,11 @@ from copium_loop.engine.jules import (
 
 @pytest.fixture(autouse=True)
 def fast_retries():
-    with patch("copium_loop.engine.jules.wait_exponential", return_value=wait_none()), \
-         patch("copium_loop.engine.jules.MAX_API_RETRIES", 3):
+    with (
+        patch("copium_loop.engine.jules.wait_exponential", return_value=wait_none()),
+        patch("copium_loop.engine.jules.MAX_API_RETRIES", 3),
+    ):
         yield
-
 
 
 @pytest.mark.asyncio

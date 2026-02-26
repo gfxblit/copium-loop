@@ -12,23 +12,96 @@ if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 
+@pytest.fixture(scope="session")
+def shared_telemetry_executor():
+    """A shared ThreadPoolExecutor for all telemetry during a test session."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        yield executor
+
+
+_SESSION_REPO = None
+_SESSION_BRANCH = None
+
+
 @pytest.fixture(autouse=True)
-def mock_telemetry_environment(monkeypatch, tmp_path):
+def mock_telemetry_environment(
+    monkeypatch,
+    tmp_path,
+    shared_telemetry_executor,
+    request,  # noqa: ARG001
+):
     """
     Automatically patch the Telemetry class to use a temporary directory
     for logs, avoiding PermissionError during tests.
     """
+    global _SESSION_REPO, _SESSION_BRANCH
     from copium_loop import telemetry
 
-    def mock_init(self, session_id):
+    # Discover once per session if not already done
+    if _SESSION_REPO is None:
+        import re
+        import subprocess
+
+        try:
+            res = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0:
+                url = res.stdout.strip()
+                match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
+                if match:
+                    _SESSION_REPO = match.group(1).replace("/", "-")
+            if not _SESSION_REPO:
+                res = subprocess.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    _SESSION_REPO = Path(res.stdout.strip()).name
+        except Exception:
+            _SESSION_REPO = "test-repo"
+
+        try:
+            res = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0:
+                _SESSION_BRANCH = res.stdout.strip()
+            if not _SESSION_BRANCH:
+                _SESSION_BRANCH = "test-branch"
+        except Exception:
+            _SESSION_BRANCH = "test-branch"
+
+    def mock_init(self, session_id, executor=None):  # noqa: ARG001
         self.session_id = session_id
+        # Use tmp_path for isolation
         self.log_dir = tmp_path / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        # Always use the shared executor in tests to avoid leaking threads
+        self._executor = shared_telemetry_executor
+        self._owns_executor = False
 
     monkeypatch.setattr(telemetry.Telemetry, "__init__", mock_init)
     monkeypatch.setattr(telemetry, "_telemetry_instance", None)
+
+    # Pre-populate the cache with session-level values
+    # Tests that want to mock discovery can still use monkeypatch.setattr(subprocess, 'run', ...)
+    # but they must also reset the cache.
+    monkeypatch.setattr(telemetry, "_repo_name_cache", _SESSION_REPO)
+    monkeypatch.setattr(telemetry, "_branch_name_cache", _SESSION_BRANCH)
+
+    # For even better isolation, we can force a unique session ID if the test doesn't care
+    # but some tests explicitly test session ID derivation.
+    # So we'll leave it to use the caches by default.
 
 
 @pytest.fixture
