@@ -10,13 +10,14 @@ from copium_loop.ui.widgets.session import SessionWidget
 
 
 class SessionWidgetMockApp(App):
-    def __init__(self, column=None):
+    def __init__(self, column=None, **kwargs):
         super().__init__()
         self.session_column = column or SessionColumn("test-session")
+        self.widget_kwargs = kwargs
         self.session_widget = None
 
     def compose(self) -> ComposeResult:
-        self.session_widget = SessionWidget(self.session_column)
+        self.session_widget = SessionWidget(self.session_column, **self.widget_kwargs)
         yield self.session_widget
 
 
@@ -171,3 +172,26 @@ async def test_session_widget_handles_no_prefix():
         rendered = str(header.render())
 
         assert "simple-branch" in rendered
+
+
+@pytest.mark.asyncio
+async def test_session_widget_displays_index():
+    # Setup with index=1
+    col = SessionColumn("test-session")
+    app = SessionWidgetMockApp(col, index=1)
+
+    async with app.run_test():
+        widget = app.query_one(SessionWidget)
+
+        # Initial check
+        await widget.refresh_ui()
+        header = widget.query_one(f"#header-{widget.safe_id}", Static)
+        rendered = str(header.render())
+
+        assert "[1] test-session" in rendered
+
+        # Update index
+        widget.index = 2
+        await widget.refresh_ui()
+        rendered = str(header.render())
+        assert "[2] test-session" in rendered
