@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
+
 
 @pytest.fixture(autouse=True)
 def mock_gemini_stats_client():

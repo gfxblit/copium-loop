@@ -13,6 +13,7 @@ from copium_loop.engine.jules import (
     JulesTimeoutError,
 )
 
+
 @pytest.fixture(autouse=True)
 def fast_retries():
     with patch("copium_loop.engine.jules.wait_exponential", return_value=wait_none()), \
