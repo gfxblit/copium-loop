@@ -1,4 +1,5 @@
 import subprocess
+import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -16,6 +17,37 @@ def mock_session_manager():
         patch("copium_loop.session_manager.SessionManager"),
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def clear_git_cache():
+    git._BRANCH_CACHE.clear()
+    yield
+    git._BRANCH_CACHE.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_current_branch_caching():
+    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"output": "main\n", "exit_code": 0}
+
+        # First call - should hit run_command
+        branch1 = await git.get_current_branch()
+        assert branch1 == "main"
+        assert mock_run.call_count == 1
+
+        # Second call immediately - should use cache
+        branch2 = await git.get_current_branch()
+        assert branch2 == "main"
+        assert mock_run.call_count == 1
+
+        # Simulate time passing > CACHE_TTL (1.0s)
+        # We need to mock time.time to return a future time
+        future_time = time.time() + git.CACHE_TTL + 0.1
+        with patch("copium_loop.git.time.time", return_value=future_time):
+            branch3 = await git.get_current_branch()
+            assert branch3 == "main"
+            assert mock_run.call_count == 2
 
 
 @pytest.mark.asyncio
