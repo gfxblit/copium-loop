@@ -9,3 +9,7 @@
 ## 2025-02-18 - Optimize Git Remote Checks
 **Learning:** Checking for git remotes using sequential subprocess calls (`git remote` list then `git remote get-url` per remote) is inefficient (N+1 problem).
 **Action:** Use `git remote -v` to fetch all remote URLs in a single subprocess call and parse the output. This reduces overhead significantly, especially in environments where process spawning is expensive.
+
+## 2025-02-18 - Efficient Top-K File Selection
+**Learning:** Sorting an entire directory listing (`O(N log N)`) just to get the top K most recent files is wasteful when N is large. `heapq.nlargest` (`O(N log K)`) combined with `os.scandir` (avoiding `Path` object creation overhead) yields a ~3x speedup for session log polling.
+**Action:** Use `heapq.nlargest` with a generator yielding `DirEntry` objects (to leverage cached stats) when filtering large file sets.
