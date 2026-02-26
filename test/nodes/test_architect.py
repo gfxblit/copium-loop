@@ -230,9 +230,10 @@ class TestArchitectNode:
 async def test_jules_architect_prompt_robustness(agent_state):
     """Verify that the Jules architect prompt requires a SUMMARY and specific format."""
     agent_state["initial_commit_hash"] = "sha123"
+    engine = agent_state["engine"]
 
     with patch("copium_loop.nodes.utils.is_git_repo", return_value=True):
-        prompt = await get_architect_prompt("jules", agent_state)
+        prompt = await get_architect_prompt("jules", agent_state, engine)
 
         # New requirements from Issue #170
         assert "SUMMARY: [Your detailed analysis here]" in prompt
