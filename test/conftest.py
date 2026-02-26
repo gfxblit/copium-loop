@@ -161,13 +161,6 @@ def mock_get_head():
 
 
 @pytest.fixture
-def mock_get_test_command():
-    """Fixture to mock get_test_command."""
-    with patch("copium_loop.copium_loop.get_test_command") as mock:
-        yield mock
-
-
-@pytest.fixture
 def mock_os_path_exists():
     """Fixture to mock os.path.exists."""
     with patch("os.path.exists") as mock:

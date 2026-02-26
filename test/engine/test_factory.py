@@ -68,7 +68,6 @@ async def test_engine_priority_cli_overrides_saved():
         patch(
             "copium_loop.copium_loop.run_command", new_callable=AsyncMock
         ) as mock_run,
-        patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
         patch("copium_loop.copium_loop.SessionManager"),
     ):
@@ -110,7 +109,6 @@ async def test_engine_priority_saved_used_if_no_cli():
         patch(
             "copium_loop.copium_loop.run_command", new_callable=AsyncMock
         ) as mock_run,
-        patch("copium_loop.copium_loop.get_test_command", return_value=("echo", [])),
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
         patch("copium_loop.copium_loop.SessionManager"),
     ):
