@@ -1,5 +1,6 @@
-import contextlib
+import heapq
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,24 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(self, directory: Path):
+        """Recursively yields (mtime, path_str) for all .jsonl files."""
+        try:
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from self._scan_log_files(entry.path)
+                    elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
+                        ".jsonl"
+                    ):
+                        try:
+                            # entry.stat() returns a cached stat object on most platforms
+                            yield (entry.stat().st_mtime, entry.path)
+                        except OSError:
+                            continue
+        except OSError:
+            pass
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -31,15 +50,22 @@ class SessionManager:
             return []
 
         # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
+        # Optimize: Use os.scandir + heapq to avoid listing all files and full sort
+        try:
+            # Yields (mtime, path_str)
+            files_gen = self._scan_log_files(self.log_dir)
 
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
+            # Get the top N most recent files. heapq.nlargest is O(N log K)
+            top_files = heapq.nlargest(self.max_sessions, files_gen, key=lambda x: x[0])
 
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+            # Sort them by mtime ascending (oldest -> newest) for consistent processing
+            top_files.sort(key=lambda x: x[0])
+
+            log_files = [Path(p) for _, p in top_files]
+
+        except Exception:
+            # Fallback (though unlikely needed unless permissions issues occur globally)
+            return []
 
         active_sids = set()
         log_entries_map = {}
