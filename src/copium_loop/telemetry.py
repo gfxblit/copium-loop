@@ -8,13 +8,22 @@ from pathlib import Path
 class Telemetry:
     """Handles logging of agent state and output to shared .jsonl files."""
 
-    def __init__(self, session_id: str):
+    def __init__(
+        self,
+        session_id: str,
+        executor: concurrent.futures.ThreadPoolExecutor | None = None,
+    ):
         self.session_id = session_id
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        atexit.register(self._executor.shutdown)
+        if executor:
+            self._executor = executor
+            self._owns_executor = False
+        else:
+            self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            self._owns_executor = True
+            atexit.register(self._executor.shutdown)
 
     def flush(self):
         """Waits for all pending log writes to complete."""
@@ -333,6 +342,8 @@ class Telemetry:
 
 
 _telemetry_instance = None
+_repo_name_cache = None
+_branch_name_cache = None
 
 
 def find_latest_session() -> str | None:
@@ -361,7 +372,7 @@ def find_latest_session() -> str | None:
 
 def get_telemetry() -> Telemetry:
     """Returns the global telemetry instance with a session ID derived from the git repo and branch."""
-    global _telemetry_instance
+    global _telemetry_instance, _repo_name_cache, _branch_name_cache
     if _telemetry_instance is None:
         import re
         import subprocess
@@ -369,60 +380,67 @@ def get_telemetry() -> Telemetry:
         # Strictly derive session ID from repo and branch
         try:
             # 1. Get repo name (from remote origin if possible, else from local directory)
-            repo_name = None
-            res = subprocess.run(
-                ["git", "remote", "get-url", "origin"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if res.returncode == 0:
-                url = res.stdout.strip()
-                # Extract owner and repo from various git URL formats
-                match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
-                if match:
-                    repo_name = match.group(1).replace("/", "-")
-
+            repo_name = _repo_name_cache
             if not repo_name:
-                # Fallback to local directory name if no remote or remote doesn't match
                 res = subprocess.run(
-                    ["git", "rev-parse", "--show-toplevel"],
+                    ["git", "remote", "get-url", "origin"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                if res.returncode == 0:
+                    url = res.stdout.strip()
+                    # Extract owner and repo from various git URL formats
+                    match = re.search(
+                        r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url
+                    )
+                    if match:
+                        repo_name = match.group(1).replace("/", "-")
+
+                if not repo_name:
+                    # Fallback to local directory name if no remote or remote doesn't match
+                    res = subprocess.run(
+                        ["git", "rev-parse", "--show-toplevel"],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if res.returncode == 0:
+                        repo_name = Path(res.stdout.strip()).name
+                    else:
+                        raise RuntimeError(
+                            "Not a git repository: Could not determine repository root."
+                        )
+                _repo_name_cache = repo_name
+
+            # 2. Get branch name
+            branch_name = _branch_name_cache
+            if not branch_name:
+                res = subprocess.run(
+                    ["git", "branch", "--show-current"],
                     capture_output=True,
                     text=True,
                     check=False,
                 )
                 if res.returncode == 0:
-                    repo_name = Path(res.stdout.strip()).name
+                    branch_name = res.stdout.strip()
+                    if not branch_name:
+                        # Detached HEAD? Fallback to commit hash
+                        res = subprocess.run(
+                            ["git", "rev-parse", "--short", "HEAD"],
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        branch_name = (
+                            res.stdout.strip() if res.returncode == 0 else "unknown"
+                        )
                 else:
                     raise RuntimeError(
-                        "Not a git repository: Could not determine repository root."
+                        "Not a git repository: Could not determine branch name."
                     )
-
-            # 2. Get branch name
-            res = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if res.returncode == 0:
-                branch_name = res.stdout.strip()
-                if not branch_name:
-                    # Detached HEAD? Fallback to commit hash
-                    res = subprocess.run(
-                        ["git", "rev-parse", "--short", "HEAD"],
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                    )
-                    branch_name = (
-                        res.stdout.strip() if res.returncode == 0 else "unknown"
-                    )
-            else:
-                raise RuntimeError(
-                    "Not a git repository: Could not determine branch name."
-                )
+                _branch_name_cache = branch_name
 
             session_id = f"{repo_name}/{branch_name}"
             _telemetry_instance = Telemetry(session_id)
