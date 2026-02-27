@@ -1,7 +1,9 @@
-import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 from copium_loop.session_manager import SessionManager
+
 
 def test_session_manager_path_traversal():
     """
@@ -21,6 +23,7 @@ def test_session_manager_path_traversal():
     actual_path = manager.state_file.resolve()
     assert str(actual_path).startswith(str(expected_base_dir.resolve()))
     assert actual_path.name == f"{valid_session_id}.json"
+
 
 def test_session_manager_sanitize_separators():
     """

@@ -73,19 +73,23 @@ class SessionManager:
 
         # Remove any ".." components if they somehow survived (though replacing sep should handle it)
         if ".." in safe_session_id:
-             raise ValueError("Invalid session ID: contains '..'")
+            raise ValueError("Invalid session ID: contains '..'")
 
-        self.session_id = session_id # Keep original ID for logic
+        self.session_id = session_id  # Keep original ID for logic
         self.state_file = self.state_dir / f"{safe_session_id}.json"
 
         # Final check to be absolutely sure
         try:
             # We use strict=False to allow resolving paths that don't exist yet (for new sessions)
             # This is available in Python 3.10+ (and default behavior in older versions was strict=False)
-            self.state_file.resolve(strict=False).relative_to(self.state_dir.resolve(strict=False))
+            self.state_file.resolve(strict=False).relative_to(
+                self.state_dir.resolve(strict=False)
+            )
         except ValueError:
-             # This should be unreachable with the replacement above, but defense in depth
-             raise ValueError(f"Invalid session ID: {session_id} results in path traversal")
+            # This should be unreachable with the replacement above, but defense in depth
+            raise ValueError(
+                f"Invalid session ID: {session_id} results in path traversal"
+            ) from None
 
         self._data: SessionData | None = None
         self._load()
