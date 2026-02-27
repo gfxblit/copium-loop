@@ -1,10 +1,10 @@
-import contextlib
 import heapq
 import json
 import os
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from .column import SessionColumn
 
