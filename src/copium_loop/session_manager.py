@@ -49,10 +49,48 @@ class SessionManager:
     """Manages persistent session state."""
 
     def __init__(self, session_id: str):
-        self.session_id = session_id
+        # Prevent path traversal
+        if not session_id or session_id in (".", ".."):
+            raise ValueError("Invalid session ID")
+
+        # Replace characters that are problematic in filenames
+        # We allow '/' because the session ID might be "owner/repo" which we want
+        # to map to "owner_repo" or similar, but here we just replace path separators
+        # to flatten the directory structure and prevent traversal.
+        # Actually, simply taking the basename is risky if the ID is meant to be unique globally.
+        # A better approach is to sanitize the ID to only allow safe characters.
+        # However, to minimally impact existing behavior while fixing traversal,
+        # we will ensure the resolved path stays within the state_dir.
+
         self.state_dir = Path.home() / ".copium" / "sessions"
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        self.state_file = self.state_dir / f"{session_id}.json"
+
+        # Sanitize session_id to prevent path traversal
+        # We replace any path separators with underscores to flatten the structure
+        safe_session_id = session_id.replace(os.sep, "_")
+        if os.altsep:
+            safe_session_id = safe_session_id.replace(os.altsep, "_")
+
+        # Remove any ".." components if they somehow survived (though replacing sep should handle it)
+        if ".." in safe_session_id:
+            raise ValueError("Invalid session ID: contains '..'")
+
+        self.session_id = session_id  # Keep original ID for logic
+        self.state_file = self.state_dir / f"{safe_session_id}.json"
+
+        # Final check to be absolutely sure
+        try:
+            # We use strict=False to allow resolving paths that don't exist yet (for new sessions)
+            # This is available in Python 3.10+ (and default behavior in older versions was strict=False)
+            self.state_file.resolve(strict=False).relative_to(
+                self.state_dir.resolve(strict=False)
+            )
+        except ValueError:
+            # This should be unreachable with the replacement above, but defense in depth
+            raise ValueError(
+                f"Invalid session ID: {session_id} results in path traversal"
+            ) from None
+
         self._data: SessionData | None = None
         self._load()
 
