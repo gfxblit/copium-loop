@@ -1,4 +1,8 @@
+import os
+
 from copium_loop.shell import run_command
+
+_BRANCH_CACHE = {}
 
 
 async def is_git_repo(node: str | None = None) -> bool:
@@ -126,6 +130,10 @@ async def get_repo_name(node: str | None = None) -> str:
     """Extracts owner/repo from git remotes."""
     import re
 
+    key = (os.getcwd(), node)
+    if key in _BRANCH_CACHE:
+        return _BRANCH_CACHE[key]
+
     # Get all remotes and their URLs in one go
     res = await run_command("git", ["remote", "-v"], node=node, capture_stderr=False)
     if res["exit_code"] != 0:
@@ -158,6 +166,8 @@ async def get_repo_name(node: str | None = None) -> str:
     # The negative lookbehind (?<!/) ensures we don't match the protocol separator //
     match = re.search(r"(?<!/)[:/]([\w\-\.]+/[\w\-\.]+?)(?:\.git)?/?$", url)
     if match:
-        return match.group(1)
+        result = match.group(1)
+        _BRANCH_CACHE[key] = result
+        return result
 
     raise ValueError(f"Could not parse repo name from remote URL: {url}")
