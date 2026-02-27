@@ -1,8 +1,10 @@
 import contextlib
+import heapq
 import json
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from .column import SessionColumn
 
@@ -22,6 +24,27 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(self, path: Path | str) -> Iterator[os.DirEntry]:
+        """Recursively scan for .jsonl files using os.scandir for performance."""
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from self._scan_log_files(entry.path)
+                    elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
+                        ".jsonl"
+                    ):
+                        yield entry
+        except OSError:
+            pass
+
+    def _get_mtime(self, entry: os.DirEntry) -> float:
+        """Safely get mtime from DirEntry."""
+        try:
+            return entry.stat().st_mtime
+        except OSError:
+            return 0.0
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -30,24 +53,32 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
+        # Find the most recent max_sessions files efficiently
+        # Use a generator to avoid creating a full list of all files
+        log_entries = self._scan_log_files(self.log_dir)
 
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
+        # O(N log K) selection of top K most recent files
+        most_recent_entries = heapq.nlargest(
+            self.max_sessions, log_entries, key=self._get_mtime
+        )
 
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        # Sort the selected few files by mtime to preserve consistent processing order (oldest to newest)
+        # This matches the previous logic of sorting all files by mtime
+        most_recent_entries.sort(key=self._get_mtime)
 
         active_sids = set()
         log_entries_map = {}
-        for fpath in log_files:
+
+        for entry in most_recent_entries:
             # Derive session ID from relative path
-            sid = str(fpath.relative_to(self.log_dir).with_suffix(""))
-            active_sids.add(sid)
-            log_entries_map[sid] = fpath
+            # We need to construct Path objects for the selected few files
+            fpath = Path(entry.path)
+            try:
+                sid = str(fpath.relative_to(self.log_dir).with_suffix(""))
+                active_sids.add(sid)
+                log_entries_map[sid] = entry
+            except ValueError:
+                continue
 
         # Remove stale sessions
         stale_sids = [sid for sid in self.sessions if sid not in active_sids]
@@ -60,9 +91,9 @@ class SessionManager:
 
         updates = []
 
-        for sid, fpath in log_entries_map.items():
+        for sid, entry in log_entries_map.items():
             try:
-                stat = fpath.stat()
+                stat = entry.stat()
                 mtime = stat.st_mtime
                 size = stat.st_size
             except OSError:
@@ -92,7 +123,8 @@ class SessionManager:
             offset = self.log_offsets.get(sid, 0)
             events = []
             try:
-                with open(fpath) as f:
+                # Use entry.path for open()
+                with open(entry.path) as f:
                     if offset > 0:
                         f.seek(offset)
                         # If we seeked into the middle of a file (initial read of a large file),
@@ -164,10 +196,7 @@ class SessionManager:
         def sort_key(s: SessionColumn):
             is_running = s.workflow_status == "running"
             if is_running:
-                # Group 0: Running sessions, sorted by activation time (newest first for visibility)
-                # Wait, original dashboard sorted oldest first?
-                # "Group 0: Running sessions, sorted by activation time (oldest first)"
-                # Let's keep it consistent: oldest running first.
+                # Group 0: Running sessions, sorted by activation time (oldest first)
                 return (0, s.activated_at, s.session_id)
             else:
                 # Group 1: Completed sessions, sorted by completion time (newest first)
