@@ -184,6 +184,9 @@ async def test_get_repo_name_parsing():
     ]
 
     for url, expected in urls:
+        # Clear cache between iterations to prevent stale results
+        git._BRANCH_CACHE.clear()
+
         with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
             # We mock git remote -v output
             # Output format: origin  url (fetch)
