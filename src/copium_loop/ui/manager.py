@@ -24,9 +24,7 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
-    def _scan_log_files(
-        self, path: Path | str
-    ) -> Iterator[tuple[Path, float, int]]:
+    def _scan_log_files(self, path: Path | str) -> Iterator[tuple[Path, float, int]]:
         """
         Recursively scans a directory for .jsonl files using os.scandir.
         Yields tuples of (file_path, mtime, size) leveraging cached DirEntry stat.
