@@ -1,5 +1,7 @@
-import contextlib
+import heapq
 import json
+import os
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,27 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(
+        self, path: Path | str
+    ) -> Iterator[tuple[Path, float, int]]:
+        """
+        Recursively scans a directory for .jsonl files using os.scandir.
+        Yields tuples of (file_path, mtime, size) leveraging cached DirEntry stat.
+        """
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from self._scan_log_files(entry.path)
+                    elif entry.is_file() and entry.name.endswith(".jsonl"):
+                        try:
+                            stat = entry.stat()
+                            yield (Path(entry.path), stat.st_mtime, stat.st_size)
+                        except OSError:
+                            continue
+        except OSError:
+            pass
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -30,24 +53,25 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
+        # Find all .jsonl files recursively using os.scandir to avoid redundant stats
+        all_logs = list(self._scan_log_files(self.log_dir))
 
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
+        # Optimization: Use heapq.nlargest to get top N recent files efficiently (O(N log K))
+        # sorting by mtime. If there are fewer than max_sessions, it just sorts them.
+        top_logs = heapq.nlargest(self.max_sessions, all_logs, key=lambda x: x[1])
 
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        # Reverse so oldest are processed first for consistency if needed,
+        # or we just process them. Actually we want to process oldest first to build state,
+        # but top_logs returns newest first. Let's process oldest first.
+        top_logs.sort(key=lambda x: x[1])
 
         active_sids = set()
         log_entries_map = {}
-        for fpath in log_files:
+        for fpath, mtime, size in top_logs:
             # Derive session ID from relative path
             sid = str(fpath.relative_to(self.log_dir).with_suffix(""))
             active_sids.add(sid)
-            log_entries_map[sid] = fpath
+            log_entries_map[sid] = (fpath, mtime, size)
 
         # Remove stale sessions
         stale_sids = [sid for sid in self.sessions if sid not in active_sids]
@@ -60,14 +84,7 @@ class SessionManager:
 
         updates = []
 
-        for sid, fpath in log_entries_map.items():
-            try:
-                stat = fpath.stat()
-                mtime = stat.st_mtime
-                size = stat.st_size
-            except OSError:
-                continue
-
+        for sid, (fpath, mtime, size) in log_entries_map.items():
             # Optimization: Skip file if mtime and size match cached values
             cached_stat = self.file_stats.get(sid)
             if cached_stat and cached_stat == (mtime, size):
