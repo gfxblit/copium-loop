@@ -10,14 +10,26 @@ from copium_loop.ui.widgets.session import SessionWidget
 
 
 class SessionWidgetMockApp(App):
-    def __init__(self, column=None):
+    def __init__(self, column=None, **kwargs):
         super().__init__()
         self.session_column = column or SessionColumn("test-session")
         self.session_widget = None
+        self.widget_kwargs = kwargs
 
     def compose(self) -> ComposeResult:
-        self.session_widget = SessionWidget(self.session_column)
+        self.session_widget = SessionWidget(self.session_column, **self.widget_kwargs)
         yield self.session_widget
+
+
+@pytest.mark.asyncio
+async def test_session_widget_keyboard_shortcut_hint():
+    app = SessionWidgetMockApp(index=1)
+    async with app.run_test():
+        session_widget = app.query_one(SessionWidget)
+        await session_widget.refresh_ui()
+
+        header = session_widget.query_one("#header-test-session", Static)
+        assert "[1] test-session" in str(header.render())
 
 
 @pytest.mark.asyncio
