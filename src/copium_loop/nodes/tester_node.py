@@ -82,18 +82,21 @@ async def tester_node(state: AgentState) -> dict:
 
     # 1. Lint
     lint_cmd_obj = get_lint_command()
-    success, output = await _run_stage("linting", lint_cmd_obj, telemetry)
-    if not success:
-        telemetry.log_status("tester", "failed")
-        error_msg = "FAIL (Lint):\n" + output
-        return {
-            "test_output": error_msg,
-            "retry_count": retry_count + 1,
-            "messages": [
-                SystemMessage(content=f"Linting failed ({lint_cmd_obj}):\n" + output)
-            ],
-            "last_error": error_msg,
-        }
+    if lint_cmd_obj:
+        success, output = await _run_stage("linting", lint_cmd_obj, telemetry)
+        if not success:
+            telemetry.log_status("tester", "failed")
+            error_msg = "FAIL (Lint):\n" + output
+            return {
+                "test_output": error_msg,
+                "retry_count": retry_count + 1,
+                "messages": [
+                    SystemMessage(
+                        content=f"Linting failed ({lint_cmd_obj}):\n" + output
+                    )
+                ],
+                "last_error": error_msg,
+            }
 
     # 2. Build
     build_cmd_obj = get_build_command()
@@ -113,45 +116,46 @@ async def tester_node(state: AgentState) -> dict:
 
     # 3. Test
     test_cmd_obj = get_test_command()
-    success, output = await _run_stage("unit tests", test_cmd_obj, telemetry)
-    if not success:
-        telemetry.log_status("tester", "failed")
-        message = (
-            "Max retries exceeded. Aborting."
-            if retry_count >= constants.MAX_RETRIES
-            else "Unit tests failed. Returning to coder."
-        )
-
-        # Check for coverage failures
-        coverage_patterns = [
-            r"Required test coverage of \d+% not reached\. Total coverage: ([\d.]+)%",
-            r"Jest: Coverage for .+? \(([\d.]+)%\) does not meet global threshold \(([\d.]+)%\)",
-            r"Coverage check failed",
-        ]
-        is_coverage_failure = any(
-            re.search(p, output, re.MULTILINE) for p in coverage_patterns
-        )
-
-        fail_type = "Coverage" if is_coverage_failure else "Unit"
-        fail_prefix = f"FAIL ({fail_type}):"
-
-        if is_coverage_failure:
+    if test_cmd_obj:
+        success, output = await _run_stage("unit tests", test_cmd_obj, telemetry)
+        if not success:
+            telemetry.log_status("tester", "failed")
             message = (
                 "Max retries exceeded. Aborting."
                 if retry_count >= constants.MAX_RETRIES
-                else "Test coverage threshold not met. Returning to coder."
+                else "Unit tests failed. Returning to coder."
             )
 
-        telemetry.log_info("tester", f"{message}\n")
-        error_msg = f"{fail_prefix}\n" + output
-        return {
-            "test_output": error_msg,
-            "retry_count": retry_count + 1,
-            "messages": [
-                SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)
-            ],
-            "last_error": error_msg,
-        }
+            # Check for coverage failures
+            coverage_patterns = [
+                r"Required test coverage of \d+% not reached\. Total coverage: ([\d.]+)%",
+                r"Jest: Coverage for .+? \(([\d.]+)%\) does not meet global threshold \(([\d.]+)%\)",
+                r"Coverage check failed",
+            ]
+            is_coverage_failure = any(
+                re.search(p, output, re.MULTILINE) for p in coverage_patterns
+            )
+
+            fail_type = "Coverage" if is_coverage_failure else "Unit"
+            fail_prefix = f"FAIL ({fail_type}):"
+
+            if is_coverage_failure:
+                message = (
+                    "Max retries exceeded. Aborting."
+                    if retry_count >= constants.MAX_RETRIES
+                    else "Test coverage threshold not met. Returning to coder."
+                )
+
+            telemetry.log_info("tester", f"{message}\n")
+            error_msg = f"{fail_prefix}\n" + output
+            return {
+                "test_output": error_msg,
+                "retry_count": retry_count + 1,
+                "messages": [
+                    SystemMessage(content=f"Tests failed ({fail_type}):\n" + output)
+                ],
+                "last_error": error_msg,
+            }
 
     telemetry.log_status("tester", "success")
     return {"test_output": "PASS"}

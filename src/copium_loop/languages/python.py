@@ -13,14 +13,13 @@ class PythonStrategy(LanguageStrategy):
     def match(self, path: str) -> bool:
         py_indicators = ["pyproject.toml", "setup.py", "requirements.txt"]
         for ind in py_indicators:
-            if os.path.exists(ind if path == "." else os.path.join(path, ind)):
+            if os.path.exists(os.path.normpath(os.path.join(path, ind))):
                 return True
 
         # Check for any .py files in the directory
         try:
-            target_dir = path if path != "." else "."
-            if os.path.isdir(target_dir):
-                for f in os.scandir(target_dir):
+            if os.path.isdir(path):
+                for f in os.scandir(path):
                     if f.is_file() and f.name.endswith(".py"):
                         return True
         except OSError:

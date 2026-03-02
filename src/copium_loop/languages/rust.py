@@ -9,9 +9,7 @@ class RustStrategy(LanguageStrategy):
         return "rust"
 
     def match(self, path: str) -> bool:
-        return os.path.exists(
-            "Cargo.toml" if path == "." else os.path.join(path, "Cargo.toml")
-        )
+        return os.path.exists(os.path.normpath(os.path.join(path, "Cargo.toml")))
 
     def get_test_command(self, path: str) -> Command | CompositeCommand | None:
         return Command("cargo", ["test"], cwd=None if path == "." else path)
