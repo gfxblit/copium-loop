@@ -279,3 +279,24 @@ def test_discovery_hybrid_project(tmp_path):
         assert "ruff check . && ruff format --check ." in command_str
     finally:
         os.chdir(original_cwd)
+
+
+def test_discovery_python_monorepo_build(tmp_path):
+    """Test that python monorepos do not incorrectly fallback to npm build."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        # Create root python project
+        (tmp_path / "pyproject.toml").touch()
+
+        # Create sub-package python project
+        sub_dir = tmp_path / "tests"
+        sub_dir.mkdir()
+        (sub_dir / "requirements.txt").touch()
+
+        # Build command should be empty for a pure python monorepo
+        build_cmd, build_args = discovery.get_build_command()
+        assert build_cmd == ""
+        assert build_args == []
+    finally:
+        os.chdir(original_cwd)

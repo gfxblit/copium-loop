@@ -113,8 +113,7 @@ def _build_composite_command(
     if not commands:
         if (
             projects
-            and len(projects) == 1
-            and projects[0][1] == "python"
+            and all(ptype == "python" for _, ptype in projects)
             and cmd_type == "build"
         ):
             return "", []
