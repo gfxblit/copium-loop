@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from copium_loop import discovery
+from copium_loop.languages import CompositeCommand
 
 
 def test_get_test_command_pytest():
@@ -13,11 +14,11 @@ def test_get_test_command_pytest():
         return path == "pyproject.toml"
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_test_command()
-        assert cmd == "pytest"
-        assert "--cov=src" in args
-        assert "--cov-report=term-missing" in args
-        assert "--cov-fail-under=80" in args
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "pytest"
+        assert "--cov=src" in cmd_obj.args
+        assert "--cov-report=term-missing" in cmd_obj.args
+        assert "--cov-fail-under=80" in cmd_obj.args
 
 
 def test_get_test_command_pytest_custom_coverage():
@@ -30,9 +31,9 @@ def test_get_test_command_pytest_custom_coverage():
         patch("os.path.exists", side_effect=side_effect),
         patch.dict("os.environ", {"COPIUM_MIN_COVERAGE": "90"}),
     ):
-        cmd, args = discovery.get_test_command()
-        assert cmd == "pytest"
-        assert "--cov-fail-under=90" in args
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "pytest"
+        assert "--cov-fail-under=90" in cmd_obj.args
 
 
 def test_get_test_command_npm_priority():
@@ -42,30 +43,32 @@ def test_get_test_command_npm_priority():
         return path in ["package.json", "pyproject.toml", "package-lock.json"]
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_test_command()
-        assert cmd == "npm"
-        assert args == ["test"]
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "npm"
+        assert cmd_obj.args == ["test"]
 
 
 def test_get_package_manager_detection():
     """Test detection of different package managers."""
+    from copium_loop.languages.node import get_package_manager
+
     # Test npm (default)
     with patch("os.path.exists", return_value=False):
-        assert discovery.get_package_manager() == "npm"
+        assert get_package_manager() == "npm"
 
     # Test pnpm
     def pnpm_side_effect(path):
         return path == "pnpm-lock.yaml"
 
     with patch("os.path.exists", side_effect=pnpm_side_effect):
-        assert discovery.get_package_manager() == "pnpm"
+        assert get_package_manager() == "pnpm"
 
     # Test yarn
     def yarn_side_effect(path):
         return path == "yarn.lock"
 
     with patch("os.path.exists", side_effect=yarn_side_effect):
-        assert discovery.get_package_manager() == "yarn"
+        assert get_package_manager() == "yarn"
 
 
 def test_get_test_command_pnpm_priority():
@@ -75,9 +78,9 @@ def test_get_test_command_pnpm_priority():
         return path in ["package.json", "pnpm-lock.yaml"]
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_test_command()
-        assert cmd == "pnpm"
-        assert args == ["test"]
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "pnpm"
+        assert cmd_obj.args == ["test"]
 
 
 def test_get_lint_command_ruff():
@@ -87,9 +90,10 @@ def test_get_lint_command_ruff():
         return path == "pyproject.toml"
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_lint_command()
-        assert cmd == "sh"
-        assert args == ["-c", "ruff check . && ruff format --check ."]
+        cmd_obj = discovery.get_lint_command()
+        # Ruff lint is now a CompositeCommand
+        assert cmd_obj.commands[0].executable == "ruff"
+        assert cmd_obj.commands[0].args == ["check", "."]
 
 
 def test_get_lint_command_npm_priority():
@@ -99,57 +103,59 @@ def test_get_lint_command_npm_priority():
         return path in ["package.json", "pyproject.toml"]
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_lint_command()
-        assert cmd == "npm"
-        assert args == ["run", "lint"]
+        cmd_obj = discovery.get_lint_command()
+        assert cmd_obj.executable == "npm"
+        assert cmd_obj.args == ["run", "lint"]
 
 
 def test_get_test_command_env_override():
     """Test that get_test_command respects COPIUM_TEST_CMD environment variable."""
     with patch.dict("os.environ", {"COPIUM_TEST_CMD": "mytest --fast"}):
-        cmd, args = discovery.get_test_command()
-        assert cmd == "mytest"
-        assert args == ["--fast"]
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "mytest"
+        assert cmd_obj.args == ["--fast"]
 
 
 def test_get_build_command_npm():
     """Test that get_build_command returns npm for node projects."""
+
+    def side_effect(path):
+        return "lock" not in path
+
     with (
-        patch("os.path.exists", return_value=True),
+        patch("os.path.exists", side_effect=side_effect),
         patch("os.scandir", return_value=[]),
-        patch("copium_loop.discovery.get_package_manager", return_value="npm"),
     ):
-        cmd, args = discovery.get_build_command()
-        assert cmd == "npm"
-        assert args == ["run", "build"]
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj.executable == "npm"
+        assert cmd_obj.args == ["run", "build"]
 
 
 def test_get_build_command_env_override():
     """Test that get_build_command respects COPIUM_BUILD_CMD environment variable."""
     with patch.dict("os.environ", {"COPIUM_BUILD_CMD": "mybuild --prod"}):
-        cmd, args = discovery.get_build_command()
-        assert cmd == "mybuild"
-        assert args == ["--prod"]
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj.executable == "mybuild"
+        assert cmd_obj.args == ["--prod"]
 
 
 def test_get_build_command_python_empty():
-    """Test that get_build_command returns empty for python projects without explicit build."""
+    """Test that get_build_command returns None for python projects without explicit build."""
 
     def side_effect(path):
         return path == "pyproject.toml"
 
     with patch("os.path.exists", side_effect=side_effect):
-        cmd, args = discovery.get_build_command()
-        assert cmd == ""
-        assert args == []
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj is None
 
 
 def test_get_lint_command_env_override():
     """Test that get_lint_command respects COPIUM_LINT_CMD environment variable."""
     with patch.dict("os.environ", {"COPIUM_LINT_CMD": "mylint --strict"}):
-        cmd, args = discovery.get_lint_command()
-        assert cmd == "mylint"
-        assert args == ["--strict"]
+        cmd_obj = discovery.get_lint_command()
+        assert cmd_obj.executable == "mylint"
+        assert cmd_obj.args == ["--strict"]
 
 
 def test_get_lint_command_python_no_config():
@@ -172,9 +178,8 @@ def test_get_lint_command_python_no_config():
         patch("os.path.exists", side_effect=side_effect),
         patch("os.scandir", return_value=[mock_entry]),
     ):
-        cmd, args = discovery.get_lint_command()
-        assert cmd == "sh"
-        assert args == ["-c", "ruff check . && ruff format --check ."]
+        cmd_obj = discovery.get_lint_command()
+        assert cmd_obj.commands[0].executable == "ruff"
 
 
 @pytest.mark.parametrize(
@@ -190,14 +195,14 @@ def test_discovery_python_project_detection(file_to_create, tmp_path):
         else:
             (tmp_path / file_to_create).touch()
 
-        test_cmd, _ = discovery.get_test_command()
-        assert test_cmd == "pytest"
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "pytest"
 
-        build_cmd, _ = discovery.get_build_command()
-        assert build_cmd == ""
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj is None
 
-        lint_cmd, _ = discovery.get_lint_command()
-        assert lint_cmd == "sh"
+        cmd_obj = discovery.get_lint_command()
+        assert isinstance(cmd_obj, CompositeCommand)
     finally:
         os.chdir(original_cwd)
 
@@ -208,8 +213,8 @@ def test_discovery_no_python_project(tmp_path):
     os.chdir(tmp_path)
     try:
         # Empty directory
-        test_cmd, _ = discovery.get_test_command()
-        assert test_cmd == "npm"
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "npm"
     finally:
         os.chdir(original_cwd)
 
@@ -221,17 +226,16 @@ def test_discovery_rust_only(tmp_path):
     try:
         (tmp_path / "Cargo.toml").touch()
 
-        test_cmd, test_args = discovery.get_test_command()
-        assert test_cmd == "cargo"
-        assert test_args == ["test"]
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "cargo"
+        assert cmd_obj.args == ["test"]
 
-        build_cmd, build_args = discovery.get_build_command()
-        assert build_cmd == "cargo"
-        assert build_args == ["build"]
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj.executable == "cargo"
+        assert cmd_obj.args == ["build"]
 
-        lint_cmd, lint_args = discovery.get_lint_command()
-        assert lint_cmd == "sh"
-        assert lint_args == ["-c", "cargo clippy && cargo fmt --check"]
+        cmd_obj = discovery.get_lint_command()
+        assert isinstance(cmd_obj, CompositeCommand)
     finally:
         os.chdir(original_cwd)
 
@@ -254,29 +258,26 @@ def test_discovery_hybrid_project(tmp_path):
         # Create root python project
         (tmp_path / "pyproject.toml").touch()
 
-        test_cmd, test_args = discovery.get_test_command()
-        assert test_cmd == "sh"
-        assert test_args[0] == "-c"
-        command_str = test_args[1]
-        assert "(cd client && npm test)" in command_str
-        assert "(cd server && cargo test)" in command_str
-        assert "pytest" in command_str
+        test_cmd = discovery.get_test_command()
+        assert isinstance(test_cmd, CompositeCommand)
+        cmd_strs = [str(c) for c in test_cmd.commands]
+        assert any("client" in s and "npm test" in s for s in cmd_strs)
+        assert any("server" in s and "cargo test" in s for s in cmd_strs)
+        assert any("pytest" in s for s in cmd_strs)
 
-        build_cmd, build_args = discovery.get_build_command()
-        assert build_cmd == "sh"
-        assert build_args[0] == "-c"
-        command_str = build_args[1]
-        assert "(cd client && npm run build)" in command_str
-        assert "(cd server && cargo build)" in command_str
-        assert "pytest" not in command_str
+        build_cmd = discovery.get_build_command()
+        assert isinstance(build_cmd, CompositeCommand)
+        cmd_strs = [str(c) for c in build_cmd.commands]
+        assert any("client" in s and "npm run build" in s for s in cmd_strs)
+        assert any("server" in s and "cargo build" in s for s in cmd_strs)
 
-        lint_cmd, lint_args = discovery.get_lint_command()
-        assert lint_cmd == "sh"
-        assert lint_args[0] == "-c"
-        command_str = lint_args[1]
-        assert "(cd client && npm run lint)" in command_str
-        assert "(cd server && cargo clippy && cargo fmt --check)" in command_str
-        assert "ruff check . && ruff format --check ." in command_str
+        lint_cmd = discovery.get_lint_command()
+        assert isinstance(lint_cmd, CompositeCommand)
+        cmd_strs = [str(c) for c in lint_cmd.commands]
+        assert any("client" in s and "npm run lint" in s for s in cmd_strs)
+        assert any("server" in s and "cargo clippy" in s for s in cmd_strs)
+        assert any("ruff" in s for s in cmd_strs)
+
     finally:
         os.chdir(original_cwd)
 
@@ -294,9 +295,52 @@ def test_discovery_python_monorepo_build(tmp_path):
         sub_dir.mkdir()
         (sub_dir / "requirements.txt").touch()
 
-        # Build command should be empty for a pure python monorepo
-        build_cmd, build_args = discovery.get_build_command()
-        assert build_cmd == ""
-        assert build_args == []
+        # Build command should be None for a pure python monorepo
+        cmd_obj = discovery.get_build_command()
+        assert cmd_obj is None
+    finally:
+        os.chdir(original_cwd)
+
+
+class MockGoStrategy:
+    @property
+    def name(self) -> str:
+        return "go"
+
+    def match(self, path: str) -> bool:
+        return os.path.exists("go.mod" if path == "." else os.path.join(path, "go.mod"))
+
+    def get_test_command(self, _path: str):
+        from copium_loop.languages import Command
+
+        return Command("go", ["test", "./..."])
+
+    def get_build_command(self, _path: str):
+        from copium_loop.languages import Command
+
+        return Command("go", ["build", "./..."])
+
+    def get_lint_command(self, _path: str):
+        from copium_loop.languages import Command
+
+        return Command("golangci-lint", ["run"])
+
+
+def test_custom_language_strategy(tmp_path):
+    """Test that a custom language strategy can be registered and used."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "go.mod").touch()
+
+        # Register custom strategy
+        discovery.register_strategy(MockGoStrategy())
+
+        cmd_obj = discovery.get_test_command()
+        assert cmd_obj.executable == "go"
+        assert cmd_obj.args == ["test", "./..."]
+
+        # Clean up registration
+        discovery.unregister_strategy("go")
     finally:
         os.chdir(original_cwd)

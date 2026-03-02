@@ -200,6 +200,7 @@ async def stream_subprocess(
     capture_stderr: bool = True,
     on_timeout_callback=None,
     source: str = "system",
+    cwd: str | None = None,
 ) -> tuple[str, str, str, int, bool, str]:
     """
     Common helper to execute a subprocess and stream its output.
@@ -208,7 +209,7 @@ async def stream_subprocess(
     stderr_target = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
 
     process = await asyncio.create_subprocess_exec(
-        command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env
+        command, *args, stdout=subprocess.PIPE, stderr=stderr_target, env=env, cwd=cwd
     )
 
     stdout_buffer = StreamBuffer(MAX_OUTPUT_SIZE, "Output")
@@ -322,6 +323,7 @@ async def run_command(
     command_timeout: int | None = None,
     capture_stderr: bool = True,
     source: str = "system",
+    cwd: str | None = None,
 ) -> dict:
     """
     Invokes a shell command and streams output to stdout.
@@ -371,6 +373,7 @@ async def run_command(
         capture_stderr=capture_stderr,
         on_timeout_callback=on_timeout,
         source=source,
+        cwd=cwd,
     )
 
     # Use interleaved output for backward compatibility

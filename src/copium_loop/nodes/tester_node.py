@@ -4,6 +4,7 @@ from langchain_core.messages import SystemMessage
 
 from copium_loop import constants
 from copium_loop.discovery import get_build_command, get_lint_command, get_test_command
+from copium_loop.languages import Command, CompositeCommand
 from copium_loop.nodes.utils import node_header
 from copium_loop.shell import run_command
 from copium_loop.state import AgentState
@@ -11,18 +12,35 @@ from copium_loop.telemetry import get_telemetry
 
 
 async def _run_stage(
-    stage_name: str, cmd: str, args: list[str], telemetry
+    stage_name: str, cmd_obj: Command | CompositeCommand, telemetry
 ) -> tuple[bool, str]:
     """Runs a single stage (lint, build, or test) and logs telemetry."""
+    if not cmd_obj:
+        return True, ""
+
     msg = f"Running {stage_name}...\n"
     telemetry.log_info("tester", msg)
     print(msg, end="")
 
-    result = await run_command(cmd, args, node="tester")
-    output = result["output"]
-    exit_code = result["exit_code"]
+    commands = cmd_obj.commands if isinstance(cmd_obj, CompositeCommand) else [cmd_obj]
 
-    success = exit_code == 0
+    all_outputs = []
+    overall_success = True
+    final_exit_code = 0
+
+    for cmd in commands:
+        result = await run_command(cmd.executable, cmd.args, node="tester", cwd=cmd.cwd)
+        output = result["output"]
+        exit_code = result["exit_code"]
+        all_outputs.append(output)
+
+        if exit_code != 0:
+            overall_success = False
+            final_exit_code = exit_code
+            break
+
+    combined_output = "\n".join(all_outputs)
+    success = overall_success and final_exit_code == 0
 
     # Special failure detection for linting and unit tests
     if (stage_name == "linting" or stage_name == "unit tests") and success:
@@ -41,12 +59,11 @@ async def _run_stage(
 
         # Linter specific codes (e.g. E401, F401, PLR0915)
         # We only check these for the linting stage to avoid false positives in unit tests.
-        # We require a line/column prefix (e.g. :10:5: F401) to be very specific to linter output.
         if stage_name == "linting":
             failure_patterns.append(r":\d+:(\d+:)?\s*[A-Z]+\d{3,4}\b")
 
         for pattern in failure_patterns:
-            if re.search(pattern, output, re.IGNORECASE | re.MULTILINE):
+            if re.search(pattern, combined_output, re.IGNORECASE | re.MULTILINE):
                 success = False
                 break
 
@@ -54,19 +71,18 @@ async def _run_stage(
         telemetry.log_info("tester", f"{stage_name.capitalize()} failed.\n")
         print(f"{stage_name.capitalize()} failed.")
 
-    return success, output
+    return success, combined_output
 
 
 @node_header("tester", status_key="test_output")
 async def tester_node(state: AgentState) -> dict:
     telemetry = get_telemetry()
-    # telemetry.log_status("tester", "active") - removed as it's handled by decorator
 
     retry_count = state.get("retry_count", 0)
 
     # 1. Lint
-    lint_cmd, lint_args = get_lint_command()
-    success, output = await _run_stage("linting", lint_cmd, lint_args, telemetry)
+    lint_cmd_obj = get_lint_command()
+    success, output = await _run_stage("linting", lint_cmd_obj, telemetry)
     if not success:
         telemetry.log_status("tester", "failed")
         error_msg = "FAIL (Lint):\n" + output
@@ -74,18 +90,15 @@ async def tester_node(state: AgentState) -> dict:
             "test_output": error_msg,
             "retry_count": retry_count + 1,
             "messages": [
-                SystemMessage(
-                    content=f"Linting failed ({lint_cmd} {' '.join(lint_args)}):\n"
-                    + output
-                )
+                SystemMessage(content=f"Linting failed ({lint_cmd_obj}):\n" + output)
             ],
             "last_error": error_msg,
         }
 
     # 2. Build
-    build_cmd, build_args = get_build_command()
-    if build_cmd:
-        success, output = await _run_stage("build", build_cmd, build_args, telemetry)
+    build_cmd_obj = get_build_command()
+    if build_cmd_obj:
+        success, output = await _run_stage("build", build_cmd_obj, telemetry)
         if not success:
             telemetry.log_status("tester", "failed")
             error_msg = "FAIL (Build):\n" + output
@@ -93,17 +106,14 @@ async def tester_node(state: AgentState) -> dict:
                 "test_output": error_msg,
                 "retry_count": retry_count + 1,
                 "messages": [
-                    SystemMessage(
-                        content=f"Build failed ({build_cmd} {' '.join(build_args)}):\n"
-                        + output
-                    )
+                    SystemMessage(content=f"Build failed ({build_cmd_obj}):\n" + output)
                 ],
                 "last_error": error_msg,
             }
 
     # 3. Test
-    test_cmd, test_args = get_test_command()
-    success, output = await _run_stage("unit tests", test_cmd, test_args, telemetry)
+    test_cmd_obj = get_test_command()
+    success, output = await _run_stage("unit tests", test_cmd_obj, telemetry)
     if not success:
         telemetry.log_status("tester", "failed")
         message = (
