@@ -116,6 +116,7 @@ def test_get_build_command_npm():
     """Test that get_build_command returns npm for node projects."""
     with (
         patch("os.path.exists", return_value=True),
+        patch("os.scandir", return_value=[]),
         patch("copium_loop.discovery.get_package_manager", return_value="npm"),
     ):
         cmd, args = discovery.get_build_command()
@@ -165,6 +166,7 @@ def test_get_lint_command_python_no_config():
     mock_entry = MagicMock()
     mock_entry.name = "main.py"
     mock_entry.is_file.return_value = True
+    mock_entry.is_dir.return_value = False
 
     with (
         patch("os.path.exists", side_effect=side_effect),
@@ -208,5 +210,72 @@ def test_discovery_no_python_project(tmp_path):
         # Empty directory
         test_cmd, _ = discovery.get_test_command()
         assert test_cmd == "npm"
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_discovery_rust_only(tmp_path):
+    """Test that rust projects are detected correctly with Cargo.toml."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "Cargo.toml").touch()
+
+        test_cmd, test_args = discovery.get_test_command()
+        assert test_cmd == "cargo"
+        assert test_args == ["test"]
+
+        build_cmd, build_args = discovery.get_build_command()
+        assert build_cmd == "cargo"
+        assert build_args == ["build"]
+
+        lint_cmd, lint_args = discovery.get_lint_command()
+        assert lint_cmd == "sh"
+        assert lint_args == ["-c", "cargo clippy && cargo fmt --check"]
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_discovery_hybrid_project(tmp_path):
+    """Test hybrid project discovery."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        # Create client node project
+        client_dir = tmp_path / "client"
+        client_dir.mkdir()
+        (client_dir / "package.json").touch()
+
+        # Create server rust project
+        server_dir = tmp_path / "server"
+        server_dir.mkdir()
+        (server_dir / "Cargo.toml").touch()
+
+        # Create root python project
+        (tmp_path / "pyproject.toml").touch()
+
+        test_cmd, test_args = discovery.get_test_command()
+        assert test_cmd == "sh"
+        assert test_args[0] == "-c"
+        command_str = test_args[1]
+        assert "(cd client && npm test)" in command_str
+        assert "(cd server && cargo test)" in command_str
+        assert "pytest" in command_str
+
+        build_cmd, build_args = discovery.get_build_command()
+        assert build_cmd == "sh"
+        assert build_args[0] == "-c"
+        command_str = build_args[1]
+        assert "(cd client && npm run build)" in command_str
+        assert "(cd server && cargo build)" in command_str
+        assert "pytest" not in command_str
+
+        lint_cmd, lint_args = discovery.get_lint_command()
+        assert lint_cmd == "sh"
+        assert lint_args[0] == "-c"
+        command_str = lint_args[1]
+        assert "(cd client && npm run lint)" in command_str
+        assert "(cd server && cargo clippy && cargo fmt --check)" in command_str
+        assert "ruff check . && ruff format --check ." in command_str
     finally:
         os.chdir(original_cwd)
