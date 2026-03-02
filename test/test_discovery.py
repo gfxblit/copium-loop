@@ -4,7 +4,25 @@ from unittest.mock import patch
 import pytest
 
 from copium_loop import discovery
-from copium_loop.languages import CompositeCommand
+from copium_loop.languages import CompositeCommand, LanguageStrategy
+
+
+class MockDocStrategy(LanguageStrategy):
+    @property
+    def name(self) -> str:
+        return "docs"
+
+    def match(self, path: str) -> bool:
+        return os.path.exists(os.path.join(path, "README.md"))
+
+    def get_test_command(self, _path: str):
+        return None
+
+    def get_build_command(self, _path: str):
+        return None
+
+    def get_lint_command(self, _path: str):
+        return None
 
 
 def test_get_test_command_pytest():
@@ -342,5 +360,50 @@ def test_custom_language_strategy(tmp_path):
 
         # Clean up registration
         discovery.unregister_strategy("go")
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_build_command_no_fallback_when_projects_found(tmp_path):
+    """Test that get_build_command returns None (and not npm fallback) when projects are discovered."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "README.md").touch()
+        discovery.register_strategy(MockDocStrategy())
+        try:
+            assert discovery.get_build_command() is None
+        finally:
+            discovery.unregister_strategy("docs")
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_lint_command_no_fallback_when_projects_found(tmp_path):
+    """Test that get_lint_command returns None (and not npm fallback) when projects are discovered."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "README.md").touch()
+        discovery.register_strategy(MockDocStrategy())
+        try:
+            assert discovery.get_lint_command() is None
+        finally:
+            discovery.unregister_strategy("docs")
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_test_command_no_fallback_when_projects_found(tmp_path):
+    """Test that get_test_command returns None (and not npm fallback) when projects are discovered."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "README.md").touch()
+        discovery.register_strategy(MockDocStrategy())
+        try:
+            assert discovery.get_test_command() is None
+        finally:
+            discovery.unregister_strategy("docs")
     finally:
         os.chdir(original_cwd)

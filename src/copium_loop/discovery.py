@@ -94,11 +94,12 @@ def get_test_command() -> Command | CompositeCommand:
         return Command(executable=parts[0], args=parts[1:])
 
     projects = _discover_projects()
+    cmd = _get_composite_command(projects, "test")
+
     if not projects:
         return Command(executable="npm", args=["test"])
 
-    cmd = _get_composite_command(projects, "test")
-    return cmd if cmd else Command(executable="npm", args=["test"])
+    return cmd
 
 
 def get_build_command() -> Command | CompositeCommand | None:
@@ -108,16 +109,12 @@ def get_build_command() -> Command | CompositeCommand | None:
         return Command(executable=parts[0], args=parts[1:])
 
     projects = _discover_projects()
+    cmd = _get_composite_command(projects, "build")
+
     if not projects:
         return Command(executable="npm", args=["run", "build"])
 
-    # Special case for pure python projects which usually don't have a build step
-    if projects and all(s.name == "python" for _, s in projects):
-        cmd = _get_composite_command(projects, "build")
-        return cmd
-
-    cmd = _get_composite_command(projects, "build")
-    return cmd if cmd else Command(executable="npm", args=["run", "build"])
+    return cmd
 
 
 def get_lint_command() -> Command | CompositeCommand:
@@ -127,8 +124,9 @@ def get_lint_command() -> Command | CompositeCommand:
         return Command(executable=parts[0], args=parts[1:])
 
     projects = _discover_projects()
+    cmd = _get_composite_command(projects, "lint")
+
     if not projects:
         return Command(executable="npm", args=["run", "lint"])
 
-    cmd = _get_composite_command(projects, "lint")
-    return cmd if cmd else Command(executable="npm", args=["run", "lint"])
+    return cmd
