@@ -122,9 +122,7 @@ class WorkflowManager:
 
             # Remove non-serializable objects like the engine
             serializable_state = {
-                k: v
-                for k, v in updated_state.items()
-                if k not in ["engine", "messages"]
+                k: v for k, v in updated_state.items() if k not in ["engine"]
             }
             self.session_manager.update_agent_state(serializable_state)
 
