@@ -28,18 +28,19 @@ def unregister_strategy(name: str) -> None:
     _strategies = [s for s in _strategies if s.name != name]
 
 
-def _get_project_strategy(path: str) -> LanguageStrategy | None:
+def _get_project_strategies(path: str) -> list[LanguageStrategy]:
+    strategies = []
     for strategy in _strategies:
         if strategy.match(path):
-            return strategy
-    return None
+            strategies.append(strategy)
+    return strategies
 
 
 def _discover_projects() -> list[tuple[str, LanguageStrategy]]:
     projects = []
-    root_strategy = _get_project_strategy(".")
-    if root_strategy:
-        projects.append((".", root_strategy))
+    root_strategies = _get_project_strategies(".")
+    for strategy in root_strategies:
+        projects.append((".", strategy))
 
     try:
         for f in os.scandir("."):
@@ -49,8 +50,8 @@ def _discover_projects() -> list[tuple[str, LanguageStrategy]]:
                 and f.name
                 not in ["node_modules", "venv", ".venv", "target", "test", "tests"]
             ):
-                strategy = _get_project_strategy(f.path)
-                if strategy:
+                strategies = _get_project_strategies(f.path)
+                for strategy in strategies:
                     projects.append((f.path, strategy))
     except OSError:
         pass

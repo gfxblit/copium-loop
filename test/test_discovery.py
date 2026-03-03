@@ -54,16 +54,18 @@ def test_get_test_command_pytest_custom_coverage():
         assert "--cov-fail-under=90" in cmd_obj.args
 
 
-def test_get_test_command_npm_priority():
-    """Test that get_test_command returns npm if package.json exists, even if pyproject.toml exists."""
+def test_get_test_command_npm_and_python_composite():
+    """Test that get_test_command composites npm and pytest if both configs exist."""
 
     def side_effect(path):
         return path in ["package.json", "pyproject.toml", "package-lock.json"]
 
     with patch("os.path.exists", side_effect=side_effect):
         cmd_obj = discovery.get_test_command()
-        assert cmd_obj.executable == "npm"
-        assert cmd_obj.args == ["test"]
+        assert isinstance(cmd_obj, CompositeCommand)
+        cmd_strs = [str(c) for c in cmd_obj.commands]
+        assert any("npm test" in s for s in cmd_strs)
+        assert any("pytest" in s for s in cmd_strs)
 
 
 def test_get_package_manager_detection():
@@ -114,16 +116,18 @@ def test_get_lint_command_ruff():
         assert cmd_obj.commands[0].args == ["check", "."]
 
 
-def test_get_lint_command_npm_priority():
-    """Test that get_lint_command returns npm if package.json exists, even if pyproject.toml exists."""
+def test_get_lint_command_npm_and_python_composite():
+    """Test that get_lint_command composites npm and ruff if both configs exist."""
 
     def side_effect(path):
         return path in ["package.json", "pyproject.toml"]
 
     with patch("os.path.exists", side_effect=side_effect):
         cmd_obj = discovery.get_lint_command()
-        assert cmd_obj.executable == "npm"
-        assert cmd_obj.args == ["run", "lint"]
+        assert isinstance(cmd_obj, CompositeCommand)
+        cmd_strs = [str(c) for c in cmd_obj.commands]
+        assert any("npm run lint" in s for s in cmd_strs)
+        assert any("ruff check" in s for s in cmd_strs)
 
 
 def test_get_test_command_env_override():
@@ -138,7 +142,7 @@ def test_get_build_command_npm():
     """Test that get_build_command returns npm for node projects."""
 
     def side_effect(path):
-        return "lock" not in path
+        return path == "package.json"
 
     with (
         patch("os.path.exists", side_effect=side_effect),
@@ -405,5 +409,22 @@ def test_test_command_no_fallback_when_projects_found(tmp_path):
             assert discovery.get_test_command() is None
         finally:
             discovery.unregister_strategy("docs")
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_discovery_mixed_root_directory(tmp_path):
+    """Test that multiple strategies can match the same directory."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        (tmp_path / "package.json").touch()
+        (tmp_path / "Cargo.toml").touch()
+
+        test_cmd = discovery.get_test_command()
+        assert isinstance(test_cmd, CompositeCommand)
+        cmd_strs = [str(c) for c in test_cmd.commands]
+        assert any("npm test" in s for s in cmd_strs)
+        assert any("cargo test" in s for s in cmd_strs)
     finally:
         os.chdir(original_cwd)
