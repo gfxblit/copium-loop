@@ -20,20 +20,30 @@ class SessionData:
     original_prompt: str | None = None
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "session_id": self.session_id,
             "engine_state": self.engine_state,
             "metadata": self.metadata,
-            "agent_state": self.agent_state,
+            "agent_state": self.agent_state.copy(),
             "branch_name": self.branch_name,
             "repo_root": self.repo_root,
             "engine_name": self.engine_name,
             "original_prompt": self.original_prompt,
         }
 
+        # Serialize LangChain messages if they exist in agent_state
+        if "messages" in data["agent_state"]:
+            from langchain_core.messages import message_to_dict
+
+            data["agent_state"]["messages"] = [
+                message_to_dict(m) if not isinstance(m, dict) else m
+                for m in data["agent_state"]["messages"]
+            ]
+        return data
+
     @classmethod
     def from_dict(cls, data: dict) -> "SessionData":
-        return cls(
+        sd = cls(
             session_id=data["session_id"],
             engine_state=data.get("engine_state", {}),
             metadata=data.get("metadata", {}),
@@ -43,6 +53,16 @@ class SessionData:
             engine_name=data.get("engine_name"),
             original_prompt=data.get("original_prompt"),
         )
+
+        # Deserialize LangChain messages if they exist in agent_state
+        if "messages" in sd.agent_state:
+            from langchain_core.messages import messages_from_dict
+
+            # Check if they are in dict format before converting
+            msgs = sd.agent_state["messages"]
+            if msgs and isinstance(msgs, list) and isinstance(msgs[0], dict):
+                sd.agent_state["messages"] = messages_from_dict(msgs)
+        return sd
 
 
 class SessionManager:
