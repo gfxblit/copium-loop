@@ -1,83 +1,133 @@
 import os
 
-from copium_loop.constants import DEFAULT_MIN_COVERAGE
+from copium_loop.languages import (
+    Command,
+    CompositeCommand,
+    LanguageStrategy,
+    NodeStrategy,
+    PythonStrategy,
+    RustStrategy,
+)
+
+# Global registry for language strategies
+_strategies: list[LanguageStrategy] = [
+    NodeStrategy(),
+    RustStrategy(),
+    PythonStrategy(),
+]
 
 
-def get_package_manager() -> str:
-    """Detects the package manager based on lock files."""
-    if os.path.exists("pnpm-lock.yaml"):
-        return "pnpm"
-    if os.path.exists("yarn.lock"):
-        return "yarn"
-    return "npm"
+def register_strategy(strategy: LanguageStrategy) -> None:
+    """Register a new language strategy."""
+    _strategies.append(strategy)
 
 
-def _is_python_project() -> bool:
-    """Checks if the current directory is a Python project."""
-    return (
-        os.path.exists("pyproject.toml")
-        or os.path.exists("setup.py")
-        or os.path.exists("requirements.txt")
-        or any(f.name.endswith(".py") for f in os.scandir(".") if f.is_file())
-    )
+def unregister_strategy(name: str) -> None:
+    """Unregister a language strategy by name."""
+    global _strategies
+    _strategies = [s for s in _strategies if s.name != name]
 
 
-def get_test_command() -> tuple[str, list[str]]:
+def _get_project_strategies(path: str) -> list[LanguageStrategy]:
+    strategies = []
+    for strategy in _strategies:
+        if strategy.match(path):
+            strategies.append(strategy)
+    return strategies
+
+
+def _discover_projects() -> list[tuple[str, LanguageStrategy]]:
+    projects = []
+    root_strategies = _get_project_strategies(".")
+    for strategy in root_strategies:
+        projects.append((".", strategy))
+
+    try:
+        for f in os.scandir("."):
+            if (
+                f.is_dir()
+                and not f.name.startswith(".")
+                and f.name
+                not in ["node_modules", "venv", ".venv", "target", "test", "tests"]
+            ):
+                strategies = _get_project_strategies(f.path)
+                for strategy in strategies:
+                    projects.append((f.path, strategy))
+    except OSError:
+        pass
+
+    return projects
+
+
+def _get_composite_command(
+    projects: list[tuple[str, LanguageStrategy]],
+    cmd_type: str,
+) -> Command | CompositeCommand | None:
+    all_commands = []
+    for path, strategy in projects:
+        cmd = None
+        if cmd_type == "test":
+            cmd = strategy.get_test_command(path)
+        elif cmd_type == "build":
+            cmd = strategy.get_build_command(path)
+        elif cmd_type == "lint":
+            cmd = strategy.get_lint_command(path)
+
+        if cmd:
+            if isinstance(cmd, CompositeCommand):
+                all_commands.extend(cmd.commands)
+            else:
+                all_commands.append(cmd)
+
+    if not all_commands:
+        return None
+
+    if len(all_commands) == 1:
+        return all_commands[0]
+
+    return CompositeCommand(commands=all_commands)
+
+
+def get_test_command() -> Command | CompositeCommand:
     """Determines the test command based on the project structure."""
-    test_cmd = "npm"
-    test_args = ["test"]
-
     if os.environ.get("COPIUM_TEST_CMD"):
         parts = os.environ.get("COPIUM_TEST_CMD").split()
-        test_cmd = parts[0]
-        test_args = parts[1:]
-    elif os.path.exists("package.json"):
-        test_cmd = get_package_manager()
-        test_args = ["test"]
-    elif _is_python_project():
-        min_cov = os.environ.get("COPIUM_MIN_COVERAGE", str(DEFAULT_MIN_COVERAGE))
-        test_cmd = "pytest"
-        test_args = [
-            "--cov=src",
-            "--cov-report=term-missing",
-            f"--cov-fail-under={min_cov}",
-        ]
+        return Command(executable=parts[0], args=parts[1:])
 
-    return test_cmd, test_args
+    projects = _discover_projects()
+    cmd = _get_composite_command(projects, "test")
+
+    if not projects:
+        return Command(executable="npm", args=["test"])
+
+    return cmd
 
 
-def get_build_command() -> tuple[str, list[str]]:
+def get_build_command() -> Command | CompositeCommand | None:
     """Determines the build command based on the project structure."""
-    build_cmd = "npm"
-    build_args = ["run", "build"]
-
     if os.environ.get("COPIUM_BUILD_CMD"):
         parts = os.environ.get("COPIUM_BUILD_CMD").split()
-        build_cmd = parts[0]
-        build_args = parts[1:]
-    elif os.path.exists("package.json"):
-        build_cmd = get_package_manager()
-        build_args = ["run", "build"]
-    elif _is_python_project():
-        return "", []
+        return Command(executable=parts[0], args=parts[1:])
 
-    return build_cmd, build_args
+    projects = _discover_projects()
+    cmd = _get_composite_command(projects, "build")
+
+    if not projects:
+        return Command(executable="npm", args=["run", "build"])
+
+    return cmd
 
 
-def get_lint_command() -> tuple[str, list[str]]:
+def get_lint_command() -> Command | CompositeCommand:
     """Determines the lint command based on the project structure."""
-    lint_cmd = "npm"
-    lint_args = ["run", "lint"]
-
     if os.environ.get("COPIUM_LINT_CMD"):
         parts = os.environ.get("COPIUM_LINT_CMD").split()
-        lint_cmd = parts[0]
-        lint_args = parts[1:]
-    elif os.path.exists("package.json"):
-        lint_cmd = get_package_manager()
-        lint_args = ["run", "lint"]
-    elif _is_python_project():
-        lint_cmd = "sh"
-        lint_args = ["-c", "ruff check . && ruff format --check ."]
+        return Command(executable=parts[0], args=parts[1:])
 
-    return lint_cmd, lint_args
+    projects = _discover_projects()
+    cmd = _get_composite_command(projects, "lint")
+
+    if not projects:
+        return Command(executable="npm", args=["run", "lint"])
+
+    return cmd

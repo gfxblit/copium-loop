@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from copium_loop.languages import Command
 from copium_loop.nodes import tester
 
 # Get the module object explicitly to avoid shadowing issues
@@ -12,6 +13,22 @@ tester_module = sys.modules["copium_loop.nodes.tester_node"]
 class TestTesterNode:
     """Tests for the test runner node."""
 
+    @pytest.fixture(autouse=True)
+    def mock_discovery(self):
+        """Mock discovery commands to return simple Command objects by default."""
+        with (
+            patch(
+                "copium_loop.nodes.tester_node.get_lint_command",
+                return_value=Command("npm", ["run", "lint"]),
+            ),
+            patch("copium_loop.nodes.tester_node.get_build_command", return_value=None),
+            patch(
+                "copium_loop.nodes.tester_node.get_test_command",
+                return_value=Command("npm", ["test"]),
+            ),
+        ):
+            yield
+
     @pytest.mark.asyncio
     async def test_tester_returns_pass_with_build(self, agent_state):
         """Test that test runner returns PASS when build, lint and tests pass."""
@@ -19,10 +36,9 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(
-                tester_module,
-                "get_build_command",
-                return_value=("npm", ["run", "build"]),
+            patch(
+                "copium_loop.nodes.tester_node.get_build_command",
+                return_value=Command("npm", ["run", "build"]),
             ),
         ):
             # 1. Lint, 2. Build, 3. Unit Tests
@@ -65,10 +81,9 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(
-                tester_module,
-                "get_build_command",
-                return_value=("npm", ["run", "build"]),
+            patch(
+                "copium_loop.nodes.tester_node.get_build_command",
+                return_value=Command("npm", ["run", "build"]),
             ),
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
@@ -94,10 +109,9 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(
-                tester_module,
-                "get_build_command",
-                return_value=("npm", ["run", "build"]),
+            patch(
+                "copium_loop.nodes.tester_node.get_build_command",
+                return_value=Command("npm", ["run", "build"]),
             ),
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
@@ -126,7 +140,7 @@ class TestTesterNode:
             patch.object(
                 tester_module,
                 "get_build_command",
-                return_value=("", []),
+                return_value=None,
             ),
         ):
             # 1. Lint passes, 2. Test output contains '0 failed' but exit 0
@@ -179,7 +193,7 @@ class TestTesterNode:
             patch.object(
                 tester_module,
                 "get_build_command",
-                return_value=("", []),
+                return_value=None,
             ),
         ):
             # 1. Lint passes, 2. Test output contains '1 failed'
@@ -207,7 +221,7 @@ class TestTesterNode:
             patch.object(
                 tester_module,
                 "get_build_command",
-                return_value=("", []),
+                return_value=None,
             ),
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
@@ -238,7 +252,7 @@ class TestTesterNode:
             patch.object(
                 tester_module,
                 "get_build_command",
-                return_value=("", []),
+                return_value=None,
             ),
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
@@ -268,7 +282,7 @@ class TestTesterNode:
             patch.object(
                 tester_module,
                 "get_build_command",
-                return_value=("", []),
+                return_value=None,
             ),
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
@@ -313,7 +327,7 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
             # Violation: main.py:1:1:F401 (no space)
@@ -356,7 +370,7 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_build_command", return_value=None),
         ):
             # Scenario: Output contains "Order ID: ORD123" and "Status: T100"
             # but the exit code is 0. These should NOT match the new specific regex.
@@ -380,7 +394,7 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
             # Violation: src/main.py:1:1: F401
@@ -402,7 +416,7 @@ class TestTesterNode:
             patch.object(
                 tester_module, "run_command", new_callable=AsyncMock
             ) as mock_run,
-            patch.object(tester_module, "get_build_command", return_value=("", [])),
+            patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
             # 1. Real error: "error: something went wrong"
