@@ -18,3 +18,19 @@ export interface NodeState {
   logs: TelemetryEvent[];
   timer?: number;
 }
+
+export interface GraphNode {
+  id: string;
+  label: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  label?: string;
+}
+
+export interface GraphStructure {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}

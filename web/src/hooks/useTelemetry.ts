@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { TelemetryEvent, NodeState, NodeStatus } from '../types';
+import type { TelemetryEvent, NodeState, NodeStatus, GraphStructure } from '../types';
 
 export function useTelemetry() {
   const [events, setEvents] = useState<TelemetryEvent[]>([]);
   const [nodeStates, setNodeStates] = useState<Record<string, NodeState>>({});
   const [workflowStatus, setWorkflowStatus] = useState<string>('idle');
   const [connected, setConnected] = useState(false);
-  const [graph, setGraph] = useState<{nodes: any[], edges: any[]} | null>(null);
+  const [graph, setGraph] = useState<GraphStructure | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const ws = useRef<WebSocket | null>(null);
 

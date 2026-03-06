@@ -8,7 +8,7 @@ import ReactFlow, {
 import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import AgentNode from './AgentNode';
-import type { NodeState } from '../types';
+import type { NodeState, GraphStructure } from '../types';
 
 const nodeTypes = {
   agent: AgentNode,
@@ -17,7 +17,7 @@ const nodeTypes = {
 interface WorkflowCanvasProps {
   nodeStates: Record<string, NodeState>;
   onNodeSelect: (nodeId: string | null) => void;
-  graph: { nodes: any[], edges: any[] } | null;
+  graph: GraphStructure | null;
 }
 
 const WorkflowCanvas = ({ nodeStates, onNodeSelect, graph }: WorkflowCanvasProps) => {
