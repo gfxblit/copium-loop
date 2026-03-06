@@ -58,6 +58,31 @@ async def test_api_auth_failure():
 
 
 @pytest.mark.asyncio
+async def test_api_auth_not_configured():
+    set_auth_token(None)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get("/api/logs")
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Authentication token required"}
+
+
+@pytest.mark.asyncio
+async def test_graph_auth_success():
+    set_auth_token("secret_token")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get(
+            "/api/graph", headers={"X-Auth-Token": "secret_token"}
+        )
+        assert response.status_code == 200
+        assert "nodes" in response.json()
+    set_auth_token(None)
+
+
+@pytest.mark.asyncio
 async def test_ws_auth_success():
     set_auth_token("secret_token")
     client = TestClient(app)
