@@ -1,5 +1,7 @@
-import contextlib
+import heapq
 import json
+import os
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,21 @@ class SessionManager:
         self.file_stats: dict[str, tuple[float, int]] = {}
         self.show_system_logs = False
 
+    def _scan_log_files(self, path: Path | str) -> Iterable[os.DirEntry]:
+        """Recursively yields DirEntry objects for .jsonl files using os.scandir."""
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from self._scan_log_files(entry.path)
+                    elif entry.is_file(follow_symlinks=False) and entry.name.endswith(
+                        ".jsonl"
+                    ):
+                        yield entry
+        except OSError:
+            # Ignore inaccessible directories/files
+            pass
+
     def update_from_logs(self) -> list[dict[str, Any]]:
         """
         Reads .jsonl files and updates session states.
@@ -30,20 +47,24 @@ class SessionManager:
         if not self.log_dir.exists():
             return []
 
-        # Find all .jsonl files recursively
-        log_files = list(self.log_dir.rglob("*.jsonl"))
+        # Find all .jsonl files recursively using os.scandir and get the top N by mtime
+        try:
+            top_entries = heapq.nlargest(
+                self.max_sessions,
+                self._scan_log_files(self.log_dir),
+                key=lambda e: e.stat().st_mtime,
+            )
+        except OSError:
+            top_entries = []
 
-        # Sort by mtime to preserve consistent processing order
-        with contextlib.suppress(OSError):
-            log_files.sort(key=lambda f: f.stat().st_mtime)
-
-        # Apply session limit: keep only the most recent files
-        if len(log_files) > self.max_sessions:
-            log_files = log_files[-self.max_sessions :]
+        # Since heapq.nlargest returns sorted (highest to lowest), we reverse to preserve
+        # the original behavior of oldest to newest in log_files (which helps with consistent processing order)
+        top_entries.reverse()
 
         active_sids = set()
         log_entries_map = {}
-        for fpath in log_files:
+        for entry in top_entries:
+            fpath = Path(entry.path)
             # Derive session ID from relative path
             sid = str(fpath.relative_to(self.log_dir).with_suffix(""))
             active_sids.add(sid)
