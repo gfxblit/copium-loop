@@ -158,7 +158,9 @@ def node_header(
     return decorator
 
 
-async def get_architect_prompt(engine_type: str, state: dict, engine: Any = None) -> str:
+async def get_architect_prompt(
+    engine_type: str, state: dict, engine: Any = None
+) -> str:
     """Generates the architect system prompt based on engine type."""
     initial_commit_hash = state.get("initial_commit_hash", "")
     if not initial_commit_hash:

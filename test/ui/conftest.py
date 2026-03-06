@@ -2,6 +2,15 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from copium_loop.ui.web_server import set_auth_token
+
+
+@pytest.fixture(autouse=True)
+def reset_web_server_auth():
+    """Reset the auth token before each test."""
+    set_auth_token(None)
+    yield
+
 
 @pytest.fixture(autouse=True)
 def mock_gemini_stats_client():

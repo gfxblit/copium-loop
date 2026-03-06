@@ -2,7 +2,14 @@ import asyncio
 import contextlib
 import os
 
-from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -23,7 +30,7 @@ def set_telemetry(telemetry: Telemetry):
         _loop = asyncio.get_running_loop()
 
 
-def set_auth_token(token: str):
+def set_auth_token(token: str | None):
     global _auth_token
     _auth_token = token
 
@@ -37,7 +44,7 @@ def get_status():
 def get_logs(x_auth_token: str = Header(None)):
     if _auth_token and x_auth_token != _auth_token:
         raise HTTPException(status_code=403, detail="Invalid auth token")
-    
+
     if not _telemetry:
         return JSONResponse(
             content={"error": "Telemetry not initialized"}, status_code=500

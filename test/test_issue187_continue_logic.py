@@ -154,6 +154,7 @@ async def test_repo_root_mismatch_error():
                         exit_code = await async_main()
                         assert exit_code == 1
 
+
 @pytest.mark.asyncio
 async def test_explicit_continue_override():
     """

@@ -49,7 +49,11 @@ class TestMainWeb:
             mock_create_task.assert_called()
             # Check that run_web_server was the coroutine passed to the task
             # It might not be the only task created, so we look for it
-            task_names = [call[0][0].__name__ for call in mock_create_task.call_args_list if hasattr(call[0][0], "__name__")]
+            task_names = [
+                call[0][0].__name__
+                for call in mock_create_task.call_args_list
+                if hasattr(call[0][0], "__name__")
+            ]
             assert "run_web_server" in task_names
 
             assert mock_workflow.run.called

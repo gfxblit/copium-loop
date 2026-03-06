@@ -1,6 +1,5 @@
 import atexit
 import concurrent.futures
-import contextlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -62,7 +61,11 @@ class Telemetry:
                 subscriber(event)
             except Exception as e:
                 import sys
-                print(f"[ERROR] Telemetry subscriber {subscriber} failed: {e}", file=sys.stderr)
+
+                print(
+                    f"[ERROR] Telemetry subscriber {subscriber} failed: {e}",
+                    file=sys.stderr,
+                )
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""

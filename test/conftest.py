@@ -105,6 +105,15 @@ def mock_telemetry_environment(
     # So we'll leave it to use the caches by default.
 
 
+@pytest.fixture(autouse=True)
+def reset_web_server_auth():
+    """Reset the auth token before each test."""
+    from copium_loop.ui.web_server import set_auth_token
+
+    set_auth_token(None)
+    yield
+
+
 @pytest.fixture
 def workflow_manager_factory():
     """

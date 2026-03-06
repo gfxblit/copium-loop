@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import os
 import sys
 
@@ -88,11 +89,14 @@ async def async_main():
     if args.web:
         # Generate a random token for authentication
         import secrets
+
         auth_token = secrets.token_urlsafe(16)
         # Start web server in background
         server_task = asyncio.create_task(run_web_server(telemetry, token=auth_token))
         background_tasks.append(server_task)
-        print(f"Interactive Web UI started at http://localhost:8000/?token={auth_token}")
+        print(
+            f"Interactive Web UI started at http://localhost:8000/?token={auth_token}"
+        )
 
     session_id = telemetry.session_id
     session_manager = SessionManager(session_id)
@@ -176,10 +180,8 @@ async def async_main():
                         print(
                             "Keeping web UI alive for inspection. Press Ctrl+C to exit."
                         )
-                        try:
+                        with contextlib.suppress(asyncio.CancelledError):
                             await server_task
-                        except asyncio.CancelledError:
-                            pass
                     return 0
             elif reason == "no_log_found":
                 print(f"Error: No log file found for session {session_id}")
@@ -291,11 +293,11 @@ async def async_main():
             exit_code = 1
 
         if args.web:
-            print("Workflow finished. Keeping web UI alive for inspection. Press Ctrl+C to exit.")
-            try:
+            print(
+                "Workflow finished. Keeping web UI alive for inspection. Press Ctrl+C to exit."
+            )
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass
         return exit_code
 
     except ValueError as err:
