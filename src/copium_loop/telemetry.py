@@ -1,5 +1,6 @@
 import atexit
 import concurrent.futures
+import contextlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -57,10 +58,8 @@ class Telemetry:
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
         for subscriber in list(self._subscribers):
-            try:
+            with contextlib.suppress(Exception):
                 subscriber(event)
-            except Exception:
-                pass
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""

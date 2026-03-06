@@ -9,6 +9,7 @@ import sys
 async def run_web_server(telemetry):
     """Starts the FastAPI web server for the UI."""
     import uvicorn
+
     from copium_loop.ui.web_server import app, initialize_web_server
 
     initialize_web_server(telemetry)
