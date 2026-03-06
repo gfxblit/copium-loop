@@ -5,3 +5,4 @@
 - [2026-02-04 18:23:19] Explicitly log a 'failed' status to telemetry when a node encounters a process failure to ensure the UI dashboard correctly renders visual failure indicators.
 - [2026-02-12 11:30:00] Replaced the Rich-based Dashboard with a Textual-based TextualDashboard for the --monitor flag, improving UI flexibility and interaction. Removed the old Dashboard and InputReader implementations.
 - [2026-02-12 11:45:00] Improved TextualDashboard with most-recent-first session sorting, arrow key navigation, and immediate stats loading on mount. Verified with full test suite.
+- [2026-03-05 19:25:00] Implemented and verified Interactive Web UI (Issue #294) with FastAPI/WebSockets backend and ReactFlow frontend. Fixed TypeScript build errors and linting in tests.

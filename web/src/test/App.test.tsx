@@ -23,6 +23,7 @@ vi.mock('reactflow', () => {
 describe('App', () => {
   it('renders the application title', () => {
     vi.mocked(useTelemetry).mockReturnValue({
+      events: [],
       nodeStates: {},
       workflowStatus: 'running',
       connected: true,
@@ -37,6 +38,7 @@ describe('App', () => {
 
   it('shows the offline status when disconnected', () => {
     vi.mocked(useTelemetry).mockReturnValue({
+      events: [],
       nodeStates: {},
       workflowStatus: 'running',
       connected: false,
