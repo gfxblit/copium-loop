@@ -27,6 +27,7 @@ describe('App', () => {
       nodeStates: {},
       workflowStatus: 'running',
       connected: true,
+      graph: null,
     });
 
     render(<App />);
@@ -42,6 +43,7 @@ describe('App', () => {
       nodeStates: {},
       workflowStatus: 'running',
       connected: false,
+      graph: null,
     });
     
     render(<App />);
