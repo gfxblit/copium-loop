@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from starlette.testclient import TestClient
 
 import copium_loop.ui.web_server as web_server
 from copium_loop.ui.web_server import app, set_auth_token
@@ -56,13 +57,11 @@ async def test_api_auth_failure():
         set_auth_token(None)
 
 
-from starlette.testclient import TestClient
-
 @pytest.mark.asyncio
 async def test_ws_auth_success():
     set_auth_token("secret_token")
     client = TestClient(app)
-    with client.websocket_connect("/api/ws?token=secret_token") as websocket:
+    with client.websocket_connect("/api/ws?token=secret_token"):
         # If it didn't raise, it's successful
         pass
     set_auth_token(None)
@@ -72,9 +71,9 @@ async def test_ws_auth_success():
 async def test_ws_auth_failure():
     set_auth_token("secret_token")
     client = TestClient(app)
-    with pytest.raises(Exception):  # Starlette raises if handshake fails
-        with client.websocket_connect("/api/ws?token=wrong_token") as websocket:
-            pass
+    # Starlette raises if handshake fails.
+    with pytest.raises(Exception), client.websocket_connect("/api/ws?token=wrong_token"):  # noqa: B017
+        pass
     set_auth_token(None)
 
 
@@ -82,7 +81,6 @@ async def test_ws_auth_failure():
 async def test_ws_auth_missing_token():
     set_auth_token("secret_token")
     client = TestClient(app)
-    with pytest.raises(Exception):
-        with client.websocket_connect("/api/ws") as websocket:
-            pass
+    with pytest.raises(Exception), client.websocket_connect("/api/ws"):  # noqa: B017
+        pass
     set_auth_token(None)
