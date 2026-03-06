@@ -51,7 +51,8 @@ async def get_commit_summary(
     base: str, head: str | None = "HEAD", node: str | None = None
 ) -> str:
     """Returns a one-line summary of commits between base and head."""
-    args = ["log", "--oneline", f"{base}..{head}"]
+    target_head = head or "HEAD"
+    args = ["log", "--oneline", f"{base}..{target_head}"]
     res = await run_command("git", args, node=node)
     return res["output"]
 
