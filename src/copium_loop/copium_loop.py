@@ -317,4 +317,4 @@ class WorkflowManager:
                 if key != "prompt" and key != "engine":
                     default_state[key] = value
 
-        return await self.graph.ainvoke(default_state)
+        return await self.graph.ainvoke(default_state, {"recursion_limit": 100})

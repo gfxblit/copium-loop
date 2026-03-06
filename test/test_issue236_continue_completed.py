@@ -26,6 +26,7 @@ async def test_completed_session_no_node_exits():
         mock_args.node = None  # Default value
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
@@ -51,10 +52,9 @@ async def test_completed_session_no_node_exits():
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
-                    # Expect SystemExit(0)
-                    with pytest.raises(SystemExit) as excinfo:
-                        await async_main()
-                    assert excinfo.value.code == 0
+                    # Expect return code 0
+                    exit_code = await async_main()
+                    assert exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -69,6 +69,7 @@ async def test_completed_session_with_node_continues():
         mock_args.node = "pr_pre_checker"  # Explicitly provided
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
@@ -129,6 +130,7 @@ async def test_incomplete_session_with_node_overrides_resume_node():
         mock_args.node = "reviewer"  # Explicitly provided
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 

@@ -54,7 +54,7 @@ async def test_engine_priority_cli_overrides_saved():
 
     # Setup mocks
     mock_graph = AsyncMock()
-    mock_graph.ainvoke.side_effect = lambda x: x
+    mock_graph.ainvoke.side_effect = lambda x, _config=None: x
 
     with (
         patch(
@@ -95,7 +95,7 @@ async def test_engine_priority_saved_used_if_no_cli():
 
     # Setup mocks
     mock_graph = AsyncMock()
-    mock_graph.ainvoke.side_effect = lambda x: x
+    mock_graph.ainvoke.side_effect = lambda x, _config=None: x
 
     with (
         patch(
