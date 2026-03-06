@@ -6,7 +6,12 @@ export function useTelemetry() {
   const [nodeStates, setNodeStates] = useState<Record<string, NodeState>>({});
   const [workflowStatus, setWorkflowStatus] = useState<string>('idle');
   const [connected, setConnected] = useState(false);
+  const [graph, setGraph] = useState<{nodes: any[], edges: any[]} | null>(null);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const ws = useRef<WebSocket | null>(null);
+
+  // Extract token from URL
+  const token = new URLSearchParams(window.location.search).get('token');
 
   const processEvent = useCallback((event: TelemetryEvent) => {
     if (event.event_type === 'snapshot') {
@@ -68,13 +73,30 @@ export function useTelemetry() {
     }
   }, []);
 
+  // Fetch graph structure
+  useEffect(() => {
+    const host = window.location.host;
+    const apiUrl = host.includes('5173') 
+      ? `http://${window.location.hostname}:8000/api/graph`
+      : `/api/graph`;
+
+    fetch(apiUrl, {
+      headers: token ? { 'X-Auth-Token': token } : {}
+    })
+      .then(res => res.json())
+      .then(data => setGraph(data))
+      .catch(err => console.error('Failed to fetch graph:', err));
+  }, [token]);
+
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     // For development when running vite dev server on 5173 and backend on 8000
-    const wsUrl = host.includes('5173') 
+    const wsBaseUrl = host.includes('5173') 
       ? `${protocol}//${window.location.hostname}:8000/api/ws`
       : `${protocol}//${host}/api/ws`;
+
+    const wsUrl = token ? `${wsBaseUrl}?token=${token}` : wsBaseUrl;
 
     console.log('Connecting to WebSocket:', wsUrl);
     const socket = new WebSocket(wsUrl);
@@ -83,6 +105,7 @@ export function useTelemetry() {
     socket.onopen = () => {
       console.log('WebSocket connected');
       setConnected(true);
+      setReconnectAttempt(0); // Reset reconnect attempts on successful connection
     };
 
     socket.onmessage = (event) => {
@@ -97,19 +120,19 @@ export function useTelemetry() {
     socket.onclose = () => {
       console.log('WebSocket disconnected');
       setConnected(false);
-      // Try to reconnect after 3 seconds
+      
+      // Reconnect with exponential backoff
+      const timeout = Math.min(1000 * Math.pow(2, reconnectAttempt), 10000);
+      console.log(`Attempting to reconnect in ${timeout}ms...`);
       setTimeout(() => {
-        if (ws.current === socket) {
-           // trigger effect again by some state change if needed, 
-           // but for now simple reconnect
-        }
-      }, 3000);
+        setReconnectAttempt(prev => prev + 1);
+      }, timeout);
     };
 
     return () => {
       socket.close();
     };
-  }, [processEvent]);
+  }, [processEvent, token, reconnectAttempt]);
 
-  return { events, nodeStates, workflowStatus, connected };
+  return { events, nodeStates, workflowStatus, connected, graph };
 }

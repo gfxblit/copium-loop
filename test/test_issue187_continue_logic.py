@@ -106,10 +106,9 @@ async def test_branch_mismatch_error():
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
-                    # Expect SystemExit(1)
-                    with pytest.raises(SystemExit) as excinfo:
-                        await async_main()
-                    assert excinfo.value.code == 1
+                    # Expect return code 1
+                    exit_code = await async_main()
+                    assert exit_code == 1
 
 
 @pytest.mark.asyncio
@@ -151,11 +150,9 @@ async def test_repo_root_mismatch_error():
                         # Mock git rev-parse --show-toplevel to return a DIFFERENT path
                         mock_run.return_value = {"exit_code": 0, "output": "/new/path"}
 
-                        # Expect SystemExit(1)
-                        with pytest.raises(SystemExit) as excinfo:
-                            await async_main()
-                        assert excinfo.value.code == 1
-
+                        # Expect return code 1
+                        exit_code = await async_main()
+                        assert exit_code == 1
 
 @pytest.mark.asyncio
 async def test_explicit_continue_override():

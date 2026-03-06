@@ -6,14 +6,16 @@ import os
 import sys
 
 
-async def run_web_server(telemetry):
+async def run_web_server(telemetry, token: str | None = None):
     """Starts the FastAPI web server for the UI."""
     import uvicorn
 
-    from copium_loop.ui.web_server import app, initialize_web_server
+    from copium_loop.ui.web_server import app, initialize_web_server, set_auth_token
 
+    if token:
+        set_auth_token(token)
     initialize_web_server(telemetry)
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="warning")
+    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="warning")
     server = uvicorn.Server(config)
     await server.serve()
 
@@ -84,10 +86,13 @@ async def async_main():
     server_task = None
 
     if args.web:
+        # Generate a random token for authentication
+        import secrets
+        auth_token = secrets.token_urlsafe(16)
         # Start web server in background
-        server_task = asyncio.create_task(run_web_server(telemetry))
+        server_task = asyncio.create_task(run_web_server(telemetry, token=auth_token))
         background_tasks.append(server_task)
-        print("Interactive Web UI started at http://localhost:8000")
+        print(f"Interactive Web UI started at http://localhost:8000/?token={auth_token}")
 
     session_id = telemetry.session_id
     session_manager = SessionManager(session_id)

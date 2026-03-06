@@ -58,8 +58,11 @@ class Telemetry:
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
         for subscriber in list(self._subscribers):
-            with contextlib.suppress(Exception):
+            try:
                 subscriber(event)
+            except Exception as e:
+                import sys
+                print(f"[ERROR] Telemetry subscriber {subscriber} failed: {e}", file=sys.stderr)
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""

@@ -6,7 +6,7 @@ import { Activity, Wifi, WifiOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 function App() {
-  const { nodeStates, workflowStatus, connected } = useTelemetry();
+  const { nodeStates, workflowStatus, connected, graph } = useTelemetry();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const selectedNodeState = selectedNodeId ? nodeStates[selectedNodeId] : null;
@@ -57,6 +57,7 @@ function App() {
           <WorkflowCanvas 
             nodeStates={nodeStates} 
             onNodeSelect={setSelectedNodeId} 
+            graph={graph}
           />
         </div>
 

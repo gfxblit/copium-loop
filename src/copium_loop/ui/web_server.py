@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import os
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -13,6 +13,7 @@ app = FastAPI()
 _telemetry: Telemetry | None = None
 _active_websockets: set[WebSocket] = set()
 _loop: asyncio.AbstractEventLoop | None = None
+_auth_token: str | None = None
 
 
 def set_telemetry(telemetry: Telemetry):
@@ -22,13 +23,21 @@ def set_telemetry(telemetry: Telemetry):
         _loop = asyncio.get_running_loop()
 
 
+def set_auth_token(token: str):
+    global _auth_token
+    _auth_token = token
+
+
 @app.get("/api/status")
 def get_status():
     return {"status": "ok"}
 
 
 @app.get("/api/logs")
-def get_logs():
+def get_logs(x_auth_token: str = Header(None)):
+    if _auth_token and x_auth_token != _auth_token:
+        raise HTTPException(status_code=403, detail="Invalid auth token")
+    
     if not _telemetry:
         return JSONResponse(
             content={"error": "Telemetry not initialized"}, status_code=500
@@ -36,8 +45,43 @@ def get_logs():
     return _telemetry.read_log()
 
 
+@app.get("/api/graph")
+def get_graph(x_auth_token: str = Header(None)):
+    if _auth_token and x_auth_token != _auth_token:
+        raise HTTPException(status_code=403, detail="Invalid auth token")
+
+    # Nodes and canonical edges for visualization
+    return {
+        "nodes": [
+            {"id": "coder", "label": "Coder"},
+            {"id": "tester", "label": "Tester"},
+            {"id": "architect", "label": "Architect"},
+            {"id": "reviewer", "label": "Reviewer"},
+            {"id": "pr_pre_checker", "label": "PR Pre-Checker"},
+            {"id": "pr_creator", "label": "PR Creator"},
+            {"id": "journaler", "label": "Journaler"},
+        ],
+        "edges": [
+            {"source": "coder", "target": "tester"},
+            {"source": "tester", "target": "architect"},
+            {"source": "architect", "target": "reviewer"},
+            {"source": "reviewer", "target": "pr_pre_checker"},
+            {"source": "pr_pre_checker", "target": "pr_creator"},
+            {"source": "tester", "target": "coder", "label": "fail"},
+            {"source": "architect", "target": "coder", "label": "reject"},
+            {"source": "reviewer", "target": "coder", "label": "reject"},
+            {"source": "pr_creator", "target": "coder", "label": "fail"},
+        ],
+    }
+
+
 @app.websocket("/api/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
+    if _auth_token and token != _auth_token:
+        # For WebSockets, we can't easily return a 403, so we close the connection
+        await websocket.close(code=1008)  # Policy Violation
+        return
+
     await websocket.accept()
     _active_websockets.add(websocket)
 
