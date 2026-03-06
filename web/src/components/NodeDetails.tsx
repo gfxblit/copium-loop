@@ -69,9 +69,9 @@ const NodeDetails = ({ nodeId, nodeState, onClose }: NodeDetailsProps) => {
                           log.event_type === 'error' ? "text-red-400" :
                           log.source === 'llm' ? "text-emerald-400" : "text-slate-300"
                         )}>
-                          {log.event_type === 'status' ? `STATUS: ${log.data}` : 
-                           log.event_type === 'info' ? `INFO: ${log.data}` :
-                           log.data}
+                          {log.event_type === 'status' ? `STATUS: ${String(log.data)}` : 
+                           log.event_type === 'info' ? `INFO: ${String(log.data)}` :
+                           String(log.data)}
                         </span>
                       </div>
                     ))}

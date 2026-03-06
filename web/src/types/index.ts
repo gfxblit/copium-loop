@@ -6,7 +6,7 @@ export interface TelemetryEvent {
   node: string;
   event_type: EventType;
   source: 'system' | 'llm';
-  data: any;
+  data: unknown;
 }
 
 export type NodeStatus = 'active' | 'success' | 'failed' | 'idle' | 'error' | 'approved' | 'rejected' | 'pending' | 'journaled';

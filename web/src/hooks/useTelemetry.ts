@@ -50,7 +50,7 @@ export function useTelemetry() {
     }
 
     if (event.event_type === 'workflow_status') {
-      setWorkflowStatus(event.data);
+      setWorkflowStatus(event.data as string);
     }
 
     // Add event to node logs
