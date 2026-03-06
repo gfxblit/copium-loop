@@ -27,6 +27,9 @@ copium-loop --node reviewer --verbose "check code"
 # Monitor sessions
 copium-loop --monitor
 
+# Interactive web UI
+copium-loop --web
+
 # Resume the session for the current branch
 copium-loop --continue
 ```

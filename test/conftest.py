@@ -86,6 +86,7 @@ def mock_telemetry_environment(
         self.log_dir = tmp_path / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        self._subscribers = set()
         # Always use the shared executor in tests to avoid leaking threads
         self._executor = shared_telemetry_executor
         self._owns_executor = False

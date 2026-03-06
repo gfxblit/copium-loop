@@ -6,6 +6,17 @@ import os
 import sys
 
 
+async def run_web_server(telemetry):
+    """Starts the FastAPI web server for the UI."""
+    import uvicorn
+    from copium_loop.ui.web_server import app, initialize_web_server
+
+    initialize_web_server(telemetry)
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="warning")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
 async def async_main():
     """Main async function."""
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
@@ -24,6 +35,12 @@ async def async_main():
         "-m",
         action="store_true",
         help="Start the Textual-based TUI monitor",
+    )
+    parser.add_argument(
+        "--web",
+        "-w",
+        action="store_true",
+        help="Start the interactive web UI server alongside the workflow",
     )
     parser.add_argument(
         "--continue",
@@ -60,6 +77,12 @@ async def async_main():
 
     # Get derived session ID
     telemetry = get_telemetry()
+
+    if args.web:
+        # Start web server in background
+        asyncio.create_task(run_web_server(telemetry))
+        print("Interactive Web UI started at http://localhost:8000")
+
     session_id = telemetry.session_id
     session_manager = SessionManager(session_id)
 

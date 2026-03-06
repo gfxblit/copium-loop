@@ -17,6 +17,7 @@ class Telemetry:
         self.log_dir = Path.home() / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        self._subscribers = set()
         if executor:
             self._executor = executor
             self._owns_executor = False
@@ -41,12 +42,25 @@ class Telemetry:
         }
         self._executor.submit(self._write_event, event)
 
+    def add_subscriber(self, subscriber):
+        """Adds a callback to receive events as they are logged."""
+        self._subscribers.add(subscriber)
+
+    def remove_subscriber(self, subscriber):
+        """Removes a previously added subscriber callback."""
+        self._subscribers.discard(subscriber)
+
     def _write_event(self, event: dict):
         """Writes an event to disk. Called by the thread executor."""
         # Ensure parent directory exists for session ID with slashes
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
+        for subscriber in list(self._subscribers):
+            try:
+                subscriber(event)
+            except Exception:
+                pass
 
     def log_output(self, node: str, chunk: str):
         """Logs a chunk of output from an agent."""
