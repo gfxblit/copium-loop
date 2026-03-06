@@ -47,6 +47,27 @@ async def get_head(node: str | None = None) -> str:
     return "unknown"
 
 
+async def get_commit_summary(
+    base: str, head: str | None = "HEAD", node: str | None = None
+) -> str:
+    """Returns a one-line summary of commits between base and head."""
+    target_head = head or "HEAD"
+    args = ["log", "--oneline", f"{base}..{target_head}"]
+    res = await run_command("git", args, node=node)
+    return res["output"]
+
+
+async def get_diff_stat(
+    base: str, head: str | None = "HEAD", node: str | None = None
+) -> str:
+    """Returns a summary of file changes (line counts) between base and head."""
+    args = ["diff", "--stat", base]
+    if head:
+        args.append(head)
+    res = await run_command("git", args, node=node)
+    return res["output"]
+
+
 async def resolve_ref(ref: str, node: str | None = None) -> str | None:
     """Resolves a git ref to a commit hash. Returns None if ref doesn't exist."""
     res = await run_command(

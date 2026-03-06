@@ -86,6 +86,7 @@ def mock_telemetry_environment(
         self.log_dir = tmp_path / ".copium" / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"{session_id}.jsonl"
+        self._subscribers = set()
         # Always use the shared executor in tests to avoid leaking threads
         self._executor = shared_telemetry_executor
         self._owns_executor = False
@@ -102,6 +103,15 @@ def mock_telemetry_environment(
     # For even better isolation, we can force a unique session ID if the test doesn't care
     # but some tests explicitly test session ID derivation.
     # So we'll leave it to use the caches by default.
+
+
+@pytest.fixture(autouse=True)
+def reset_web_server_auth():
+    """Reset the auth token before each test."""
+    from copium_loop.ui.web_server import set_auth_token
+
+    set_auth_token(None)
+    yield
 
 
 @pytest.fixture

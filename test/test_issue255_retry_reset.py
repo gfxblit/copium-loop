@@ -26,6 +26,7 @@ async def test_retry_count_reset_on_explicit_continue():
         mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
@@ -91,6 +92,7 @@ async def test_retry_count_reset_on_explicit_node():
         mock_args.node = "tester"
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
@@ -156,8 +158,9 @@ async def test_retry_count_reset_on_implicit_resume():
         mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
-        mock_args.engine = None
+        mock_args.web = False
         mock_parse.return_value = mock_args
+        mock_args.engine = None
 
         with patch("copium_loop.telemetry.get_telemetry") as mock_get_telemetry:
             mock_telemetry = MagicMock()

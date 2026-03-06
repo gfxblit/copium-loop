@@ -25,6 +25,7 @@ async def test_fresh_start_with_prompt():
         mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
@@ -85,6 +86,7 @@ async def test_continue_with_prompt_override():
         mock_args.node = None
         mock_args.verbose = False
         mock_args.monitor = False
+        mock_args.web = False
         mock_args.engine = None
         mock_parse.return_value = mock_args
 
