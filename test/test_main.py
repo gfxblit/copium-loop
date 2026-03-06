@@ -104,6 +104,7 @@ class TestMainTelemetry:
         mock_args.node = "coder"
         mock_args.verbose = True
         mock_args.engine = "gemini"
+        mock_args.web = False
         mock_parse_args.return_value = mock_args
 
         mock_telemetry = MagicMock()
@@ -114,12 +115,11 @@ class TestMainTelemetry:
         mock_workflow.run.return_value = {"review_status": "rejected"}
         mock_workflow_manager.return_value = mock_workflow
 
-        # We expect sys.exit(1) to be called
-        with patch("sys.exit") as mock_exit:
-            await async_main()
-            mock_exit.assert_called_with(1)
-            # Verify log_workflow_status("failed") was called
-            mock_telemetry.log_workflow_status.assert_called_with("failed")
+        # We expect it to return 1
+        exit_code = await async_main()
+        assert exit_code == 1
+        # Verify log_workflow_status("failed") was called
+        mock_telemetry.log_workflow_status.assert_called_with("failed")
 
     @patch("copium_loop.copium_loop.WorkflowManager")
     @patch("copium_loop.telemetry.get_telemetry")
@@ -135,6 +135,7 @@ class TestMainTelemetry:
         mock_args.node = "coder"
         mock_args.verbose = True
         mock_args.engine = "gemini"
+        mock_args.web = False
         mock_parse_args.return_value = mock_args
 
         mock_telemetry = MagicMock()
@@ -144,9 +145,8 @@ class TestMainTelemetry:
         mock_workflow.run.side_effect = Exception("test error")
         mock_workflow_manager.return_value = mock_workflow
 
-        # We expect sys.exit(1) to be called
-        with patch("sys.exit") as mock_exit:
-            await async_main()
-            mock_exit.assert_called_with(1)
-            # Verify log_workflow_status("failed") was called
-            mock_telemetry.log_workflow_status.assert_called_with("failed")
+        # We expect it to return 1
+        exit_code = await async_main()
+        assert exit_code == 1
+        # Verify log_workflow_status("failed") was called
+        mock_telemetry.log_workflow_status.assert_called_with("failed")

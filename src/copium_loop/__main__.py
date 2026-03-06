@@ -79,9 +79,14 @@ async def async_main():
     # Get derived session ID
     telemetry = get_telemetry()
 
+    # Background tasks to keep track of
+    background_tasks = []
+    server_task = None
+
     if args.web:
         # Start web server in background
-        asyncio.create_task(run_web_server(telemetry))
+        server_task = asyncio.create_task(run_web_server(telemetry))
+        background_tasks.append(server_task)
         print("Interactive Web UI started at http://localhost:8000")
 
     session_id = telemetry.session_id
@@ -129,13 +134,13 @@ async def async_main():
             print(
                 f"Error: Session branch mismatch. Session: {stored_branch}, Current: {current_branch}"
             )
-            sys.exit(1)
+            return 1
 
         if stored_repo_root and stored_repo_root != current_repo_root:
             print(
                 f"Error: Session repo root mismatch. Session: {stored_repo_root}, Current: {current_repo_root}"
             )
-            sys.exit(1)
+            return 1
 
         # Load persisted AgentState
         reconstructed_state = session_manager.get_resumed_state()
@@ -162,13 +167,21 @@ async def async_main():
                     status = metadata.get("status")
                     print(f"Workflow already completed with status: {status}")
                     print("Nothing to continue.")
-                    sys.exit(0)
+                    if args.web:
+                        print(
+                            "Keeping web UI alive for inspection. Press Ctrl+C to exit."
+                        )
+                        try:
+                            await server_task
+                        except asyncio.CancelledError:
+                            pass
+                    return 0
             elif reason == "no_log_found":
                 print(f"Error: No log file found for session {session_id}")
-                sys.exit(1)
+                return 1
             else:
                 print(f"Cannot determine resume point: {reason}")
-                sys.exit(1)
+                return 1
 
         if args.node:
             print(f"Using explicitly provided node: {args.node}")
@@ -225,12 +238,13 @@ async def async_main():
         test_out = result.get("test_output", "")
         pr_url = result.get("pr_url")
 
+        exit_code = 0
         if status == "pr_created":
             msg = f"Workflow completed successfully. PR created: {pr_url or 'N/A'}"
             print(msg)
             get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
-            sys.exit(0)
+            exit_code = 0
         elif status == "pr_skipped":
             msg = (
                 "Workflow completed successfully. PR skipped (not on a feature branch)."
@@ -238,42 +252,51 @@ async def async_main():
             print(msg)
             get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
-            sys.exit(0)
+            exit_code = 0
         elif status == "pr_failed":
             msg = "Workflow completed code/tests but failed to create PR."
             print(msg, file=sys.stderr)
             get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: PR Failed", msg, 5)
-            sys.exit(1)
+            exit_code = 1
         elif status == "approved" and ("PASS" in test_out or not test_out):
             msg = "Workflow completed successfully (no PR)."
             print(msg)
             get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
-            sys.exit(0)
+            exit_code = 0
         elif status == "journaled":
             if "FAIL" in test_out:
                 msg = "Workflow finished with test failures."
                 print(msg, file=sys.stderr)
                 get_telemetry().log_workflow_status("failed")
                 await workflow.notify("Workflow: Failed", msg, 5)
-                sys.exit(1)
-            msg = "Workflow completed successfully."
-            print(msg)
-            get_telemetry().log_workflow_status("success")
-            await workflow.notify("Workflow: Success", msg, 3)
-            sys.exit(0)
+                exit_code = 1
+            else:
+                msg = "Workflow completed successfully."
+                print(msg)
+                get_telemetry().log_workflow_status("success")
+                await workflow.notify("Workflow: Success", msg, 3)
+                exit_code = 0
         else:
             msg = "Workflow failed to converge."
             print(msg, file=sys.stderr)
             get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: Failed", msg, 5)
-            sys.exit(1)
+            exit_code = 1
+
+        if args.web:
+            print("Workflow finished. Keeping web UI alive for inspection. Press Ctrl+C to exit.")
+            try:
+                await server_task
+            except asyncio.CancelledError:
+                pass
+        return exit_code
 
     except ValueError as err:
         print(f"Error: {err}", file=sys.stderr)
         get_telemetry().log_workflow_status("failed")
-        sys.exit(1)
+        return 1
 
     except Exception as err:
         print(f"Workflow failed: {err}", file=sys.stderr)
@@ -281,12 +304,18 @@ async def async_main():
         await workflow.notify(
             "Workflow: Error", f"Workflow failed with error: {str(err)}", 5
         )
-        sys.exit(1)
+        return 1
 
 
 def main():
     """Entry point for the CLI."""
-    asyncio.run(async_main())
+    try:
+        exit_code = asyncio.run(async_main())
+        sys.exit(exit_code)
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except SystemExit as e:
+        sys.exit(e.code)
 
 
 if __name__ == "__main__":
