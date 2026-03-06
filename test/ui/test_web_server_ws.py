@@ -9,8 +9,16 @@ import copium_loop.ui.web_server as web_server
 @pytest.fixture
 def telemetry_mock():
     mock = MagicMock()
-    mock.read_log.return_value = [{"event_type": "status", "node": "coder", "data": "active", "timestamp": "2024-01-01T00:00:00"}]
+    mock.read_log.return_value = [
+        {
+            "event_type": "status",
+            "node": "coder",
+            "data": "active",
+            "timestamp": "2024-01-01T00:00:00",
+        }
+    ]
     return mock
+
 
 @pytest.mark.asyncio
 async def test_websocket_broadcast():
@@ -34,6 +42,7 @@ async def test_websocket_broadcast():
         mock_ws.send_json.assert_called_with(event)
 
     web_server._active_websockets.discard(mock_ws)
+
 
 @pytest.mark.asyncio
 async def test_initialize_web_server(telemetry_mock):

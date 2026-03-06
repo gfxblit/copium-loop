@@ -1,7 +1,10 @@
 import os
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from copium_loop.ui.web_server import app
+
 
 @pytest.mark.asyncio
 async def test_serve_index_html():
