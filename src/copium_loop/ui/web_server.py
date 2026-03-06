@@ -42,7 +42,9 @@ def get_status():
 
 @app.get("/api/logs")
 def get_logs(x_auth_token: str = Header(None)):
-    if _auth_token and x_auth_token != _auth_token:
+    if _auth_token is None:
+        raise HTTPException(status_code=403, detail="Authentication token required")
+    if x_auth_token != _auth_token:
         raise HTTPException(status_code=403, detail="Invalid auth token")
 
     if not _telemetry:
@@ -54,7 +56,9 @@ def get_logs(x_auth_token: str = Header(None)):
 
 @app.get("/api/graph")
 def get_graph(x_auth_token: str = Header(None)):
-    if _auth_token and x_auth_token != _auth_token:
+    if _auth_token is None:
+        raise HTTPException(status_code=403, detail="Authentication token required")
+    if x_auth_token != _auth_token:
         raise HTTPException(status_code=403, detail="Invalid auth token")
 
     # Nodes and canonical edges for visualization
@@ -84,7 +88,7 @@ def get_graph(x_auth_token: str = Header(None)):
 
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
-    if _auth_token and token != _auth_token:
+    if _auth_token is None or token != _auth_token:
         # For WebSockets, we can't easily return a 403, so we close the connection
         await websocket.close(code=1008)  # Policy Violation
         return

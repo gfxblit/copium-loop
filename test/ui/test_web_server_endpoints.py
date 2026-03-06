@@ -22,15 +22,19 @@ async def test_get_logs_no_telemetry():
     # Ensure telemetry is None
     original_telemetry = web_server._telemetry
     web_server._telemetry = None
+    web_server.set_auth_token("test_token")
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver"
         ) as client:
-            response = await client.get("/api/logs")
+            response = await client.get(
+                "/api/logs", headers={"X-Auth-Token": "test_token"}
+            )
             assert response.status_code == 500
             assert response.json() == {"error": "Telemetry not initialized"}
     finally:
         web_server._telemetry = original_telemetry
+        web_server.set_auth_token(None)
 
 
 @pytest.mark.asyncio
@@ -40,15 +44,19 @@ async def test_get_logs_with_telemetry():
 
     original_telemetry = web_server._telemetry
     web_server._telemetry = mock_telemetry
+    web_server.set_auth_token("test_token")
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver"
         ) as client:
-            response = await client.get("/api/logs")
+            response = await client.get(
+                "/api/logs", headers={"X-Auth-Token": "test_token"}
+            )
             assert response.status_code == 200
             assert response.json() == [{"event_type": "status", "data": "ok"}]
     finally:
         web_server._telemetry = original_telemetry
+        web_server.set_auth_token(None)
 
 
 # For Websockets, AsyncClient doesn't support them easily without starlette's TestClient

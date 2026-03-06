@@ -52,10 +52,16 @@ class Telemetry:
 
     def _write_event(self, event: dict):
         """Writes an event to disk. Called by the thread executor."""
-        # Ensure parent directory exists for session ID with slashes
-        self.log_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event) + "\n")
+        try:
+            # Ensure parent directory exists for session ID with slashes
+            self.log_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event) + "\n")
+        except Exception as e:
+            import sys
+
+            print(f"[ERROR] Telemetry write failed: {e}", file=sys.stderr)
+
         for subscriber in list(self._subscribers):
             try:
                 subscriber(event)
@@ -98,14 +104,20 @@ class Telemetry:
             return []
 
         events = []
-        with open(self.log_file, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    try:
-                        events.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
+        try:
+            with open(self.log_file, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            events.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            import sys
+
+            print(f"[ERROR] Failed to read telemetry log: {e}", file=sys.stderr)
+
         return events
 
     def get_formatted_log(

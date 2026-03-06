@@ -4,7 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from copium_loop.telemetry import Telemetry
-from copium_loop.ui.web_server import app, set_telemetry
+from copium_loop.ui.web_server import app, set_auth_token, set_telemetry
 
 
 @pytest.fixture
@@ -33,13 +33,19 @@ async def test_get_status():
 @pytest.mark.asyncio
 async def test_get_logs(telemetry_with_temp_dir):
     set_telemetry(telemetry_with_temp_dir)
+    set_auth_token("test_token")
     telemetry_with_temp_dir.log_status("coder", "active")
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        response = await client.get("/api/logs")
-        assert response.status_code == 200
-        logs = response.json()
-        assert len(logs) >= 1
-        assert logs[0]["node"] == "coder"
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            response = await client.get(
+                "/api/logs", headers={"X-Auth-Token": "test_token"}
+            )
+            assert response.status_code == 200
+            logs = response.json()
+            assert len(logs) >= 1
+            assert logs[0]["node"] == "coder"
+    finally:
+        set_auth_token(None)
