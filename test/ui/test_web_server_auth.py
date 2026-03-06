@@ -97,7 +97,10 @@ async def test_ws_auth_failure():
     set_auth_token("secret_token")
     client = TestClient(app)
     # Starlette raises if handshake fails.
-    with pytest.raises(Exception), client.websocket_connect("/api/ws?token=wrong_token"):  # noqa: B017
+    with (
+        pytest.raises(Exception),
+        client.websocket_connect("/api/ws?token=wrong_token"),
+    ):  # noqa: B017
         pass
     set_auth_token(None)
 
