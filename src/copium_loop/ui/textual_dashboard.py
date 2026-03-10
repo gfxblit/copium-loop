@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import re
 from pathlib import Path
 
 from rich.text import Text
@@ -182,16 +183,16 @@ class TextualDashboard(App):
 
             if current_sids == visible_sids and not has_empty_label:
                 # Just refresh existing
-                for widget in current_widgets:
+                for i, widget in enumerate(current_widgets):
+                    widget.index = i + 1
                     await widget.refresh_ui()
             else:
                 # Rebuild
                 await container.remove_children()
-                import re
 
-                for session in visible_sessions:
+                for i, session in enumerate(visible_sessions):
                     safe_sid = re.sub(r"[^a-zA-Z0-9_\-]", "_", session.session_id)
-                    w = SessionWidget(session, id=f"session-{safe_sid}")
+                    w = SessionWidget(session, index=i + 1, id=f"session-{safe_sid}")
                     await container.mount(w)
                     await w.refresh_ui()
 
