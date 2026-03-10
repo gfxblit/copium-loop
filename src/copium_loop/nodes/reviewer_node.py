@@ -46,7 +46,7 @@ async def reviewer_node(state: AgentState) -> dict:
             "last_error": error_msg,
         }
 
-    system_prompt = await get_reviewer_prompt(engine.engine_type, state)
+    system_prompt = await get_reviewer_prompt(engine.engine_type, state, engine)
 
     # Check for empty diff
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
