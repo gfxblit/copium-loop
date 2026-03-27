@@ -18,6 +18,14 @@ def mock_session_manager():
         yield
 
 
+@pytest.fixture(autouse=True)
+def clear_git_cache():
+    """Ensure git cache is cleared for every test."""
+    git._BRANCH_CACHE.clear()
+    yield
+    git._BRANCH_CACHE.clear()
+
+
 @pytest.mark.asyncio
 async def test_get_current_branch():
     with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
