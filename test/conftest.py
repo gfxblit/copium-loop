@@ -225,3 +225,14 @@ def agent_state(mock_engine):
         "head_hash": "",
     }
     return state
+
+
+@pytest.fixture(autouse=True)
+def clear_git_cache():
+    """Clear the git cache before and after tests."""
+    from copium_loop import git
+
+    # Store original cache state if needed, or just clear
+    git._BRANCH_CACHE.clear()
+    yield
+    git._BRANCH_CACHE.clear()
