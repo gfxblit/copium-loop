@@ -1,13 +1,29 @@
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from copium_loop.workon import (
+    check_dependencies,
     find_remote_url,
     resolve_branch_name,
     slugify,
     workon_main,
 )
+
+
+@pytest.mark.asyncio
+async def test_check_dependencies_missing():
+    with patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run:
+        # Mock gh and tmux missing, git found
+        mock_run.side_effect = [
+            {"exit_code": 1, "output": ""},  # gh
+            {"exit_code": 1, "output": ""},  # tmux
+            {"exit_code": 0, "output": ""},  # git
+        ]
+        with pytest.raises(SystemExit) as e:
+            await check_dependencies()
+        assert e.value.code == 1
 
 
 def test_slugify():
@@ -97,6 +113,7 @@ async def test_workon_main_no_remote_error():
     args = MagicMock()
     args.issue = "some-issue"
     with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
         patch("copium_loop.workon.resolve_branch_name", return_value="branch"),
         patch("copium_loop.workon.find_remote_url", return_value=None),
     ):
@@ -110,6 +127,7 @@ async def test_workon_main_clone_fallback(tmp_path):
     args = MagicMock()
     args.issue = "issue-1"
     with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
         patch("copium_loop.workon.resolve_branch_name", return_value="branch-1"),
         patch("copium_loop.workon.find_remote_url", return_value="git@remote"),
         patch("os.getcwd", return_value=str(tmp_path)),
@@ -137,6 +155,7 @@ async def test_workon_main_existing_workspace(tmp_path):
     workspace.mkdir()
 
     with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
         patch("copium_loop.workon.resolve_branch_name", return_value="branch-1"),
         patch("copium_loop.workon.find_remote_url", return_value="git@remote"),
         patch("os.getcwd", return_value=str(tmp_path)),
@@ -156,6 +175,7 @@ async def test_workon_main_attach_session():
     args = MagicMock()
     args.issue = "issue-1"
     with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
         patch("copium_loop.workon.resolve_branch_name", return_value="branch-1"),
         patch("copium_loop.workon.find_remote_url", return_value="git@remote"),
         patch("os.path.exists", return_value=True),
@@ -183,6 +203,7 @@ async def test_workon_main_full_flow(tmp_path):
     remote_url = "git@github.com:owner/repo.git"
 
     with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
         patch("copium_loop.workon.resolve_branch_name", return_value=branch_name) as mock_resolve,
         patch("copium_loop.workon.find_remote_url", return_value=remote_url) as mock_find_remote,
         patch("os.getcwd", return_value=str(tmp_path)),

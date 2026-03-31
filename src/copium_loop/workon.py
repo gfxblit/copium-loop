@@ -74,10 +74,29 @@ async def resolve_branch_name(input_str: str) -> str:
 
     return slugify(input_str)
 
+async def check_dependencies():
+    """Check if required external tools are installed."""
+    tools = ["gh", "tmux", "git"]
+    missing = []
+    for tool in tools:
+        res = await run_command("which", [tool])
+        if res["exit_code"] != 0:
+            missing.append(tool)
+
+    if missing:
+        print(f"Error: Missing required tools: {', '.join(missing)}")
+        if "gh" in missing:
+            print("Please install GitHub CLI: https://cli.github.com/")
+        if "tmux" in missing:
+            print("Please install tmux: https://github.com/tmux/tmux")
+        sys.exit(1)
+
 async def workon_main(args):
     """Main function for 'workon' subcommand."""
+    await check_dependencies()
 
     # 1. Resolve branch name
+
     issue_input = args.issue
     branch_name = await resolve_branch_name(issue_input)
     print(f"Resolved branch name: {branch_name}")
