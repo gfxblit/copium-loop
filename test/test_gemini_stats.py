@@ -101,8 +101,8 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         usage = self.client.get_usage()
 
         self.assertIsNotNone(usage)
-        # 80.0% remaining means 20.0% used.
-        self.assertAlmostEqual(usage["pro"], 20.0)
+        # 80.0% used.
+        self.assertAlmostEqual(usage["pro"], 80.0)
         self.assertEqual(usage["reset_pro"], "6:03 AM (12h 25m)")
 
     def test_get_usage_failure(self):
@@ -124,7 +124,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         usage = await self.client.get_usage_async()
 
         self.assertIsNotNone(usage)
-        self.assertAlmostEqual(usage["pro"], 20.0)
+        self.assertAlmostEqual(usage["pro"], 80.0)
 
     async def test_get_usage_async_failure(self):
         self.mock_fetcher.fetch_async.return_value = None
@@ -171,7 +171,7 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         self.mock_fetcher.fetch.return_value = stats_output
 
         usage = self.client.get_usage()
-        self.assertAlmostEqual(usage["flash"], 30.0)
+        self.assertAlmostEqual(usage["flash"], 70.0)
         self.assertEqual(usage["reset_flash"], "6:03 AM (30m)")
 
     def test_parse_output_gemini_3_pro(self):
@@ -180,8 +180,8 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
 
         usage = self.client.get_usage()
         self.assertIsNotNone(usage)
-        # 85.0% remaining means 15.0% used.
-        self.assertAlmostEqual(usage["pro"], 15.0)
+        # 85.0% used.
+        self.assertAlmostEqual(usage["pro"], 85.0)
         self.assertEqual(usage["reset_pro"], "6:03 AM (4h 20m)")
 
     def test_backward_compatibility(self):

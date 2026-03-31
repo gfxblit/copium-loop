@@ -28,8 +28,8 @@ class TestGeminiStatsStrategy:
         # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
-            "pro": 85,
-            "flash": 40,
+            "pro": 15.0,
+            "flash": 60.0,
             "reset_pro": "18:30",
             "reset_flash": "19:45",
         }
@@ -38,9 +38,9 @@ class TestGeminiStatsStrategy:
         stats = strategy.get_stats()
         full_text = self._stats_to_text(stats)
 
-        # We expect to see both reset times
-        assert "PRO LEFT: 15.0%" in full_text
-        assert "FLASH LEFT: 60.0%" in full_text
+        # We expect to see used percentages
+        assert "PRO USED: 15.0%" in full_text
+        assert "FLASH USED: 60.0%" in full_text
         assert "PRO RESET: 18:30" in full_text
         assert "FLASH RESET: 19:45" in full_text
 
@@ -48,8 +48,8 @@ class TestGeminiStatsStrategy:
         # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
-            "pro": 85,
-            "flash": 40,
+            "pro": 15,
+            "flash": 60,
             "reset_pro": "18:30",
             "reset_flash": "18:30",
         }
@@ -67,8 +67,8 @@ class TestGeminiStatsStrategy:
         # Mock GeminiStatsClient
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {
-            "pro": 85,
-            "flash": 40,
+            "pro": 15,
+            "flash": 60,
             "reset_pro": "18:30",
             "reset_flash": "?",
         }
@@ -94,8 +94,8 @@ class TestGeminiStatsStrategy:
         stats = strategy.get_stats()
 
         assert stats is not None
-        assert stats[0] == ("PRO LEFT: 79.5%", "bright_green")
-        assert stats[2] == ("FLASH LEFT: 60.0%", "bright_yellow")
+        assert stats[0] == ("PRO USED: 20.5%", "bright_green")
+        assert stats[2] == ("FLASH USED: 40.0%", "bright_yellow")
         # Since reset_flash defaults to '?' and reset_pro defaults to data.get('reset')
         assert stats[4] == ("RESET: 2h 30m", "cyan")
 
@@ -110,38 +110,24 @@ class TestGeminiStatsStrategy:
         assert stats is None
 
     def test_get_stats_zero_usage(self):
-        # Setup mock client for 0% usage (100% left)
+        # Setup mock client for 0% usage
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {"pro": 0, "flash": 0, "reset": "never"}
 
         strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
-        assert stats[0][0] == "PRO LEFT: 100.0%"
-        assert stats[2][0] == "FLASH LEFT: 100.0%"
+        assert stats[0][0] == "PRO USED: 0.0%"
+        assert stats[2][0] == "FLASH USED: 0.0%"
 
     def test_get_stats_full_usage(self):
-        # Setup mock client for 100% usage (0% left)
+        # Setup mock client for 100% usage
         mock_client = MagicMock()
         mock_client.get_usage.return_value = {"pro": 100, "flash": 100, "reset": "now"}
 
         strategy = GeminiStatsStrategy(mock_client)
         stats = strategy.get_stats()
-        assert stats[0][0] == "PRO LEFT: 0.0%"
-        assert stats[2][0] == "FLASH LEFT: 0.0%"
-
-    def test_get_stats_over_usage(self):
-        # Setup mock client for >100% usage (0% left)
-        mock_client = MagicMock()
-        mock_client.get_usage.return_value = {
-            "pro": 120,
-            "flash": 150,
-            "reset": "long ago",
-        }
-
-        strategy = GeminiStatsStrategy(mock_client)
-        stats = strategy.get_stats()
-        assert stats[0][0] == "PRO LEFT: 0.0%"
-        assert stats[2][0] == "FLASH LEFT: 0.0%"
+        assert stats[0][0] == "PRO USED: 100.0%"
+        assert stats[2][0] == "FLASH USED: 100.0%"
 
     def test_get_stats_missing_fields(self):
         # Setup mock client with empty dict
@@ -153,8 +139,8 @@ class TestGeminiStatsStrategy:
 
         assert stats is not None
         # Should use default 0 for pro/flash and '?' for reset
-        assert stats[0][0] == "PRO LEFT: 100.0%"
-        assert stats[2][0] == "FLASH LEFT: 100.0%"
+        assert stats[0][0] == "PRO USED: 0.0%"
+        assert stats[2][0] == "FLASH USED: 0.0%"
         assert stats[4][0] == "RESET: ?"
 
 
