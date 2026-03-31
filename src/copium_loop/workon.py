@@ -83,7 +83,7 @@ async def resolve_branch_name(input_str: str) -> str:
     if input_str.startswith("http://") or input_str.startswith("https://"):
         # Fetch issue info using gh
         res = await run_command(
-            "gh", ["issue", "view", "--", input_str, "--json", "title,number"]
+            "gh", ["issue", "view", "--json", "title,number", "--", input_str]
         )
         if res["exit_code"] == 0:
             try:

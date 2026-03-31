@@ -64,6 +64,32 @@ async def test_resolve_branch_name_gh_text_fallback():
 
 
 @pytest.mark.asyncio
+async def test_resolve_branch_name_gh_arg_order():
+    with patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {
+            "exit_code": 0,
+            "output": '{"title": "Test Issue", "number": 123}',
+        }
+
+        url = "https://github.com/owner/repo/issues/123"
+        await resolve_branch_name(url)
+
+        # Find the call to gh issue view
+        gh_call = next(c for c in mock_run.call_args_list if c.args[0] == "gh")
+        args = gh_call.args[1]
+
+        # The correct order should be: gh issue view --json title,number -- <url>
+        # Specifically, --json should come BEFORE --
+        assert "--json" in args
+        assert "--" in args
+        idx_json = args.index("--json")
+        idx_dashdash = args.index("--")
+        assert idx_json < idx_dashdash, (
+            f"Expected --json to be before --, but got {args}"
+        )
+
+
+@pytest.mark.asyncio
 async def test_resolve_branch_name_malicious_input():
     with patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = {"exit_code": 1, "output": "error"}
