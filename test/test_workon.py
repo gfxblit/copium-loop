@@ -1,4 +1,3 @@
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -204,8 +203,12 @@ async def test_workon_main_full_flow(tmp_path):
 
     with (
         patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
-        patch("copium_loop.workon.resolve_branch_name", return_value=branch_name) as mock_resolve,
-        patch("copium_loop.workon.find_remote_url", return_value=remote_url) as mock_find_remote,
+        patch(
+            "copium_loop.workon.resolve_branch_name", return_value=branch_name
+        ) as mock_resolve,
+        patch(
+            "copium_loop.workon.find_remote_url", return_value=remote_url
+        ) as mock_find_remote,
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run,
         patch("copium_loop.workon.TmuxManager") as mock_tmux_cls,

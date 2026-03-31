@@ -11,10 +11,11 @@ def slugify(text: str) -> str:
     # Convert to lowercase
     text = text.lower()
     # Replace non-alphanumeric with hyphen
-    text = re.sub(r'[^a-z0-9]+', '-', text)
+    text = re.sub(r"[^a-z0-9]+", "-", text)
     # Remove leading/trailing hyphens
-    text = text.strip('-')
+    text = text.strip("-")
     return text
+
 
 async def find_remote_url() -> str | None:
     """Find the remote URL from .workon-remote or sibling directories."""
@@ -31,7 +32,9 @@ async def find_remote_url() -> str | None:
         path = os.path.join(cwd, item)
         if os.path.isdir(path) and os.path.exists(os.path.join(path, ".git")):
             # Try to get remote URL from this directory
-            res = await run_command("git", ["remote", "get-url", "origin"], dir_path=path)
+            res = await run_command(
+                "git", ["remote", "get-url", "origin"], dir_path=path
+            )
             if res["exit_code"] == 0:
                 url = res["output"].strip()
                 if url:
@@ -39,13 +42,17 @@ async def find_remote_url() -> str | None:
 
     return None
 
+
 async def resolve_branch_name(input_str: str) -> str:
     """Resolve a branch name from a URL or description."""
     if input_str.startswith("http://") or input_str.startswith("https://"):
         # Fetch issue info using gh
-        res = await run_command("gh", ["issue", "view", input_str, "--json", "title,number"])
+        res = await run_command(
+            "gh", ["issue", "view", input_str, "--json", "title,number"]
+        )
         if res["exit_code"] == 0:
             import json
+
             try:
                 # Some versions of gh might return different formats if --json is not supported or used differently
                 # Let's try to handle both json and text if needed
@@ -74,6 +81,7 @@ async def resolve_branch_name(input_str: str) -> str:
 
     return slugify(input_str)
 
+
 async def check_dependencies():
     """Check if required external tools are installed."""
     tools = ["gh", "tmux", "git"]
@@ -91,6 +99,7 @@ async def check_dependencies():
             print("Please install tmux: https://github.com/tmux/tmux")
         sys.exit(1)
 
+
 async def workon_main(args):
     """Main function for 'workon' subcommand."""
     await check_dependencies()
@@ -104,7 +113,9 @@ async def workon_main(args):
     # 2. Find remote URL
     remote_url = await find_remote_url()
     if not remote_url:
-        print("Error: Could not find remote URL. Create a .workon-remote file or run from a directory with sibling git repositories.")
+        print(
+            "Error: Could not find remote URL. Create a .workon-remote file or run from a directory with sibling git repositories."
+        )
         sys.exit(1)
 
     cwd = os.getcwd()
@@ -113,10 +124,14 @@ async def workon_main(args):
     # 3. Create workspace directory and clone (if not exists)
     if not os.path.exists(workspace_path):
         print(f"Cloning {remote_url} into {workspace_path}...")
-        res = await run_command("git", ["clone", remote_url, "-b", branch_name, branch_name])
+        res = await run_command(
+            "git", ["clone", remote_url, "-b", branch_name, branch_name]
+        )
         if res["exit_code"] != 0:
             # Maybe the branch doesn't exist yet, try cloning default and creating branch
-            print(f"Branch '{branch_name}' not found on remote. Cloning default branch...")
+            print(
+                f"Branch '{branch_name}' not found on remote. Cloning default branch..."
+            )
             res = await run_command("git", ["clone", remote_url, branch_name])
             if res["exit_code"] != 0:
                 print(f"Error cloning repository: {res['output']}")
@@ -124,14 +139,18 @@ async def workon_main(args):
 
             # Create branch
             print(f"Creating branch '{branch_name}'...")
-            await run_command("git", ["checkout", "-b", branch_name], dir_path=workspace_path)
+            await run_command(
+                "git", ["checkout", "-b", branch_name], dir_path=workspace_path
+            )
     else:
         print(f"Workspace {workspace_path} already exists.")
         # Ensure we are on the correct branch
         await run_command("git", ["checkout", branch_name], dir_path=workspace_path)
 
     # 4. Detect and run pnpm install
-    if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")) or os.path.exists(os.path.join(workspace_path, "package.json")):
+    if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")) or os.path.exists(
+        os.path.join(workspace_path, "package.json")
+    ):
         print("pnpm project detected. Running pnpm install...")
         await run_command("pnpm", ["install"], dir_path=workspace_path)
 
@@ -147,6 +166,7 @@ async def workon_main(args):
 
         # Wait a moment for tmux to settle?
         import asyncio
+
         await asyncio.sleep(0.5)
 
         tmux.send_keys(branch_name, [bootstrap_cmd, "Enter"])

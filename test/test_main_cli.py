@@ -15,7 +15,9 @@ async def test_cli_run_subcommand_compatibility():
         mock_instance.run = AsyncMock(return_value={"review_status": "approved"})
         mock_instance.notify = AsyncMock()
 
-        with patch("copium_loop.session_manager.SessionManager") as mock_session_manager:
+        with patch(
+            "copium_loop.session_manager.SessionManager"
+        ) as mock_session_manager:
             mock_session_manager.return_value.get_agent_state.return_value = None
             mock_session_manager.return_value.get_original_prompt.return_value = None
 
@@ -34,7 +36,9 @@ async def test_cli_workon_subcommand():
     """Test that the 'workon' subcommand is recognized."""
     # This should fail initially because workon is not implemented
     with (
-        patch("copium_loop.workon.workon_main", new_callable=AsyncMock) as mock_workon_main,
+        patch(
+            "copium_loop.workon.workon_main", new_callable=AsyncMock
+        ) as mock_workon_main,
         patch(
             "sys.argv",
             ["copium-loop", "workon", "https://github.com/owner/repo/issues/1"],

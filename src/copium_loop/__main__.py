@@ -25,7 +25,9 @@ async def async_main():
     subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
 
     # Run command
-    run_parser = subparsers.add_parser("run", parents=[parent_parser], help="Run a development workflow")
+    run_parser = subparsers.add_parser(
+        "run", parents=[parent_parser], help="Run a development workflow"
+    )
     run_parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     run_parser.add_argument(
         "-n",
@@ -48,7 +50,9 @@ async def async_main():
     )
 
     # Workon command
-    workon_parser = subparsers.add_parser("workon", parents=[parent_parser], help="Set up a new workspace for an issue")
+    workon_parser = subparsers.add_parser(
+        "workon", parents=[parent_parser], help="Set up a new workspace for an issue"
+    )
     workon_parser.add_argument("issue", help="The issue URL or description to work on")
 
     # Handle default command if none provided
@@ -64,6 +68,7 @@ async def async_main():
 
     if args.command == "workon":
         from copium_loop.workon import workon_main
+
         await workon_main(args)
         return
 
