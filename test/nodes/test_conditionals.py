@@ -164,12 +164,12 @@ class TestConditionalLogic:
         )
 
     def test_should_continue_from_pr_creator_on_failure(self):
-        """Test transition to coder on pr_failed."""
+        """Test transition to END on pr_failed."""
         assert (
             should_continue_from_pr_creator(
                 {"review_status": "pr_failed", "retry_count": 0}
             )
-            == "coder"
+            == END
         )
 
     def test_should_continue_from_pr_creator_max_retries(self):
@@ -437,9 +437,10 @@ class TestConditionalTelemetry:
         should_continue_from_pr_creator({"review_status": "pr_created"})
         mock_telemetry.log_status.assert_called_with("pr_creator", "success")
 
-        # pr_failed -> failed
+        # pr_failed -> error
         mock_telemetry.reset_mock()
         should_continue_from_pr_creator(
             {"review_status": "pr_failed", "retry_count": 0}
         )
-        mock_telemetry.log_status.assert_called_with("pr_creator", "failed")
+        mock_telemetry.log_status.assert_called_with("pr_creator", "error")
+        mock_telemetry.log_workflow_status.assert_called_with("failed")
