@@ -8,31 +8,12 @@ import sys
 
 async def async_main():
     """Main async function."""
-    parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    parser.add_argument("prompt", nargs="*", help="The prompt to run.")
-    parser.add_argument(
-        "-n",
-        "--node",
-        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
-        default=None,
-    )
-    parser.add_argument(
+    # Parent parser for shared arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"
     )
-    parser.add_argument(
-        "--monitor",
-        "-m",
-        action="store_true",
-        help="Start the Textual-based TUI monitor",
-    )
-    parser.add_argument(
-        "--continue",
-        "-c",
-        dest="continue_session",
-        action="store_true",
-        help="Continue from the last incomplete workflow session. If a prompt is provided, it overrides the session prompt.",
-    )
-    parser.add_argument(
+    parent_parser.add_argument(
         "--engine",
         type=str,
         choices=["gemini", "jules"],
@@ -40,8 +21,53 @@ async def async_main():
         help="The LLM engine to use (default: gemini)",
     )
 
+    parser = argparse.ArgumentParser(description="Run the dev workflow.")
+    subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
+
+    # Run command
+    run_parser = subparsers.add_parser("run", parents=[parent_parser], help="Run a development workflow")
+    run_parser.add_argument("prompt", nargs="*", help="The prompt to run.")
+    run_parser.add_argument(
+        "-n",
+        "--node",
+        help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
+        default=None,
+    )
+    run_parser.add_argument(
+        "--monitor",
+        "-m",
+        action="store_true",
+        help="Start the Textual-based TUI monitor",
+    )
+    run_parser.add_argument(
+        "--continue",
+        "-c",
+        dest="continue_session",
+        action="store_true",
+        help="Continue from the last incomplete workflow session.",
+    )
+
+    # Workon command
+    workon_parser = subparsers.add_parser("workon", parents=[parent_parser], help="Set up a new workspace for an issue")
+    workon_parser.add_argument("issue", help="The issue URL or description to work on")
+
+    # Handle default command if none provided
+    if len(sys.argv) > 1 and sys.argv[1] not in ["run", "workon", "-h", "--help"]:
+        # If it's a flag that belongs to run_parser but not to workon_parser (like -m, -c),
+        # or if it's just a prompt, insert 'run'
+        # To be safe, if it's not 'workon', we default to 'run'
+        sys.argv.insert(1, "run")
+    elif len(sys.argv) == 1:
+        sys.argv.append("run")
+
     args = parser.parse_args()
 
+    if args.command == "workon":
+        from copium_loop.workon import workon_main
+        await workon_main(args)
+        return
+
+    # Default 'run' logic follows
     if args.monitor:
         from copium_loop.ui import TextualDashboard
 
