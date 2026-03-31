@@ -233,23 +233,36 @@ async def test_initial_commit_hash_for_architect_with_origin_main(
     ) as mock_is_git:
         mock_is_git.return_value = True
 
-        # Let's assume we'll use a new function in git.py called resolve_ref
+        # Mock current branch to NOT be main
         with patch(
-            "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
-        ) as mock_resolve_ref:
-            mock_resolve_ref.return_value = "origin_main_hash"
+            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+        ) as mock_get_branch:
+            mock_get_branch.return_value = "feature-branch"
 
-            manager = WorkflowManager(start_node="architect")
-            mock_graph = AsyncMock()
-            mock_graph.ainvoke.return_value = {"status": "completed"}
-            mock_create_graph.return_value = mock_graph
+            # Let's assume we'll use a new function in git.py called resolve_ref
+            with patch(
+                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+            ) as mock_resolve_ref:
 
-            await manager.run("test prompt")
+                def resolve_ref_side_effect(ref=None, node=None):
+                    # node argument is required because it's passed as a keyword argument
+                    _ = node
+                    if ref == "origin/main":
+                        return "origin_main_hash"
+                    return None
 
-            # Verify initial state
-            state = mock_graph.ainvoke.call_args[0][0]
-            assert state["initial_commit_hash"] == "origin_main_hash"
-            mock_resolve_ref.assert_called_with(ref="origin/main", node="architect")
+                mock_resolve_ref.side_effect = resolve_ref_side_effect
+                manager = WorkflowManager(start_node="architect")
+                mock_graph = AsyncMock()
+                mock_graph.ainvoke.return_value = {"status": "completed"}
+                mock_create_graph.return_value = mock_graph
+
+                await manager.run("test prompt")
+
+                # Verify initial state
+                state = mock_graph.ainvoke.call_args[0][0]
+                assert state["initial_commit_hash"] == "origin_main_hash"
+                mock_resolve_ref.assert_called_with(ref="origin/main", node="architect")
 
 
 @pytest.mark.asyncio

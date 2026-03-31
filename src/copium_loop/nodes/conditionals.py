@@ -102,6 +102,11 @@ def should_continue_from_pr_creator(state: AgentState) -> str:
         telemetry.log_status("pr_creator", "success")
         return END
 
+    if status == "pr_failed":
+        telemetry.log_status("pr_creator", "error")
+        telemetry.log_workflow_status("failed")
+        return END
+
     print(
         f"PR Creator failed or needs commit (status: {repr(status)}). Returning to coder."
     )

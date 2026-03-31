@@ -160,13 +160,13 @@ class GeminiStatsClient:
             "gemini-2.5-pro",
         ]:
             pro_match = re.search(
-                rf"{model}\s+(?:-|\d+)\s+([\d\.]+)%\s+resets in\s+([^│\n\r]+)",
+                rf"{model}\s+(?:-|\d+)\s+\S+\s+([\d\.]+)%\s+([^│\n\r]+)",
                 output,
                 re.IGNORECASE,
             )
             if pro_match:
-                remaining = float(pro_match.group(1))
-                data["pro"] = 100.0 - remaining
+                used = float(pro_match.group(1))
+                data["pro"] = used
                 data["reset_pro"] = pro_match.group(2).strip()
                 data["reset"] = data["reset_pro"]
                 break
@@ -174,13 +174,13 @@ class GeminiStatsClient:
         # Flash models in priority order
         for model in ["gemini-3-flash-preview", "gemini-2.5-flash"]:
             flash_match = re.search(
-                rf"{model}\s+(?:-|\d+)\s+([\d\.]+)%\s+resets in\s+([^│\n\r]+)",
+                rf"{model}\s+(?:-|\d+)\s+\S+\s+([\d\.]+)%\s+([^│\n\r]+)",
                 output,
                 re.IGNORECASE,
             )
             if flash_match:
-                remaining = float(flash_match.group(1))
-                data["flash"] = 100.0 - remaining
+                used = float(flash_match.group(1))
+                data["flash"] = used
                 data["reset_flash"] = flash_match.group(2).strip()
                 break
 

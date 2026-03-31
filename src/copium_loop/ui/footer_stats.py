@@ -30,19 +30,16 @@ class GeminiStatsStrategy(FooterStatsStrategy):
         if data is None:
             return None
 
-        # Calculate remaining
+        # The values in 'pro' and 'flash' are now 'used' percentages
         pro = data.get("pro", 0)
         flash = data.get("flash", 0)
         reset_pro = data.get("reset_pro", data.get("reset", "?"))
         reset_flash = data.get("reset_flash", "?")
 
-        remaining_pro = max(0, 100 - pro)
-        remaining_flash = max(0, 100 - flash)
-
         stats = [
-            (f"PRO LEFT: {remaining_pro:.1f}%", "bright_green"),
+            (f"PRO USED: {pro:.1f}%", "bright_green"),
             "  ",
-            (f"FLASH LEFT: {remaining_flash:.1f}%", "bright_yellow"),
+            (f"FLASH USED: {flash:.1f}%", "bright_yellow"),
             "  ",
         ]
 
