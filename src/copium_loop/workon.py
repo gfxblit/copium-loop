@@ -1,5 +1,9 @@
+import asyncio
+import json
 import os
 import re
+import shlex
+import shutil
 import sys
 
 from copium_loop.shell import run_command
@@ -17,17 +21,33 @@ def slugify(text: str) -> str:
     return text
 
 
-async def find_remote_url() -> str | None:
-    """Find the remote URL from .workon-remote or sibling directories."""
+async def find_remote_url(issue_input: str | None = None) -> str | None:
+    """Find the remote URL from issue input, .workon-remote or sibling directories."""
+    # 1. Check if issue_input is a GitHub URL
+    if issue_input and (
+        issue_input.startswith("https://github.com/")
+        or issue_input.startswith("http://github.com/")
+    ):
+        # Extract owner/repo from URL
+        # e.g. https://github.com/gfxblit/copium-loop/issues/300
+        # or https://github.com/gfxblit/copium-loop
+        parts = issue_input.split("/")
+        if len(parts) >= 5:
+            owner = parts[3]
+            repo = parts[4]
+            # Strip potential trailing .git or other suffix if it was just a repo URL
+            repo = repo.split(".")[0]
+            return f"https://github.com/{owner}/{repo}.git"
+
     cwd = os.getcwd()
 
-    # 1. Check for .workon-remote
+    # 2. Check for .workon-remote
     dotfile = os.path.join(cwd, ".workon-remote")
     if os.path.exists(dotfile):
         with open(dotfile) as f:
             return f.read().strip()
 
-    # 2. Check sibling directories for git remotes
+    # 3. Check sibling directories for git remotes
     for item in os.listdir(cwd):
         path = os.path.join(cwd, item)
         if os.path.isdir(path) and os.path.exists(os.path.join(path, ".git")):
@@ -51,13 +71,10 @@ async def resolve_branch_name(input_str: str) -> str:
             "gh", ["issue", "view", input_str, "--json", "title,number"]
         )
         if res["exit_code"] == 0:
-            import json
-
             try:
                 # Some versions of gh might return different formats if --json is not supported or used differently
                 # Let's try to handle both json and text if needed
                 # The test mocked it as title:\t...\nnumber:\t...
-                # I'll update the implementation to match the test mock or vice-versa.
                 # Actually, --json is more robust.
                 data = json.loads(res["output"])
                 title = data.get("title", "")
@@ -84,12 +101,8 @@ async def resolve_branch_name(input_str: str) -> str:
 
 async def check_dependencies():
     """Check if required external tools are installed."""
-    tools = ["gh", "tmux", "git"]
-    missing = []
-    for tool in tools:
-        res = await run_command("which", [tool])
-        if res["exit_code"] != 0:
-            missing.append(tool)
+    tools = ["gh", "tmux", "git", "pnpm"]
+    missing = [tool for tool in tools if not shutil.which(tool)]
 
     if missing:
         print(f"Error: Missing required tools: {', '.join(missing)}")
@@ -97,6 +110,8 @@ async def check_dependencies():
             print("Please install GitHub CLI: https://cli.github.com/")
         if "tmux" in missing:
             print("Please install tmux: https://github.com/tmux/tmux")
+        if "pnpm" in missing:
+            print("Please install pnpm: https://pnpm.io/")
         sys.exit(1)
 
 
@@ -111,7 +126,7 @@ async def workon_main(args):
     print(f"Resolved branch name: {branch_name}")
 
     # 2. Find remote URL
-    remote_url = await find_remote_url()
+    remote_url = await find_remote_url(issue_input)
     if not remote_url:
         print(
             "Error: Could not find remote URL. Create a .workon-remote file or run from a directory with sibling git repositories."
@@ -148,9 +163,7 @@ async def workon_main(args):
         await run_command("git", ["checkout", branch_name], dir_path=workspace_path)
 
     # 4. Detect and run pnpm install
-    if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")) or os.path.exists(
-        os.path.join(workspace_path, "package.json")
-    ):
+    if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")):
         print("pnpm project detected. Running pnpm install...")
         await run_command("pnpm", ["install"], dir_path=workspace_path)
 
@@ -162,11 +175,9 @@ async def workon_main(args):
 
         # Bootstrap the AI agent
         bootstrap_prompt = f"I am working on issue {issue_input}. Please analyze the requirements and create a plan."
-        bootstrap_cmd = f"copium-loop '{bootstrap_prompt}'"
+        bootstrap_cmd = f"copium-loop {shlex.quote(bootstrap_prompt)}"
 
         # Wait a moment for tmux to settle?
-        import asyncio
-
         await asyncio.sleep(0.5)
 
         tmux.send_keys(branch_name, [bootstrap_cmd, "Enter"])

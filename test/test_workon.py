@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
@@ -13,13 +13,15 @@ from copium_loop.workon import (
 
 @pytest.mark.asyncio
 async def test_check_dependencies_missing():
-    with patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run:
-        # Mock gh and tmux missing, git found
-        mock_run.side_effect = [
-            {"exit_code": 1, "output": ""},  # gh
-            {"exit_code": 1, "output": ""},  # tmux
-            {"exit_code": 0, "output": ""},  # git
-        ]
+    with patch("shutil.which") as mock_which:
+        # Mock gh and tmux missing, git found, pnpm found
+        mock_which.side_effect = lambda tool: {
+            "gh": None,
+            "tmux": None,
+            "git": "/usr/bin/git",
+            "pnpm": "/usr/local/bin/pnpm",
+        }.get(tool)
+
         with pytest.raises(SystemExit) as e:
             await check_dependencies()
         assert e.value.code == 1
@@ -242,3 +244,65 @@ async def test_workon_main_full_flow(tmp_path):
 
         # Verify bootstrap command
         mock_tmux.send_keys.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_find_remote_url_from_issue_url():
+    # Test that remote URL is inferred from GitHub issue URL
+    issue_url = "https://github.com/gfxblit/copium-loop/issues/300"
+    with (
+        patch("os.path.exists", return_value=False),
+        patch("os.listdir", return_value=[]),
+    ):  # Ensure .workon-remote not found
+        url = await find_remote_url(issue_url)
+        assert url == "https://github.com/gfxblit/copium-loop.git"
+
+
+@pytest.mark.asyncio
+async def test_pnpm_detection_only_lockfile(tmp_path):
+    # If only package.json exists, it should NOT run pnpm install
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "package.json").write_text("{}")
+    (
+        workspace / ".git"
+    ).mkdir()  # simulate it being a git repo so it doesn't try to clone
+
+    args = MagicMock()
+    args.issue = "issue"
+
+    with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
+        patch("copium_loop.workon.resolve_branch_name", return_value="workspace"),
+        patch("copium_loop.workon.find_remote_url", return_value="git@remote"),
+        patch("os.getcwd", return_value=str(tmp_path)),
+        patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run,
+        patch("copium_loop.workon.TmuxManager"),
+    ):
+        mock_run.return_value = {"exit_code": 0, "output": ""}
+        await workon_main(args)
+
+        # Verify pnpm install was NOT called
+        pnpm_calls = [
+            call for call in mock_run.call_args_list if call.args[0] == "pnpm"
+        ]
+        assert len(pnpm_calls) == 0
+
+    # If pnpm-lock.yaml exists, it SHOULD run pnpm install
+    (workspace / "pnpm-lock.yaml").write_text("")
+    with (
+        patch("copium_loop.workon.check_dependencies", new_callable=AsyncMock),
+        patch("copium_loop.workon.resolve_branch_name", return_value="workspace"),
+        patch("copium_loop.workon.find_remote_url", return_value="git@remote"),
+        patch("os.getcwd", return_value=str(tmp_path)),
+        patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run,
+        patch("copium_loop.workon.TmuxManager"),
+    ):
+        mock_run.return_value = {"exit_code": 0, "output": ""}
+        await workon_main(args)
+
+        # Verify pnpm install WAS called
+        pnpm_calls = [
+            call for call in mock_run.call_args_list if call.args[0] == "pnpm"
+        ]
+        assert len(pnpm_calls) == 1
