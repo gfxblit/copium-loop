@@ -243,12 +243,14 @@ async def test_initial_commit_hash_for_architect_with_origin_main(
             with patch(
                 "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
             ) as mock_resolve_ref:
+
                 def resolve_ref_side_effect(ref=None, node=None):
                     # node argument is required because it's passed as a keyword argument
                     _ = node
                     if ref == "origin/main":
                         return "origin_main_hash"
                     return None
+
                 mock_resolve_ref.side_effect = resolve_ref_side_effect
                 manager = WorkflowManager(start_node="architect")
                 mock_graph = AsyncMock()

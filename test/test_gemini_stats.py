@@ -29,7 +29,9 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
     def test_fetch_success(self):
         # Mock tmux behavior
         self.mock_tmux.has_window.return_value = True
-        stats_output = "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        stats_output = (
+            "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        )
         self.mock_tmux.capture_pane.return_value = stats_output
 
         with patch("time.sleep", return_value=None):
@@ -65,7 +67,9 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
     async def test_fetch_async(self):
         # Mock tmux behavior
         self.mock_tmux.has_window.return_value = True
-        stats_output = "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        stats_output = (
+            "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        )
         self.mock_tmux.capture_pane.return_value = stats_output
 
         with patch("time.sleep", return_value=None):
@@ -118,7 +122,9 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         mock_logger.error.assert_called_with("Failed to get usage: %s", "Fetch error")
 
     async def test_get_usage_async_success(self):
-        stats_output = "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        stats_output = (
+            "gemini-3.1-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 80.0% 6:03 AM (1h) │"
+        )
         self.mock_fetcher.fetch_async.return_value = stats_output
 
         usage = await self.client.get_usage_async()
@@ -167,7 +173,9 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mock_fetcher.fetch_async.call_count, 1)
 
     def test_parse_output_flash(self):
-        stats_output = "gemini-3-flash-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 70.0% 6:03 AM (30m) │"
+        stats_output = (
+            "gemini-3-flash-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 70.0% 6:03 AM (30m) │"
+        )
         self.mock_fetcher.fetch.return_value = stats_output
 
         usage = self.client.get_usage()
@@ -175,7 +183,9 @@ class TestGeminiStatsClient(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage["reset_flash"], "6:03 AM (30m)")
 
     def test_parse_output_gemini_3_pro(self):
-        stats_output = "gemini-3-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 85.0% 6:03 AM (4h 20m) │"
+        stats_output = (
+            "gemini-3-pro-preview - ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ 85.0% 6:03 AM (4h 20m) │"
+        )
         self.mock_fetcher.fetch.return_value = stats_output
 
         usage = self.client.get_usage()
