@@ -160,7 +160,7 @@ class GeminiStatsClient:
             "gemini-2.5-pro",
         ]:
             pro_match = re.search(
-                rf"{model}\s+(?:-|\d+)\s+[▬]+\s+([\d\.]+)%\s+([^│\n\r]+)",
+                rf"{model}\s+(?:-|\d+)\s+\S+\s+([\d\.]+)%\s+([^│\n\r]+)",
                 output,
                 re.IGNORECASE,
             )
@@ -174,7 +174,7 @@ class GeminiStatsClient:
         # Flash models in priority order
         for model in ["gemini-3-flash-preview", "gemini-2.5-flash"]:
             flash_match = re.search(
-                rf"{model}\s+(?:-|\d+)\s+[▬]+\s+([\d\.]+)%\s+([^│\n\r]+)",
+                rf"{model}\s+(?:-|\d+)\s+\S+\s+([\d\.]+)%\s+([^│\n\r]+)",
                 output,
                 re.IGNORECASE,
             )
