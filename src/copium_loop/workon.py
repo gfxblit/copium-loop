@@ -23,21 +23,36 @@ def slugify(text: str) -> str:
 
 async def find_remote_url(issue_input: str | None = None) -> str | None:
     """Find the remote URL from issue input, .workon-remote or sibling directories."""
-    # 1. Check if issue_input is a GitHub URL
-    if issue_input and (
-        issue_input.startswith("https://github.com/")
-        or issue_input.startswith("http://github.com/")
-    ):
-        # Extract owner/repo from URL
-        # e.g. https://github.com/gfxblit/copium-loop/issues/300
-        # or https://github.com/gfxblit/copium-loop
-        parts = issue_input.split("/")
-        if len(parts) >= 5:
-            owner = parts[3]
-            repo = parts[4]
-            # Strip potential trailing .git or other suffix if it was just a repo URL
-            repo = repo.split(".")[0]
-            return f"https://github.com/{owner}/{repo}.git"
+    # 1. Check if issue_input is a GitHub URL or SSH URL
+    if issue_input:
+        if issue_input.startswith("git@github.com:"):
+            return issue_input
+
+        if issue_input.startswith("https://github.com/") or issue_input.startswith(
+            "http://github.com/"
+        ):
+            # Extract owner/repo from URL
+            # e.g. https://github.com/gfxblit/copium-loop/issues/300
+            # or https://github.com/gfxblit/copium-loop
+            # or https://github.com/gfxblit/some.repo
+            parts = issue_input.split("/")
+            if len(parts) >= 5:
+                owner = parts[3]
+                repo = parts[4]
+                # repo might be followed by /issues/300 or .git
+                # If it's just the repo name, it might have .git suffix already
+                # or it might have dots in the name.
+                # We want to strip /issues/... or other subpaths if they exist.
+                # parts[4] could be 'some.repo' or 'some.repo.git' or 'copium-loop'
+                repo = repo.removesuffix(".git")
+                return f"https://github.com/{owner}/{repo}.git"
+            elif len(parts) == 4:
+                # e.g. https://github.com/gfxblit/copium-loop
+                owner = parts[3]
+                # This case is less likely for issue_input but possible if repo URL provided
+                # Wait, if parts is ["https:", "", "github.com", "owner", "repo"] len is 5.
+                # If it's ["https:", "", "github.com", "owner"] len is 4.
+                pass
 
     cwd = os.getcwd()
 
@@ -68,7 +83,7 @@ async def resolve_branch_name(input_str: str) -> str:
     if input_str.startswith("http://") or input_str.startswith("https://"):
         # Fetch issue info using gh
         res = await run_command(
-            "gh", ["issue", "view", input_str, "--json", "title,number"]
+            "gh", ["issue", "view", "--", input_str, "--json", "title,number"]
         )
         if res["exit_code"] == 0:
             try:
@@ -140,14 +155,14 @@ async def workon_main(args):
     if not os.path.exists(workspace_path):
         print(f"Cloning {remote_url} into {workspace_path}...")
         res = await run_command(
-            "git", ["clone", remote_url, "-b", branch_name, branch_name]
+            "git", ["clone", "-b", branch_name, "--", remote_url, branch_name]
         )
         if res["exit_code"] != 0:
             # Maybe the branch doesn't exist yet, try cloning default and creating branch
             print(
                 f"Branch '{branch_name}' not found on remote. Cloning default branch..."
             )
-            res = await run_command("git", ["clone", remote_url, branch_name])
+            res = await run_command("git", ["clone", "--", remote_url, branch_name])
             if res["exit_code"] != 0:
                 print(f"Error cloning repository: {res['output']}")
                 sys.exit(1)

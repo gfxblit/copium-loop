@@ -5,6 +5,14 @@ import asyncio
 import os
 import sys
 
+import copium_loop.copium_loop
+import copium_loop.git
+import copium_loop.session_manager
+import copium_loop.shell
+import copium_loop.telemetry
+import copium_loop.ui
+import copium_loop.workon
+
 
 async def async_main():
     """Main async function."""
@@ -67,32 +75,22 @@ async def async_main():
     args = parser.parse_args()
 
     if args.command == "workon":
-        from copium_loop.workon import workon_main
-
-        await workon_main(args)
+        await copium_loop.workon.workon_main(args)
         return
 
     # Default 'run' logic follows
     if args.monitor:
-        from copium_loop.ui import TextualDashboard
-
-        app = TextualDashboard()
+        app = copium_loop.ui.TextualDashboard()
         await app.run_async()
         return
-
-    from copium_loop.copium_loop import WorkflowManager
-    from copium_loop.session_manager import SessionManager
-    from copium_loop.telemetry import (
-        get_telemetry,
-    )
 
     if not os.environ.get("NTFY_CHANNEL"):
         print("Error: NTFY_CHANNEL environment variable is not defined.")
 
     # Get derived session ID
-    telemetry = get_telemetry()
+    telemetry = copium_loop.telemetry.get_telemetry()
     session_id = telemetry.session_id
-    session_manager = SessionManager(session_id)
+    session_manager = copium_loop.session_manager.SessionManager(session_id)
 
     # Determine if we should continue
     # Implicit continue if no prompt provided and session exists (has original prompt or agent state)
@@ -123,11 +121,8 @@ async def async_main():
             session_manager.get_repo_root() or session_manager.get_metadata("repo_root")
         )
 
-        from copium_loop.git import get_current_branch
-        from copium_loop.shell import run_command
-
-        current_branch = await get_current_branch(node=start_node)
-        res = await run_command(
+        current_branch = await copium_loop.git.get_current_branch(node=start_node)
+        res = await copium_loop.shell.run_command(
             "git", ["rev-parse", "--show-toplevel"], node=start_node
         )
         current_repo_root = res["output"].strip() if res["exit_code"] == 0 else None
@@ -218,7 +213,7 @@ async def async_main():
     if start_node is None:
         start_node = "coder"
 
-    workflow = WorkflowManager(
+    workflow = copium_loop.copium_loop.WorkflowManager(
         start_node=start_node,
         verbose=args.verbose,
         engine_name=args.engine,
@@ -235,7 +230,7 @@ async def async_main():
         if status == "pr_created":
             msg = f"Workflow completed successfully. PR created: {pr_url or 'N/A'}"
             print(msg)
-            get_telemetry().log_workflow_status("success")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         elif status == "pr_skipped":
@@ -243,48 +238,48 @@ async def async_main():
                 "Workflow completed successfully. PR skipped (not on a feature branch)."
             )
             print(msg)
-            get_telemetry().log_workflow_status("success")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         elif status == "pr_failed":
             msg = "Workflow completed code/tests but failed to create PR."
             print(msg, file=sys.stderr)
-            get_telemetry().log_workflow_status("failed")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: PR Failed", msg, 5)
             sys.exit(1)
         elif status == "approved" and ("PASS" in test_out or not test_out):
             msg = "Workflow completed successfully (no PR)."
             print(msg)
-            get_telemetry().log_workflow_status("success")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         elif status == "journaled":
             if "FAIL" in test_out:
                 msg = "Workflow finished with test failures."
                 print(msg, file=sys.stderr)
-                get_telemetry().log_workflow_status("failed")
+                copium_loop.telemetry.get_telemetry().log_workflow_status("failed")
                 await workflow.notify("Workflow: Failed", msg, 5)
                 sys.exit(1)
             msg = "Workflow completed successfully."
             print(msg)
-            get_telemetry().log_workflow_status("success")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("success")
             await workflow.notify("Workflow: Success", msg, 3)
             sys.exit(0)
         else:
             msg = "Workflow failed to converge."
             print(msg, file=sys.stderr)
-            get_telemetry().log_workflow_status("failed")
+            copium_loop.telemetry.get_telemetry().log_workflow_status("failed")
             await workflow.notify("Workflow: Failed", msg, 5)
             sys.exit(1)
 
     except ValueError as err:
         print(f"Error: {err}", file=sys.stderr)
-        get_telemetry().log_workflow_status("failed")
+        copium_loop.telemetry.get_telemetry().log_workflow_status("failed")
         sys.exit(1)
 
     except Exception as err:
         print(f"Workflow failed: {err}", file=sys.stderr)
-        get_telemetry().log_workflow_status("failed")
+        copium_loop.telemetry.get_telemetry().log_workflow_status("failed")
         await workflow.notify(
             "Workflow: Error", f"Workflow failed with error: {str(err)}", 5
         )

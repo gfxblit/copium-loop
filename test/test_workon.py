@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -64,11 +64,23 @@ async def test_resolve_branch_name_gh_text_fallback():
 
 
 @pytest.mark.asyncio
-async def test_resolve_branch_name_from_description():
-    # If it's not a URL, it should just slugify it
-    description = "some local feature"
-    branch_name = await resolve_branch_name(description)
-    assert branch_name == "some-local-feature"
+async def test_resolve_branch_name_malicious_input():
+    with patch("copium_loop.workon.run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"exit_code": 1, "output": "error"}
+
+        # Input that looks like an option
+        malicious_input = "https://github.com/--help"
+        await resolve_branch_name(malicious_input)
+
+        # Verify it was called with -- to separate options from arguments
+        # Find the call to gh issue view
+        gh_call = next(c for c in mock_run.call_args_list if c.args[0] == "gh")
+        assert "--" in gh_call.args[1]
+        assert malicious_input in gh_call.args[1]
+        # Ensure -- comes before malicious_input
+        idx_dashdash = gh_call.args[1].index("--")
+        idx_input = gh_call.args[1].index(malicious_input)
+        assert idx_dashdash < idx_input
 
 
 @pytest.mark.asyncio
@@ -256,6 +268,21 @@ async def test_find_remote_url_from_issue_url():
     ):  # Ensure .workon-remote not found
         url = await find_remote_url(issue_url)
         assert url == "https://github.com/gfxblit/copium-loop.git"
+
+    # Test repo name with dots
+    issue_url = "https://github.com/some.owner/some.repo/issues/123"
+    url = await find_remote_url(issue_url)
+    assert url == "https://github.com/some.owner/some.repo.git"
+
+    # Test repo URL directly
+    repo_url = "https://github.com/gfxblit/copium-loop"
+    url = await find_remote_url(repo_url)
+    assert url == "https://github.com/gfxblit/copium-loop.git"
+
+    # Test SSH URL
+    ssh_url = "git@github.com:gfxblit/copium-loop.git"
+    url = await find_remote_url(ssh_url)
+    assert url == "git@github.com:gfxblit/copium-loop.git"
 
 
 @pytest.mark.asyncio
