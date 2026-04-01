@@ -15,20 +15,40 @@ export NTFY_CHANNEL="your-channel-name"  # For notifications
 
 **Requirements**: Python 3.10+, `gemini` CLI, `gh` CLI, Node.js, Git
 
-## Usage
+# Usage
 
 ```bash
-# Basic
+# Basic (run subcommand is default)
 copium-loop "implement user authentication"
+# or explicitly
+copium-loop run "implement user authentication"
+
+# Set up a new workspace for an issue
+copium-loop workon https://github.com/owner/repo/issues/123
+# or using a description
+copium-loop workon "my new feature"
 
 # Options
-copium-loop --node reviewer --verbose "check code"
+copium-loop run --node reviewer --verbose "check code"
+```
 
+### The `workon` workflow
+
+The `workon` command automates the initial setup for a new task:
+1. **Resolves** the issue URL into a slugified branch name (e.g., `my-feature-issue123`).
+2. **Finds** the remote URL from `.workon-remote` or sibling git repositories.
+3. **Clones** the repository into a new directory named after the branch.
+4. **Checkouts** the branch (creating it if it doesn't exist).
+5. **Installs** dependencies (detects `pnpm` projects).
+6. **Orchestrates** a new `tmux` session for the workspace.
+7. **Bootstraps** the AI agent with an initial planning prompt.
+
+```bash
 # Monitor sessions
-copium-loop --monitor
+copium-loop run --monitor
 
 # Resume the session for the current branch
-copium-loop --continue
+copium-loop run --continue
 ```
 
 ### Continuation and Resumption

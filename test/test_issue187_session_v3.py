@@ -47,13 +47,13 @@ def test_cli_parser_new_flags():
     env["PYTHONPATH"] = "src"
 
     result = subprocess.run(
-        [sys.executable, "-m", "copium_loop", "--help"],
+        [sys.executable, "-m", "copium_loop", "run", "--help"],
         capture_output=True,
         text=True,
         env=env,
     )
 
-    # New flags
+    # New flags in 'run' subcommand
     assert "--node" in result.stdout
     assert "-n" in result.stdout
     assert "--continue" in result.stdout

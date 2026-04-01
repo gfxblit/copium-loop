@@ -64,6 +64,51 @@ class TestTmuxManager(unittest.TestCase):
         )
         self.assertEqual(output, "some output")
 
+    def test_has_session(self):
+        self.mock_runner.run.return_value = MagicMock(returncode=0)
+        self.assertTrue(self.tmux.has_session("session1"))
+
+        self.mock_runner.run.assert_called_with(
+            ["tmux", "has-session", "-t", "session1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.mock_runner.run.return_value = MagicMock(returncode=1)
+        self.assertFalse(self.tmux.has_session("session2"))
+
+    def test_new_session(self):
+        self.mock_runner.run.return_value = MagicMock(returncode=0)
+        self.tmux.new_session("session1", "/some/path")
+
+        self.mock_runner.run.assert_called_with(
+            ["tmux", "new-session", "-d", "-s", "session1", "-c", "/some/path"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_switch_client(self):
+        self.mock_runner.run.return_value = MagicMock(returncode=0)
+        self.tmux.switch_client("session1")
+
+        self.mock_runner.run.assert_called_with(
+            ["tmux", "switch-client", "-t", "session1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_attach_session(self):
+        self.mock_runner.run.return_value = MagicMock(returncode=0)
+        self.tmux.attach_session("session1")
+
+        self.mock_runner.run.assert_called_with(
+            ["tmux", "attach-session", "-t", "session1"],
+            check=False,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

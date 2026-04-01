@@ -72,3 +72,34 @@ class TmuxManager:
         if result.returncode != 0:
             return ""
         return result.stdout
+
+    def has_session(self, session: str) -> bool:
+        result = self.runner.run(
+            ["tmux", "has-session", "-t", session],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode == 0
+
+    def new_session(self, session: str, path: str):
+        self.runner.run(
+            ["tmux", "new-session", "-d", "-s", session, "-c", path],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def switch_client(self, session: str):
+        self.runner.run(
+            ["tmux", "switch-client", "-t", session],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def attach_session(self, session: str):
+        self.runner.run(
+            ["tmux", "attach-session", "-t", session],
+            check=False,
+        )
