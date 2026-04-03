@@ -59,7 +59,7 @@ async def test_architect_node_header(agent_state, capsys):
 async def test_tester_node_header(agent_state, capsys):
     """Test that tester_node prints and logs its header."""
     with patch(
-        "copium_loop.nodes.tester_node.run_command", new_callable=AsyncMock
+        "copium_loop.nodes.tester_node.run_command", autospec=True
     ) as mock_run:
         mock_run.return_value = {"output": "Success", "exit_code": 0}
         await tester_node(agent_state)
@@ -104,14 +104,14 @@ async def test_pr_pre_checker_node_header(agent_state, capsys):
     with (
         patch(
             "copium_loop.nodes.pr_pre_checker_node.validate_git_context",
-            new_callable=AsyncMock,
+            autospec=True,
         ) as mock_validate,
         patch(
-            "copium_loop.nodes.pr_pre_checker_node.is_dirty", new_callable=AsyncMock
+            "copium_loop.nodes.pr_pre_checker_node.is_dirty", autospec=True
         ) as mock_dirty,
-        patch("copium_loop.nodes.pr_pre_checker_node.fetch", new_callable=AsyncMock),
+        patch("copium_loop.nodes.pr_pre_checker_node.fetch", autospec=True),
         patch(
-            "copium_loop.nodes.pr_pre_checker_node.rebase", new_callable=AsyncMock
+            "copium_loop.nodes.pr_pre_checker_node.rebase", autospec=True
         ) as mock_rebase,
     ):
         mock_validate.return_value = "main"
@@ -162,16 +162,16 @@ async def test_pr_creator_node_header(agent_state, capsys):
     with (
         patch(
             "copium_loop.nodes.pr_creator_node.validate_git_context",
-            new_callable=AsyncMock,
+            autospec=True,
         ) as mock_validate,
         patch(
-            "copium_loop.nodes.pr_creator_node.is_dirty", new_callable=AsyncMock
+            "copium_loop.nodes.pr_creator_node.is_dirty", autospec=True
         ) as mock_dirty,
         patch(
-            "copium_loop.nodes.pr_creator_node.push", new_callable=AsyncMock
+            "copium_loop.nodes.pr_creator_node.push", autospec=True
         ) as mock_push,
         patch(
-            "copium_loop.nodes.pr_creator_node.run_command", new_callable=AsyncMock
+            "copium_loop.nodes.pr_creator_node.run_command", autospec=True
         ) as mock_run,
     ):
         mock_validate.return_value = "main"

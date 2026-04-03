@@ -253,8 +253,8 @@ async def test_jules_prompt_hashing():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -314,7 +314,7 @@ async def test_jules_prompt_hashing_same_prompt_resumes():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -508,12 +508,12 @@ async def test_jules_api_invoke_success():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", autospec=True
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
@@ -569,12 +569,12 @@ async def test_jules_api_invoke_success_200():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", autospec=True
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
@@ -621,11 +621,11 @@ async def test_jules_api_invoke_apply_artifacts():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
-        patch("copium_loop.git.add", new_callable=AsyncMock) as mock_add,
-        patch("copium_loop.git.commit", new_callable=AsyncMock) as mock_commit,
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.add", autospec=True) as mock_add,
+        patch("copium_loop.git.commit", autospec=True) as mock_commit,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch(
-            "copium_loop.engine.jules.run_command", new_callable=AsyncMock
+            "copium_loop.engine.jules.run_command", autospec=True
         ) as mock_run_command,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
@@ -686,12 +686,12 @@ async def test_jules_api_polling_retries():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", autospec=True
         ) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
@@ -740,7 +740,7 @@ async def test_jules_api_no_pull_for_architect():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -920,11 +920,11 @@ async def test_jules_api_pull_failure():
             "copium_loop.git.pull",
             return_value={"exit_code": 1, "output": "Merge conflict"},
         ),
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
         patch(
-            "copium_loop.shell.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.shell.stream_subprocess", autospec=True
         ) as mock_stream,
     ):
         mock_push.return_value = {"exit_code": 0, "output": ""}
@@ -1044,8 +1044,8 @@ async def test_jules_api_invoke_pushes_branch_for_coder():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="feature-branch"),
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
-        patch("copium_loop.git.pull", new_callable=AsyncMock) as mock_pull,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
+        patch("copium_loop.git.pull", autospec=True) as mock_pull,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):
@@ -1079,7 +1079,7 @@ async def test_jules_api_invoke_no_push_for_architect():
         patch.dict("os.environ", {"JULES_API_KEY": "test_key"}),
         patch("copium_loop.git.get_repo_name", return_value="owner/repo"),
         patch("copium_loop.git.get_current_branch", return_value="main"),
-        patch("copium_loop.git.push", new_callable=AsyncMock) as mock_push,
+        patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
     ):

@@ -68,7 +68,7 @@ async def find_remote_url(issue_input: str | None = None) -> str | None:
         if os.path.isdir(path) and os.path.exists(os.path.join(path, ".git")):
             # Try to get remote URL from this directory
             res = await run_command(
-                "git", ["remote", "get-url", "origin"], dir_path=path
+                "git", ["remote", "get-url", "origin"], cwd=path
             )
             if res["exit_code"] == 0:
                 url = res["output"].strip()
@@ -170,17 +170,17 @@ async def workon_main(args):
             # Create branch
             print(f"Creating branch '{branch_name}'...")
             await run_command(
-                "git", ["checkout", "-b", branch_name], dir_path=workspace_path
+                "git", ["checkout", "-b", branch_name], cwd=workspace_path
             )
     else:
         print(f"Workspace {workspace_path} already exists.")
         # Ensure we are on the correct branch
-        await run_command("git", ["checkout", branch_name], dir_path=workspace_path)
+        await run_command("git", ["checkout", branch_name], cwd=workspace_path)
 
     # 4. Detect and run pnpm install
     if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")):
         print("pnpm project detected. Running pnpm install...")
-        await run_command("pnpm", ["install"], dir_path=workspace_path)
+        await run_command("pnpm", ["install"], cwd=workspace_path)
 
     # 5. Orchestrate tmux session
     tmux = TmuxManager()

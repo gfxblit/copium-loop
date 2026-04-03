@@ -13,7 +13,7 @@ async def test_reviewer_approved_by_standard_verdict(agent_state):
     agent_state["initial_commit_hash"] = "abc"
 
     with patch(
-        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+        "copium_loop.nodes.utils.get_diff", autospec=True
     ) as mock_get_diff:
         mock_get_diff.return_value = "some diff"
         result = await reviewer_node.reviewer_node(agent_state)
@@ -38,7 +38,7 @@ async def test_reviewer_no_auto_approval_without_verdict(agent_state):
     agent_state["has_changeset"] = True
 
     with patch(
-        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+        "copium_loop.nodes.utils.get_diff", autospec=True
     ) as mock_get_diff:
         mock_get_diff.return_value = "some diff"
         result = await reviewer_node.reviewer_node(agent_state)

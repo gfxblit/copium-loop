@@ -37,7 +37,7 @@ async def test_issue249_integration_noise_reduction():
     )
 
     with patch(
-        "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+        "copium_loop.engine.gemini.stream_subprocess", autospec=True
     ) as mock_stream:
         # Architect call
         mock_stream.return_value = (
@@ -52,11 +52,11 @@ async def test_issue249_integration_noise_reduction():
         # 3. Run ArchitectNode
         # We need to mock get_diff because ArchitectNode calls get_architect_prompt which calls get_diff
         with patch(
-            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+            "copium_loop.nodes.utils.get_diff", autospec=True
         ) as mock_diff:
             mock_diff.return_value = "some diff"
             with patch(
-                "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
+                "copium_loop.nodes.utils.is_git_repo", autospec=True
             ) as mock_git_repo:
                 mock_git_repo.return_value = True
                 result = await architect_node(state)

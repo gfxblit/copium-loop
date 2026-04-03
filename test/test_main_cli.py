@@ -37,7 +37,7 @@ async def test_cli_workon_subcommand():
     # This should fail initially because workon is not implemented
     with (
         patch(
-            "copium_loop.workon.workon_main", new_callable=AsyncMock
+            "copium_loop.workon.workon_main", autospec=True
         ) as mock_workon_main,
         patch(
             "sys.argv",

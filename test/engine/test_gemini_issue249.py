@@ -12,7 +12,7 @@ async def test_gemini_engine_filters_stderr_on_success():
     filtering out any noise from stderr.
     """
     with patch(
-        "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+        "copium_loop.engine.gemini.stream_subprocess", autospec=True
     ) as mock_stream:
         # Mock returns (stdout, stderr, interleaved, exit_code, timed_out, timeout_message)
         mock_stream.return_value = (
@@ -38,7 +38,7 @@ async def test_gemini_engine_includes_stderr_on_failure():
     Verify that GeminiEngine includes both stdout and stderr in the exception on failure.
     """
     with patch(
-        "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+        "copium_loop.engine.gemini.stream_subprocess", autospec=True
     ) as mock_stream:
         mock_stream.return_value = (
             "stdout content",

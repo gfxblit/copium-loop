@@ -52,7 +52,7 @@ async def test_fresh_start_with_prompt():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
@@ -115,7 +115,7 @@ async def test_continue_with_prompt_override():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 

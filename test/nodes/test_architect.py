@@ -19,13 +19,13 @@ class TestArchitectNode:
     def setup_architect_mocks(self):
         """Setup common mocks for architect tests."""
         self.mock_get_diff_patcher = patch(
-            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+            "copium_loop.nodes.utils.get_diff", autospec=True
         )
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff"
 
         self.mock_is_git_repo_patcher = patch(
-            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
+            "copium_loop.nodes.utils.is_git_repo", autospec=True
         )
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True

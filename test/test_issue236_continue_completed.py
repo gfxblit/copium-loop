@@ -47,7 +47,7 @@ async def test_completed_session_no_node_exits():
                 mock_sm_cls.return_value = mock_sm
 
                 with patch(
-                    "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                    "copium_loop.git.get_current_branch", autospec=True
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
@@ -105,7 +105,7 @@ async def test_completed_session_with_node_continues():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
@@ -162,7 +162,7 @@ async def test_incomplete_session_with_node_overrides_resume_node():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 

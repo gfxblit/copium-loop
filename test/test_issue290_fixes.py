@@ -40,7 +40,7 @@ async def test_tester_node_skips_lint_if_none(agent_state):
         patch("copium_loop.nodes.tester_node.get_build_command", return_value=None),
         patch("copium_loop.nodes.tester_node.get_test_command", return_value=None),
         patch(
-            "copium_loop.nodes.tester_node.run_command", new_callable=AsyncMock
+            "copium_loop.nodes.tester_node.run_command", autospec=True
         ) as mock_run,
         patch("copium_loop.nodes.tester_node.get_telemetry"),
     ):
@@ -61,7 +61,7 @@ async def test_tester_node_logs_useful_msg_on_lint_failure(agent_state):
         patch("copium_loop.nodes.tester_node.get_build_command", return_value=None),
         patch("copium_loop.nodes.tester_node.get_test_command", return_value=None),
         patch(
-            "copium_loop.nodes.tester_node.run_command", new_callable=AsyncMock
+            "copium_loop.nodes.tester_node.run_command", autospec=True
         ) as mock_run,
     ):
         mock_run.return_value = {"output": "Missing semicolon", "exit_code": 1}

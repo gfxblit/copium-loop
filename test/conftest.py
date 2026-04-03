@@ -125,7 +125,7 @@ def mock_run_command():
     """
     Fixture to mock copium_loop.copium_loop.run_command.
     """
-    with patch("copium_loop.copium_loop.run_command", new_callable=AsyncMock) as mock:
+    with patch("copium_loop.copium_loop.run_command", autospec=True) as mock:
         yield mock
 
 
@@ -134,7 +134,7 @@ def mock_verify_environment():
     """Fixture to mock WorkflowManager.verify_environment."""
     with patch(
         "copium_loop.copium_loop.WorkflowManager.verify_environment",
-        new_callable=AsyncMock,
+        autospec=True,
     ) as mock:
         yield mock
 
@@ -156,7 +156,7 @@ def mock_create_graph():
 @pytest.fixture
 def mock_get_head():
     """Fixture to mock get_head."""
-    with patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock) as mock:
+    with patch("copium_loop.copium_loop.get_head", autospec=True) as mock:
         yield mock
 
 
@@ -170,7 +170,7 @@ def mock_os_path_exists():
 @pytest.fixture
 def mock_notify():
     """Fixture to mock copium_loop.copium_loop.notify."""
-    with patch("copium_loop.copium_loop.notify", new_callable=AsyncMock) as mock:
+    with patch("copium_loop.copium_loop.notify", autospec=True) as mock:
         yield mock
 
 

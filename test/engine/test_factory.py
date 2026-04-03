@@ -63,10 +63,10 @@ async def test_engine_priority_cli_overrides_saved():
         ),
         patch("copium_loop.copium_loop.create_graph", return_value=mock_graph),
         patch(
-            "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+            "copium_loop.copium_loop.is_git_repo", autospec=True
         ) as mock_is_git,
         patch(
-            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+            "copium_loop.copium_loop.run_command", autospec=True
         ) as mock_run,
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
         patch("copium_loop.copium_loop.SessionManager"),
@@ -104,10 +104,10 @@ async def test_engine_priority_saved_used_if_no_cli():
         ),
         patch("copium_loop.copium_loop.create_graph", return_value=mock_graph),
         patch(
-            "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+            "copium_loop.copium_loop.is_git_repo", autospec=True
         ) as mock_is_git,
         patch(
-            "copium_loop.copium_loop.run_command", new_callable=AsyncMock
+            "copium_loop.copium_loop.run_command", autospec=True
         ) as mock_run,
         patch("copium_loop.copium_loop.get_telemetry", return_value=MagicMock()),
         patch("copium_loop.copium_loop.SessionManager"),

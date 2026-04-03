@@ -34,8 +34,8 @@ class TestTesterNode:
         """Test that test runner returns PASS when build, lint and tests pass."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -59,8 +59,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL if linting fails."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -79,8 +79,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL if build fails."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -107,8 +107,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL if unit tests fail."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -135,8 +135,8 @@ class TestTesterNode:
         """Test that '0 failed' or 'failed' in test names don't trigger failure with exit code 0."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -166,8 +166,8 @@ class TestTesterNode:
         """Test that tester node detects lint failures even if exit code is 0."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -188,8 +188,8 @@ class TestTesterNode:
         """Test that explicit failure indicators still trigger failure even if exit code is 0."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -216,8 +216,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL (Coverage) if pytest coverage is low."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -247,8 +247,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL (Coverage) if Jest coverage is low."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -277,8 +277,8 @@ class TestTesterNode:
         """Test that test runner returns FAIL (Coverage) if nyc/c8 coverage is low."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -303,8 +303,8 @@ class TestTesterNode:
         """Test that tester node detects ruff violations like F401 even if exit code is 0."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -325,8 +325,8 @@ class TestTesterNode:
         """Verify that it detects Ruff violations even with no space after the colon."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
@@ -347,8 +347,8 @@ class TestTesterNode:
         """Test that tester node detects ruff summary like 'Found 5 errors' even if exit code is 0."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -368,8 +368,8 @@ class TestTesterNode:
         """Verify that generic strings like 'T100' or 'ORD123' don't trigger failures."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
         ):
             # Scenario: Output contains "Order ID: ORD123" and "Status: T100"
@@ -392,8 +392,8 @@ class TestTesterNode:
         """Verify that it STILL detects Ruff violations when formatted with line/col and a colon."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
@@ -414,8 +414,8 @@ class TestTesterNode:
         """Verify the regex for 'error:' correctly handles paths and real errors."""
         with (
             patch.object(
-                tester_module, "run_command", new_callable=AsyncMock
-            ) as mock_run,
+                            tester_module, "run_command", autospec=True
+                        ) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):

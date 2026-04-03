@@ -55,7 +55,7 @@ async def test_nodes_do_not_call_get_all_memories(agent_state):
 
     agent_state["engine"].invoke.reset_mock()
     with patch(
-        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+        "copium_loop.nodes.utils.get_diff", autospec=True
     ) as mock_arch_diff:
         mock_arch_diff.return_value = "diff"
         agent_state["engine"].invoke.return_value = "VERDICT: OK"
@@ -66,7 +66,7 @@ async def test_nodes_do_not_call_get_all_memories(agent_state):
 
     agent_state["engine"].invoke.reset_mock()
     with patch(
-        "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+        "copium_loop.nodes.utils.get_diff", autospec=True
     ) as mock_rev_diff:
         mock_rev_diff.return_value = "diff"
         agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"

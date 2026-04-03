@@ -15,7 +15,7 @@ class TestExecuteGemini:
     async def test_execute_gemini_includes_sandbox(self):
         """Test that _execute_gemini always includes the --sandbox flag."""
         with patch(
-            "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.engine.gemini.stream_subprocess", autospec=True
         ) as mock_stream:
             mock_stream.return_value = ("", "", "", 0, False, "")
 
@@ -40,7 +40,7 @@ class TestExecuteGemini:
     async def test_execute_gemini_omits_model_flag_when_none(self):
         """Test that _execute_gemini omits -m flag when model is None."""
         with patch(
-            "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+            "copium_loop.engine.gemini.stream_subprocess", autospec=True
         ) as mock_stream:
             mock_stream.return_value = ("", "", "", 0, False, "")
 
@@ -99,7 +99,7 @@ class TestInvokeGemini:
         """Test successful invocation with first model."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             mock_exec.return_value = "Response from first model"
 
@@ -113,7 +113,7 @@ class TestInvokeGemini:
         """Test fallback to next model on quota error."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             # Setup side effects to simulate failure then success
             mock_exec.side_effect = [
@@ -131,7 +131,7 @@ class TestInvokeGemini:
         """Test that any error triggers fallback to next model."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             # First model fails with generic error, second succeeds
             mock_exec.side_effect = [
@@ -149,7 +149,7 @@ class TestInvokeGemini:
         """Test fallback on any error if model is None (auto)."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             # First call (None/auto) fails with generic error
             # Second call (backup model) succeeds
@@ -175,7 +175,7 @@ class TestInvokeGemini:
 
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             # All models fail
             mock_exec.side_effect = [Exception(f"Fail {m}") for m in MODELS]
@@ -194,7 +194,7 @@ class TestInvokeGemini:
         """Test that invoke prints prompt when verbose is True."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             mock_exec.return_value = "Response"
 
@@ -212,7 +212,7 @@ class TestInvokeGemini:
         """Test that invoke does NOT print when verbose is False."""
         engine = GeminiEngine()
         with patch.object(
-            engine, "_execute_gemini", new_callable=AsyncMock
+            engine, "_execute_gemini", autospec=True
         ) as mock_exec:
             mock_exec.return_value = "Response"
 
@@ -233,7 +233,7 @@ class TestInvokeGemini:
 
             engine = GeminiEngine()
             with patch.object(
-                engine, "_execute_gemini", new_callable=AsyncMock
+                engine, "_execute_gemini", autospec=True
             ) as mock_exec:
                 mock_exec.return_value = "Response"
 

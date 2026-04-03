@@ -16,13 +16,13 @@ class TestReviewerNode:
     def setup_reviewer_mocks(self):
         """Setup common mocks for reviewer tests."""
         self.mock_get_diff_patcher = patch(
-            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
+            "copium_loop.nodes.utils.get_diff", autospec=True
         )
         self.mock_get_diff = self.mock_get_diff_patcher.start()
         self.mock_get_diff.return_value = "diff content"
 
         self.mock_is_git_repo_patcher = patch(
-            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
+            "copium_loop.nodes.utils.is_git_repo", autospec=True
         )
         self.mock_is_git_repo = self.mock_is_git_repo_patcher.start()
         self.mock_is_git_repo.return_value = True
@@ -140,10 +140,9 @@ class TestReviewerNode:
         assert result["review_status"] == "error"
 
     @pytest.mark.asyncio
-    @patch("copium_loop.nodes.utils.get_diff", new_callable=AsyncMock)
-    async def test_reviewer_handles_git_diff_failure(self, mock_get_diff, agent_state):
+    async def test_reviewer_handles_git_diff_failure(self, agent_state):
         """Test that reviewer returns error status on git diff failure."""
-        mock_get_diff.side_effect = Exception("git diff error")
+        self.mock_get_diff.side_effect = Exception("git diff error")
 
         agent_state["test_output"] = "PASS"
         agent_state["initial_commit_hash"] = "abc"
@@ -152,45 +151,39 @@ class TestReviewerNode:
         assert result["review_status"] == "error"
         assert result["retry_count"] == 1
         assert "git diff error" in result["messages"][0].content
-        mock_get_diff.assert_called_once()
+        self.mock_get_diff.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_reviewer_handles_missing_initial_hash(self, agent_state):
         """Test that reviewer returns error status on missing initial hash in git repo."""
-        with patch(
-            "copium_loop.nodes.utils.is_git_repo", new_callable=AsyncMock
-        ) as mock_is_git:
-            mock_is_git.return_value = True
-            agent_state["test_output"] = "PASS"
-            agent_state["initial_commit_hash"] = ""
+        self.mock_is_git_repo.return_value = True
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = ""
 
-            # Run reviewer node
-            result = await reviewer(agent_state)
+        # Run reviewer node
+        result = await reviewer(agent_state)
 
-            # Verify
-            assert result["review_status"] == "error"
-            assert result["retry_count"] == 1
-            assert "Missing initial commit hash" in result["messages"][0].content
+        # Verify
+        assert result["review_status"] == "error"
+        assert result["retry_count"] == 1
+        assert "Missing initial commit hash" in result["messages"][0].content
 
     @pytest.mark.asyncio
     async def test_reviewer_skips_llm_on_empty_diff(self, agent_state):
         """Test that reviewer returns approved immediately if git diff is empty, without invoking LLM."""
-        with patch(
-            "copium_loop.nodes.utils.get_diff", new_callable=AsyncMock
-        ) as mock_get_diff:
-            mock_get_diff.return_value = ""  # Force empty diff
+        self.mock_get_diff.return_value = ""  # Force empty diff
 
-            agent_state["test_output"] = "PASS"
-            agent_state["initial_commit_hash"] = "some_hash"
+        agent_state["test_output"] = "PASS"
+        agent_state["initial_commit_hash"] = "some_hash"
 
-            # Run reviewer node
-            result = await reviewer(agent_state)
+        # Run reviewer node
+        result = await reviewer(agent_state)
 
-            # Verify
-            mock_get_diff.assert_called_once()
-            agent_state["engine"].invoke.assert_not_called()
-            assert result["review_status"] == "approved"
-            assert result["retry_count"] == 0
+        # Verify
+        self.mock_get_diff.assert_called_once()
+        agent_state["engine"].invoke.assert_not_called()
+        assert result["review_status"] == "approved"
+        assert result["retry_count"] == 0
 
     @pytest.mark.asyncio
     async def test_reviewer_prompt_contains_example(self, agent_state):
