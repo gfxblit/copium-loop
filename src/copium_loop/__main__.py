@@ -8,6 +8,12 @@ import sys
 
 async def async_main():
     """Main async function."""
+    if len(sys.argv) > 1 and sys.argv[1] == "alldone":
+        from copium_loop.alldone import run_alldone
+
+        await run_alldone()
+        sys.exit(0)
+
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
     parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     parser.add_argument(
