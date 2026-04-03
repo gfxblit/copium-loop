@@ -34,6 +34,49 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
     @patch("pathlib.Path.unlink")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
+    async def test_unsafe_workspace(
+        self,
+        mock_print,
+        mock_exists,
+        mock_unlink,
+        mock_rmtree,
+        mock_get_repo_name,
+        mock_get_current_branch,
+        mock_run_command,
+        mock_is_dirty,
+        mock_is_git_repo,
+    ):
+        mock_is_git_repo.return_value = True
+        mock_is_dirty.return_value = False
+
+        async def mock_run_cmd(cmd, args, **_kwargs):
+            if cmd == "git" and args == ["rev-parse", "--show-toplevel"]:
+                return {"exit_code": 0, "output": "/home/user/myproject\n"}
+            return {"exit_code": 0, "output": ""}
+
+        mock_run_command.side_effect = mock_run_cmd
+        mock_get_current_branch.return_value = "feature-branch"
+        mock_get_repo_name.return_value = "user/myproject"
+        mock_exists.return_value = True
+
+        code = await run_alldone()
+
+        self.assertEqual(code, 1)
+        mock_print.assert_called_with(
+            "Error: Repository root '/home/user/myproject' is not a safe temporary workspace. Aborting."
+        )
+        self.assertEqual(mock_unlink.call_count, 2)
+        mock_rmtree.assert_not_called()
+
+    @patch("copium_loop.alldone.is_git_repo")
+    @patch("copium_loop.alldone.is_dirty")
+    @patch("copium_loop.alldone.run_command")
+    @patch("copium_loop.alldone.get_current_branch")
+    @patch("copium_loop.alldone.get_repo_name")
+    @patch("shutil.rmtree")
+    @patch("pathlib.Path.unlink")
+    @patch("pathlib.Path.exists")
+    @patch("builtins.print")
     async def test_successful_alldone(
         self,
         mock_print,
@@ -51,7 +94,7 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
 
         async def mock_run_cmd(cmd, args, **_kwargs):
             if cmd == "git" and args == ["rev-parse", "--show-toplevel"]:
-                return {"exit_code": 0, "output": "/path/to/repo\n"}
+                return {"exit_code": 0, "output": "/path/to/.copium/repo\n"}
             return {"exit_code": 0, "output": ""}
 
         mock_run_command.side_effect = mock_run_cmd
@@ -74,7 +117,7 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
             check=False,
         )
 
-        mock_rmtree.assert_called_with("/path/to/repo")
+        mock_rmtree.assert_called_with("/path/to/.copium/repo")
         mock_print.assert_any_call(
             "Successfully cleaned up copium-loop workspace for 'feature-branch' in 'user/repo'."
         )

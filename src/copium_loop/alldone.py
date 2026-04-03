@@ -44,6 +44,13 @@ class AllDoneCommand:
             "tmux", ["kill-session", "-t", branch], capture_stderr=False, check=False
         )
 
+        # Safety check: ensure we are only deleting from a designated temporary workspace directory
+        if ".copium" not in str(toplevel_dir):
+            print(
+                f"Error: Repository root '{toplevel_dir}' is not a safe temporary workspace. Aborting."
+            )
+            return 1
+
         # Remove the repository folder without changing directory globally
         shutil.rmtree(toplevel_dir)
 

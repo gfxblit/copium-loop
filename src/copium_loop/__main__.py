@@ -33,7 +33,11 @@ class DefaultSubcommandArgumentParser(argparse.ArgumentParser):
             arg in subcommands for arg in args if not arg.startswith("-")
         )
 
-        if not has_subcommand and "run" in subcommands:
+        if (
+            not has_subcommand
+            and "run" in subcommands
+            and not any(arg in ["-h", "--help"] for arg in args)
+        ):
             args.insert(0, "run")
 
         return super().parse_args(args, namespace)
