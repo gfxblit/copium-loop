@@ -31,6 +31,18 @@ class AllDoneCommand:
 
         toplevel_dir = res["output"].strip()
 
+        # Safety check: ensure we are only deleting from a designated temporary workspace directory
+        safe_workspace_root = Path.home() / ".copium" / "workspaces"
+        if (
+            not Path(toplevel_dir)
+            .resolve()
+            .is_relative_to(safe_workspace_root.resolve())
+        ):
+            print(
+                f"Error: Repository root '{toplevel_dir}' is not a safe temporary workspace. Aborting."
+            )
+            return 1
+
         log_path = self.log_dir / repo_name / f"{branch}.jsonl"
         session_path = self.session_dir / repo_name / f"{branch}.json"
 
@@ -42,13 +54,6 @@ class AllDoneCommand:
 
         # Kill tmux session
         await run_command("tmux", ["kill-session", "-t", branch], capture_stderr=False)
-
-        # Safety check: ensure we are only deleting from a designated temporary workspace directory
-        if ".copium" not in str(toplevel_dir):
-            print(
-                f"Error: Repository root '{toplevel_dir}' is not a safe temporary workspace. Aborting."
-            )
-            return 1
 
         # Mitigation: Change the working directory to the parent directory
         # to avoid attempting to delete the current working directory.

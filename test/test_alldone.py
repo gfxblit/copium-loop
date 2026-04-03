@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from copium_loop.alldone import run_alldone
@@ -35,8 +36,10 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
     @patch("pathlib.Path.exists")
     @patch("os.chdir")
     @patch("builtins.print")
+    @patch("pathlib.Path.home")
     async def test_unsafe_workspace(
         self,
+        mock_home,
         mock_print,
         mock_chdir,
         mock_exists,
@@ -48,6 +51,7 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
         mock_is_dirty,
         mock_is_git_repo,
     ):
+        mock_home.return_value = Path("/home/user")
         mock_is_git_repo.return_value = True
         mock_is_dirty.return_value = False
 
@@ -67,7 +71,8 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
         mock_print.assert_called_with(
             "Error: Repository root '/home/user/myproject' is not a safe temporary workspace. Aborting."
         )
-        self.assertEqual(mock_unlink.call_count, 2)
+        # Safety check happens BEFORE unlinking now
+        self.assertEqual(mock_unlink.call_count, 0)
         mock_chdir.assert_not_called()
         mock_rmtree.assert_not_called()
 
@@ -81,8 +86,10 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
     @patch("pathlib.Path.exists")
     @patch("os.chdir")
     @patch("builtins.print")
+    @patch("pathlib.Path.home")
     async def test_successful_alldone(
         self,
+        mock_home,
         mock_print,
         mock_chdir,
         mock_exists,
@@ -94,12 +101,16 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
         mock_is_dirty,
         mock_is_git_repo,
     ):
+        mock_home.return_value = Path("/home/user")
         mock_is_git_repo.return_value = True
         mock_is_dirty.return_value = False
 
         async def mock_run_cmd(cmd, args, **_kwargs):
             if cmd == "git" and args == ["rev-parse", "--show-toplevel"]:
-                return {"exit_code": 0, "output": "/path/to/.copium/repo\n"}
+                return {
+                    "exit_code": 0,
+                    "output": "/home/user/.copium/workspaces/repo\n",
+                }
             return {"exit_code": 0, "output": ""}
 
         mock_run_command.side_effect = mock_run_cmd
@@ -122,9 +133,8 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
         )
 
         # Check directory change and removal
-        # In implementation: os.chdir(str(Path(toplevel_dir).parent))
-        mock_chdir.assert_called_with("/path/to/.copium")
-        mock_rmtree.assert_called_with("/path/to/.copium/repo")
+        mock_chdir.assert_called_with("/home/user/.copium/workspaces")
+        mock_rmtree.assert_called_with("/home/user/.copium/workspaces/repo")
         mock_print.assert_any_call(
             "Successfully cleaned up copium-loop workspace for 'feature-branch' in 'user/repo'."
         )

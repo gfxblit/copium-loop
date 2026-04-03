@@ -27,11 +27,8 @@ class DefaultSubcommandArgumentParser(argparse.ArgumentParser):
                     subcommands.extend(action.choices.keys())
 
         # Check if the first non-flag argument is a known subcommand
-        # But honestly, if any argument is a subcommand and it's not a flag argument value, it might be complicated.
-        # A simpler check: is there any subcommand in the args that isn't prefixed by '-'?
-        has_subcommand = any(
-            arg in subcommands for arg in args if not arg.startswith("-")
-        )
+        first_non_flag = next((arg for arg in args if not arg.startswith("-")), None)
+        has_subcommand = first_non_flag in subcommands
 
         if (
             not has_subcommand
