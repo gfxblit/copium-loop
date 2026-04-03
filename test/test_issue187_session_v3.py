@@ -42,12 +42,12 @@ async def test_session_id_auto_derivation():
 
 def test_cli_parser_new_flags():
     """Test that the CLI has the new flags and removed the old ones."""
-    # We'll run the CLI with --help and check output
+    # We'll run the CLI with run --help and check output
     env = os.environ.copy()
     env["PYTHONPATH"] = "src"
 
     result = subprocess.run(
-        [sys.executable, "-m", "copium_loop", "--help"],
+        [sys.executable, "-m", "copium_loop", "run", "--help"],
         capture_output=True,
         text=True,
         env=env,
