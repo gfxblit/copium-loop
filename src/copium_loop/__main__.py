@@ -6,39 +6,62 @@ import os
 import sys
 
 
+class DefaultSubcommandArgumentParser(argparse.ArgumentParser):
+    """An ArgumentParser that defaults to the 'run' subcommand if no known subcommand is provided."""
+
+    def parse_args(self, args=None, namespace=None):
+        args = sys.argv[1:] if args is None else list(args)
+
+        subcommands = []
+        if self._subparsers:
+            for action in self._subparsers._group_actions:
+                if isinstance(action, argparse._SubParsersAction):
+                    subcommands.extend(action.choices.keys())
+
+        # Check if the first non-flag argument is a known subcommand
+        # But honestly, if any argument is a subcommand and it's not a flag argument value, it might be complicated.
+        # A simpler check: is there any subcommand in the args that isn't prefixed by '-'?
+        has_subcommand = any(
+            arg in subcommands for arg in args if not arg.startswith("-")
+        )
+
+        if not has_subcommand and "run" in subcommands:
+            args.insert(0, "run")
+
+        return super().parse_args(args, namespace)
+
+
 async def async_main():
     """Main async function."""
-    if len(sys.argv) > 1 and sys.argv[1] == "alldone":
-        from copium_loop.alldone import run_alldone
+    parser = DefaultSubcommandArgumentParser(description="Run the dev workflow.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-        await run_alldone()
-        sys.exit(0)
-
-    parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    parser.add_argument("prompt", nargs="*", help="The prompt to run.")
-    parser.add_argument(
+    # 'run' subcommand (default)
+    run_parser = subparsers.add_parser("run", help="Run the dev workflow.")
+    run_parser.add_argument("prompt", nargs="*", help="The prompt to run.")
+    run_parser.add_argument(
         "-n",
         "--node",
         help="Start node (coder, tester, architect, reviewer, pr_pre_checker, pr_creator, journaler)",
         default=None,
     )
-    parser.add_argument(
+    run_parser.add_argument(
         "--verbose", "-v", action="store_true", default=True, help="Verbose output"
     )
-    parser.add_argument(
+    run_parser.add_argument(
         "--monitor",
         "-m",
         action="store_true",
         help="Start the Textual-based TUI monitor",
     )
-    parser.add_argument(
+    run_parser.add_argument(
         "--continue",
         "-c",
         dest="continue_session",
         action="store_true",
         help="Continue from the last incomplete workflow session. If a prompt is provided, it overrides the session prompt.",
     )
-    parser.add_argument(
+    run_parser.add_argument(
         "--engine",
         type=str,
         choices=["gemini", "jules"],
@@ -46,7 +69,16 @@ async def async_main():
         help="The LLM engine to use (default: gemini)",
     )
 
+    # 'alldone' subcommand
+    subparsers.add_parser("alldone", help="Clean up copium-loop workspace")
+
     args = parser.parse_args()
+
+    if args.command == "alldone":
+        from copium_loop.alldone import run_alldone
+
+        code = await run_alldone()
+        sys.exit(code)
 
     if args.monitor:
         from copium_loop.ui import TextualDashboard
