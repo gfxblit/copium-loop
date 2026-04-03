@@ -12,7 +12,7 @@ utils_module = sys.modules["copium_loop.nodes.utils"]
 
 @pytest.mark.asyncio
 class TestValidateGitContext:
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
     @patch.object(utils_module, "get_telemetry")
     async def test_validate_git_context_no_git(self, mock_get_telemetry, mock_is_git):
         mock_is_git.return_value = False
@@ -26,8 +26,8 @@ class TestValidateGitContext:
         )
         mock_telemetry.log_status.assert_called_with("test_node", "success")
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_current_branch", autospec=True)
     @patch.object(utils_module, "get_telemetry")
     async def test_validate_git_context_main_branch(
         self, mock_get_telemetry, mock_get_branch, mock_is_git
@@ -44,8 +44,8 @@ class TestValidateGitContext:
         )
         mock_telemetry.log_status.assert_called_with("test_node", "success")
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_current_branch", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_current_branch", autospec=True)
     @patch.object(utils_module, "get_telemetry")
     async def test_validate_git_context_feature_branch(
         self, mock_get_telemetry, mock_get_branch, mock_is_git
@@ -312,16 +312,16 @@ class TestGetCoderPrompt:
 
 @pytest.mark.asyncio
 class TestPromptsExtended:
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_diff", autospec=True)
     async def test_get_architect_prompt_jules(self, _mock_get_diff, _mock_is_git):
         state = {"initial_commit_hash": "abc"}
         prompt = await utils.get_architect_prompt("jules", state)
         assert "You are a senior software architect" in prompt
         assert "VERDICT: APPROVED" in prompt
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_diff", autospec=True)
     async def test_get_architect_prompt_gemini(self, mock_get_diff, mock_is_git):
         mock_is_git.return_value = True
         mock_get_diff.return_value = "some diff"
@@ -335,16 +335,16 @@ class TestPromptsExtended:
         with pytest.raises(ValueError, match="Missing initial commit hash"):
             await utils.get_architect_prompt("jules", {})
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_diff", autospec=True)
     async def test_get_reviewer_prompt_jules(self, _mock_get_diff, _mock_is_git):
         state = {"initial_commit_hash": "abc"}
         prompt = await utils.get_reviewer_prompt("jules", state)
         assert "You are a Principal Software Engineer" in prompt
         assert "VERDICT: APPROVED" in prompt
 
-    @patch.object(utils_module, "is_git_repo", new_callable=AsyncMock)
-    @patch.object(utils_module, "get_diff", new_callable=AsyncMock)
+    @patch.object(utils_module, "is_git_repo", autospec=True)
+    @patch.object(utils_module, "get_diff", autospec=True)
     async def test_get_reviewer_prompt_gemini(self, mock_get_diff, mock_is_git):
         mock_is_git.return_value = True
         mock_get_diff.return_value = "some diff"

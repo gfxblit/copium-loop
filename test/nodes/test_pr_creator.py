@@ -13,12 +13,12 @@ class TestPrCreatorNode:
     """Tests for the PR creator node."""
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
+    @patch.object(pr_creator_module, "is_dirty", autospec=True)
+    @patch.object(pr_creator_module, "add", autospec=True)
+    @patch.object(pr_creator_module, "commit", autospec=True)
+    @patch.object(pr_creator_module, "push", autospec=True)
+    @patch.object(pr_creator_module, "run_command", autospec=True)
     async def test_pr_creator_creates_pr(
         self,
         mock_run,
@@ -50,12 +50,12 @@ class TestPrCreatorNode:
         mock_commit.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "add", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "commit", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
+    @patch.object(pr_creator_module, "is_dirty", autospec=True)
+    @patch.object(pr_creator_module, "add", autospec=True)
+    @patch.object(pr_creator_module, "commit", autospec=True)
+    @patch.object(pr_creator_module, "push", autospec=True)
+    @patch.object(pr_creator_module, "run_command", autospec=True)
     async def test_pr_creator_commits_dirty_files(
         self,
         mock_run,
@@ -88,10 +88,10 @@ class TestPrCreatorNode:
         mock_push.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
+    @patch.object(pr_creator_module, "is_dirty", autospec=True)
+    @patch.object(pr_creator_module, "push", autospec=True)
+    @patch.object(pr_creator_module, "run_command", autospec=True)
     async def test_pr_creator_handles_existing_pr(
         self,
         mock_run,
@@ -116,7 +116,7 @@ class TestPrCreatorNode:
         assert "already exists" in result["messages"][0].content
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
     async def test_pr_creator_skips_on_main_branch(
         self, mock_validate_git, agent_state
     ):
@@ -129,7 +129,7 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
     async def test_pr_creator_no_git(self, mock_validate_git, agent_state):
         """Test that PR creator skips if not a git repository."""
         mock_validate_git.return_value = None
@@ -138,10 +138,10 @@ class TestPrCreatorNode:
         assert result["review_status"] == "pr_skipped"
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "run_command", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
+    @patch.object(pr_creator_module, "is_dirty", autospec=True)
+    @patch.object(pr_creator_module, "push", autospec=True)
+    @patch.object(pr_creator_module, "run_command", autospec=True)
     async def test_pr_creator_links_issue(
         self,
         mock_run,
@@ -188,9 +188,9 @@ class TestPrCreatorNode:
         )
 
     @pytest.mark.asyncio
-    @patch.object(pr_creator_module, "validate_git_context", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "is_dirty", new_callable=AsyncMock)
-    @patch.object(pr_creator_module, "push", new_callable=AsyncMock)
+    @patch.object(pr_creator_module, "validate_git_context", autospec=True)
+    @patch.object(pr_creator_module, "is_dirty", autospec=True)
+    @patch.object(pr_creator_module, "push", autospec=True)
     async def test_pr_creator_push_failure(
         self,
         mock_push,

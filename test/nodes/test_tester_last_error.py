@@ -21,7 +21,7 @@ async def test_tester_node_updates_last_error_on_failure():
             "copium_loop.nodes.tester_node.get_lint_command", return_value=("lint", [])
         ),
         patch(
-            "copium_loop.nodes.tester_node._run_stage", new_callable=AsyncMock
+            "copium_loop.nodes.tester_node._run_stage", autospec=True
         ) as mock_run,
         patch("copium_loop.nodes.tester_node.get_telemetry"),
     ):

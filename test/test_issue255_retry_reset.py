@@ -67,7 +67,7 @@ async def test_retry_count_reset_on_explicit_continue():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
@@ -132,7 +132,7 @@ async def test_retry_count_reset_on_explicit_node():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
@@ -197,7 +197,7 @@ async def test_retry_count_reset_on_implicit_resume():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 

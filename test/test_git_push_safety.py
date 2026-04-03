@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -8,10 +8,10 @@ from copium_loop import git
 @pytest.mark.asyncio
 async def test_push_force_with_lease():
     """Test that git.push uses --force-with-lease instead of --force."""
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
         with patch(
-            "copium_loop.git.get_current_branch", new_callable=AsyncMock
+            "copium_loop.git.get_current_branch", autospec=True
         ) as mock_branch:
             mock_branch.return_value = "feature-branch"
 
@@ -28,10 +28,10 @@ async def test_push_protected_branch_fails():
     """Test that git.push fails when trying to force push to a protected branch."""
     protected_branches = ["main", "master", "develop", "release"]
     for branch in protected_branches:
-        with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        with patch("copium_loop.git.run_command", autospec=True) as mock_run:
             mock_run.return_value = {"exit_code": 0}
             with patch(
-                "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                "copium_loop.git.get_current_branch", autospec=True
             ) as mock_branch:
                 mock_branch.return_value = branch
 
@@ -48,10 +48,10 @@ async def test_push_protected_branch_fails():
 @pytest.mark.asyncio
 async def test_push_non_protected_branch_succeeds():
     """Test that git.push succeeds when force pushing to a non-protected branch."""
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
         with patch(
-            "copium_loop.git.get_current_branch", new_callable=AsyncMock
+            "copium_loop.git.get_current_branch", autospec=True
         ) as mock_branch:
             mock_branch.return_value = "feature/new-ui"
 

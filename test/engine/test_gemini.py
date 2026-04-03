@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -9,7 +9,7 @@ from copium_loop.engine.gemini import GeminiEngine
 async def test_gemini_engine_invoke():
     """Verify that GeminiEngine.invoke calls stream_subprocess."""
     with patch(
-        "copium_loop.engine.gemini.stream_subprocess", new_callable=AsyncMock
+        "copium_loop.engine.gemini.stream_subprocess", autospec=True
     ) as mock_stream:
         mock_stream.return_value = ("mocked response", "", "", 0, False, "")
         engine = GeminiEngine()

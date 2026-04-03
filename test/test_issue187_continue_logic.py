@@ -8,7 +8,7 @@ from copium_loop.__main__ import async_main
 
 @pytest.fixture(autouse=True)
 def mock_repo_root():
-    with patch("copium_loop.shell.run_command") as mock_run:
+    with patch("copium_loop.shell.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0, "output": "/test/repo"}
         yield mock_run
 
@@ -57,7 +57,7 @@ async def test_implicit_resumption():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 
@@ -102,7 +102,7 @@ async def test_branch_mismatch_error():
                 mock_sm_cls.return_value = mock_sm
 
                 with patch(
-                    "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                    "copium_loop.git.get_current_branch", autospec=True
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
@@ -113,7 +113,7 @@ async def test_branch_mismatch_error():
 
 
 @pytest.mark.asyncio
-async def test_repo_root_mismatch_error():
+async def test_repo_root_mismatch_error(mock_repo_root):
     """
     Test that if the session repo_root differs from current repo_root, it exits with error.
     """
@@ -141,20 +141,17 @@ async def test_repo_root_mismatch_error():
                 mock_sm_cls.return_value = mock_sm
 
                 with patch(
-                    "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                    "copium_loop.git.get_current_branch", autospec=True
                 ) as mock_branch:
                     mock_branch.return_value = "current-branch"
 
-                    with patch(
-                        "copium_loop.shell.run_command", new_callable=AsyncMock
-                    ) as mock_run:
-                        # Mock git rev-parse --show-toplevel to return a DIFFERENT path
-                        mock_run.return_value = {"exit_code": 0, "output": "/new/path"}
+                    # Mock git rev-parse --show-toplevel to return a DIFFERENT path
+                    mock_repo_root.return_value = {"exit_code": 0, "output": "/new/path"}
 
-                        # Expect SystemExit(1)
-                        with pytest.raises(SystemExit) as excinfo:
-                            await async_main()
-                        assert excinfo.value.code == 1
+                    # Expect SystemExit(1)
+                    with pytest.raises(SystemExit) as excinfo:
+                        await async_main()
+                    assert excinfo.value.code == 1
 
 
 @pytest.mark.asyncio
@@ -198,7 +195,7 @@ async def test_explicit_continue_override():
                     mock_wm_cls.return_value = mock_wm
 
                     with patch(
-                        "copium_loop.git.get_current_branch", new_callable=AsyncMock
+                        "copium_loop.git.get_current_branch", autospec=True
                     ) as mock_branch:
                         mock_branch.return_value = "current-branch"
 

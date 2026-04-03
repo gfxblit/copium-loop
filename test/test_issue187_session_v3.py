@@ -81,7 +81,7 @@ async def test_agent_state_persistence():
 
     initial_state = {"prompt": "test", "retry_count": 0}
     # In reality _wrap_node calls get_head, so mock it
-    with patch("copium_loop.copium_loop.get_head", new_callable=AsyncMock) as mock_head:
+    with patch("copium_loop.copium_loop.get_head", autospec=True) as mock_head:
         mock_head.return_value = "deadbeef"
         await wrapper(initial_state)
 

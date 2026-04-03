@@ -20,7 +20,7 @@ def mock_session_manager():
 
 @pytest.mark.asyncio
 async def test_get_current_branch():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"output": "main\n", "exit_code": 0}
         branch = await git.get_current_branch()
         assert branch == "main"
@@ -31,7 +31,7 @@ async def test_get_current_branch():
 
 @pytest.mark.asyncio
 async def test_get_diff():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"output": "diff content", "exit_code": 0}
         diff = await git.get_diff("HEAD~1", "HEAD")
         assert diff == "diff content"
@@ -40,7 +40,7 @@ async def test_get_diff():
 
 @pytest.mark.asyncio
 async def test_is_dirty():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"output": "M file.py\n", "exit_code": 0}
         assert await git.is_dirty() is True
         mock_run.assert_called_with("git", ["status", "--porcelain"], node=None)
@@ -51,7 +51,7 @@ async def test_is_dirty():
 
 @pytest.mark.asyncio
 async def test_get_head():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"output": "abc123\n", "exit_code": 0}
         head = await git.get_head()
         assert head == "abc123"
@@ -62,7 +62,7 @@ async def test_get_head():
 
 @pytest.mark.asyncio
 async def test_fetch():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
         await git.fetch()
         mock_run.assert_called_with("git", ["fetch", "origin"], node=None)
@@ -70,7 +70,7 @@ async def test_fetch():
 
 @pytest.mark.asyncio
 async def test_rebase():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
         await git.rebase("origin/main")
         mock_run.assert_called_with("git", ["rebase", "origin/main"], node=None)
@@ -78,7 +78,7 @@ async def test_rebase():
 
 @pytest.mark.asyncio
 async def test_rebase_abort():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
         await git.rebase_abort()
         mock_run.assert_called_with("git", ["rebase", "--abort"], node=None)
@@ -87,9 +87,9 @@ async def test_rebase_abort():
 @pytest.mark.asyncio
 async def test_push():
     with (
-        patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run,
+        patch("copium_loop.git.run_command", autospec=True) as mock_run,
         patch(
-            "copium_loop.git.get_current_branch", new_callable=AsyncMock
+            "copium_loop.git.get_current_branch", autospec=True
         ) as mock_branch,
     ):
         mock_run.return_value = {"exit_code": 0}
@@ -184,7 +184,7 @@ async def test_get_repo_name_parsing():
     ]
 
     for url, expected in urls:
-        with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+        with patch("copium_loop.git.run_command", autospec=True) as mock_run:
             # We mock git remote -v output
             # Output format: origin  url (fetch)
             output = f"origin\t{url} (fetch)\norigin\t{url} (push)\n"
@@ -196,7 +196,7 @@ async def test_get_repo_name_parsing():
 
 @pytest.mark.asyncio
 async def test_get_repo_name_no_remote():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0, "output": ""}
         with pytest.raises(ValueError, match="Could not determine git remote URL"):
             await get_repo_name()
@@ -204,7 +204,7 @@ async def test_get_repo_name_no_remote():
 
 @pytest.mark.asyncio
 async def test_get_repo_name_unsupported_url():
-    with patch("copium_loop.git.run_command", new_callable=AsyncMock) as mock_run:
+    with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         output = "origin\thttps://example.com/not-a-repo (fetch)\n"
         mock_run.return_value = {"exit_code": 0, "output": output}
         with pytest.raises(
@@ -229,19 +229,19 @@ async def test_initial_commit_hash_for_architect_with_origin_main(
 
     # Mock resolve_ref (we'll add this to git.py)
     with patch(
-        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        "copium_loop.copium_loop.is_git_repo", autospec=True
     ) as mock_is_git:
         mock_is_git.return_value = True
 
         # Mock current branch to NOT be main
         with patch(
-            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+            "copium_loop.copium_loop.get_current_branch", autospec=True
         ) as mock_get_branch:
             mock_get_branch.return_value = "feature-branch"
 
             # Let's assume we'll use a new function in git.py called resolve_ref
             with patch(
-                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+                "copium_loop.copium_loop.resolve_ref", autospec=True
             ) as mock_resolve_ref:
 
                 def resolve_ref_side_effect(ref=None, node=None):
@@ -280,16 +280,16 @@ async def test_initial_commit_hash_for_architect_fallback_to_main(
     mock_get_head.return_value = "head_hash"
 
     with patch(
-        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        "copium_loop.copium_loop.is_git_repo", autospec=True
     ) as mock_is_git:
         mock_is_git.return_value = True
         with patch(
-            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+            "copium_loop.copium_loop.get_current_branch", autospec=True
         ) as mock_get_branch:
             mock_get_branch.return_value = "feature-branch"
 
             with patch(
-                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+                "copium_loop.copium_loop.resolve_ref", autospec=True
             ) as mock_resolve_ref:
 
                 def side_effect(ref, node):  # noqa: ARG001
@@ -328,16 +328,16 @@ async def test_initial_commit_hash_for_architect_on_main(
     mock_get_head.return_value = "head_hash"
 
     with patch(
-        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        "copium_loop.copium_loop.is_git_repo", autospec=True
     ) as mock_is_git:
         mock_is_git.return_value = True
         with patch(
-            "copium_loop.copium_loop.get_current_branch", new_callable=AsyncMock
+            "copium_loop.copium_loop.get_current_branch", autospec=True
         ) as mock_get_branch:
             mock_get_branch.return_value = "main"
 
             with patch(
-                "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+                "copium_loop.copium_loop.resolve_ref", autospec=True
             ) as mock_resolve_ref:
 
                 def side_effect(ref, node):  # noqa: ARG001
@@ -375,12 +375,12 @@ async def test_initial_commit_hash_for_architect_fallback_to_head(
     mock_get_head.return_value = "head_hash"
 
     with patch(
-        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        "copium_loop.copium_loop.is_git_repo", autospec=True
     ) as mock_is_git:
         mock_is_git.return_value = True
 
         with patch(
-            "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+            "copium_loop.copium_loop.resolve_ref", autospec=True
         ) as mock_resolve_ref:
             mock_resolve_ref.return_value = None  # origin/main not found
 
@@ -413,12 +413,12 @@ async def test_initial_commit_hash_for_coder_stays_head(
     mock_run_command.return_value = {"exit_code": 0, "output": ""}
 
     with patch(
-        "copium_loop.copium_loop.is_git_repo", new_callable=AsyncMock
+        "copium_loop.copium_loop.is_git_repo", autospec=True
     ) as mock_is_git:
         mock_is_git.return_value = True
 
         with patch(
-            "copium_loop.copium_loop.resolve_ref", new_callable=AsyncMock
+            "copium_loop.copium_loop.resolve_ref", autospec=True
         ) as mock_resolve_ref:
             mock_resolve_ref.return_value = "origin_main_hash"
 
