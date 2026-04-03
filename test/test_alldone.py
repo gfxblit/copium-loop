@@ -27,16 +27,18 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
 
     @patch("copium_loop.alldone.is_git_repo")
     @patch("copium_loop.alldone.is_dirty")
-    @patch("copium_loop.alldone.run_command")
+    @patch("copium_loop.alldone.run_command", autospec=True)
     @patch("copium_loop.alldone.get_current_branch")
     @patch("copium_loop.alldone.get_repo_name")
     @patch("shutil.rmtree")
     @patch("pathlib.Path.unlink")
     @patch("pathlib.Path.exists")
+    @patch("os.chdir")
     @patch("builtins.print")
     async def test_unsafe_workspace(
         self,
         mock_print,
+        mock_chdir,
         mock_exists,
         mock_unlink,
         mock_rmtree,
@@ -66,20 +68,23 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
             "Error: Repository root '/home/user/myproject' is not a safe temporary workspace. Aborting."
         )
         self.assertEqual(mock_unlink.call_count, 2)
+        mock_chdir.assert_not_called()
         mock_rmtree.assert_not_called()
 
     @patch("copium_loop.alldone.is_git_repo")
     @patch("copium_loop.alldone.is_dirty")
-    @patch("copium_loop.alldone.run_command")
+    @patch("copium_loop.alldone.run_command", autospec=True)
     @patch("copium_loop.alldone.get_current_branch")
     @patch("copium_loop.alldone.get_repo_name")
     @patch("shutil.rmtree")
     @patch("pathlib.Path.unlink")
     @patch("pathlib.Path.exists")
+    @patch("os.chdir")
     @patch("builtins.print")
     async def test_successful_alldone(
         self,
         mock_print,
+        mock_chdir,
         mock_exists,
         mock_unlink,
         mock_rmtree,
@@ -114,14 +119,12 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
             "tmux",
             ["kill-session", "-t", "feature-branch"],
             capture_stderr=False,
-            check=False,
         )
 
+        # Check directory change and removal
+        # In implementation: os.chdir(str(Path(toplevel_dir).parent))
+        mock_chdir.assert_called_with("/path/to/.copium")
         mock_rmtree.assert_called_with("/path/to/.copium/repo")
         mock_print.assert_any_call(
             "Successfully cleaned up copium-loop workspace for 'feature-branch' in 'user/repo'."
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

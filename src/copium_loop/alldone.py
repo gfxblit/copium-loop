@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 
@@ -40,9 +41,7 @@ class AllDoneCommand:
             session_path.unlink()
 
         # Kill tmux session
-        await run_command(
-            "tmux", ["kill-session", "-t", branch], capture_stderr=False, check=False
-        )
+        await run_command("tmux", ["kill-session", "-t", branch], capture_stderr=False)
 
         # Safety check: ensure we are only deleting from a designated temporary workspace directory
         if ".copium" not in str(toplevel_dir):
@@ -51,7 +50,9 @@ class AllDoneCommand:
             )
             return 1
 
-        # Remove the repository folder without changing directory globally
+        # Mitigation: Change the working directory to the parent directory
+        # to avoid attempting to delete the current working directory.
+        os.chdir(str(Path(toplevel_dir).parent))
         shutil.rmtree(toplevel_dir)
 
         print(
