@@ -16,6 +16,12 @@ import copium_loop.workon
 
 async def async_main():
     """Main async function."""
+    if len(sys.argv) > 1 and sys.argv[1] == "alldone":
+        from copium_loop.alldone import run_alldone
+
+        await run_alldone()
+        sys.exit(0)
+
     # Parent parser for shared arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
