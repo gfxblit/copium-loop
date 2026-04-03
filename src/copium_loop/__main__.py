@@ -14,14 +14,33 @@ import copium_loop.ui
 import copium_loop.workon
 
 
+class DefaultSubcommandArgumentParser(argparse.ArgumentParser):
+    """An ArgumentParser that defaults to the 'run' subcommand if no known subcommand is provided."""
+
+    def parse_args(self, args=None, namespace=None):
+        args = sys.argv[1:] if args is None else list(args)
+
+        subcommands = []
+        if self._subparsers:
+            for action in self._subparsers._group_actions:
+                if isinstance(action, argparse._SubParsersAction):
+                    subcommands.extend(action.choices.keys())
+
+        # Check if the first non-flag argument is a known subcommand
+        # But honestly, if any argument is a subcommand and it's not a flag argument value, it might be complicated.
+        # A simpler check: is there any subcommand in the args that isn't prefixed by '-'?
+        has_subcommand = any(
+            arg in subcommands for arg in args if not arg.startswith("-")
+        )
+
+        if not has_subcommand and "run" in subcommands:
+            args.insert(0, "run")
+
+        return super().parse_args(args, namespace)
+
+
 async def async_main():
     """Main async function."""
-    if len(sys.argv) > 1 and sys.argv[1] == "alldone":
-        from copium_loop.alldone import run_alldone
-
-        await run_alldone()
-        sys.exit(0)
-
     # Parent parser for shared arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
@@ -35,8 +54,8 @@ async def async_main():
         help="The LLM engine to use (default: gemini)",
     )
 
-    parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
+    parser = DefaultSubcommandArgumentParser(description="Run the dev workflow.")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Run command
     run_parser = subparsers.add_parser(
@@ -69,16 +88,16 @@ async def async_main():
     )
     workon_parser.add_argument("issue", help="The issue URL or description to work on")
 
-    # Handle default command if none provided
-    if len(sys.argv) > 1 and sys.argv[1] not in ["run", "workon", "-h", "--help"]:
-        # If it's a flag that belongs to run_parser but not to workon_parser (like -m, -c),
-        # or if it's just a prompt, insert 'run'
-        # To be safe, if it's not 'workon', we default to 'run'
-        sys.argv.insert(1, "run")
-    elif len(sys.argv) == 1:
-        sys.argv.append("run")
+    # Alldone command
+    subparsers.add_parser("alldone", help="Clean up copium-loop workspace")
 
     args = parser.parse_args()
+
+    if args.command == "alldone":
+        from copium_loop.alldone import run_alldone
+
+        code = await run_alldone()
+        sys.exit(code)
 
     if args.command == "workon":
         await copium_loop.workon.workon_main(args)
