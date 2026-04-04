@@ -7,24 +7,32 @@ from copium_loop.shell import run_command
 
 
 class AllDoneCommand:
-    def __init__(self, log_dir: Path, session_dir: Path):
+    def __init__(self, log_dir: Path, session_dir: Path, node: str | None = None):
         self.log_dir = log_dir
         self.session_dir = session_dir
+        self.node = node
 
     async def execute(self) -> int:
-        if not await is_git_repo():
+        if not await is_git_repo(node=self.node):
             print("Error: Not inside a git repository.")
             return 1
 
-        if await is_dirty():
+        if await is_dirty(node=self.node):
             print("Error: Git repository has uncommitted or untracked files. Aborting.")
             return 1
 
-        branch = await get_current_branch()
-        repo_name = await get_repo_name()
+        branch = await get_current_branch(node=self.node)
+        if not branch:
+            print("Error: Could not determine current branch. Aborting.")
+            return 1
+
+        repo_name = await get_repo_name(node=self.node)
+        if not repo_name:
+            print("Error: Could not determine repository name. Aborting.")
+            return 1
 
         # Get toplevel directory
-        res = await run_command("git", ["rev-parse", "--show-toplevel"])
+        res = await run_command("git", ["rev-parse", "--show-toplevel"], node=self.node)
         if res["exit_code"] != 0:
             print("Error: Could not determine git repository root.")
             return 1
@@ -53,7 +61,9 @@ class AllDoneCommand:
             session_path.unlink()
 
         # Kill tmux session
-        await run_command("tmux", ["kill-session", "-t", branch], capture_stderr=False)
+        await run_command(
+            "tmux", ["kill-session", "-t", branch], capture_stderr=False, node=self.node
+        )
 
         # Mitigation: Change the working directory to the parent directory
         # to avoid attempting to delete the current working directory.
@@ -66,9 +76,9 @@ class AllDoneCommand:
         return 0
 
 
-async def run_alldone() -> int:
+async def run_alldone(node: str | None = None) -> int:
     """Cleans up copium-loop workspace, logs, and sessions for the current branch."""
     log_dir = Path.home() / ".copium" / "logs"
     session_dir = Path.home() / ".copium" / "sessions"
-    command = AllDoneCommand(log_dir, session_dir)
+    command = AllDoneCommand(log_dir, session_dir, node=node)
     return await command.execute()
