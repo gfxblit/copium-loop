@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -153,7 +153,11 @@ async def test_workon_main_no_remote_error():
     args.issue = "some-issue"
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="branch"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="branch",
+        ),
         patch("copium_loop.workon.find_remote_url", autospec=True, return_value=None),
     ):
         with pytest.raises(SystemExit) as e:
@@ -167,8 +171,16 @@ async def test_workon_main_clone_fallback(tmp_path):
     args.issue = "issue-1"
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="branch-1"),
-        patch("copium_loop.workon.find_remote_url", autospec=True, return_value="git@remote"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="branch-1",
+        ),
+        patch(
+            "copium_loop.workon.find_remote_url",
+            autospec=True,
+            return_value="git@remote",
+        ),
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
@@ -195,8 +207,16 @@ async def test_workon_main_existing_workspace(tmp_path):
 
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="branch-1"),
-        patch("copium_loop.workon.find_remote_url", autospec=True, return_value="git@remote"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="branch-1",
+        ),
+        patch(
+            "copium_loop.workon.find_remote_url",
+            autospec=True,
+            return_value="git@remote",
+        ),
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
@@ -204,9 +224,7 @@ async def test_workon_main_existing_workspace(tmp_path):
         mock_run.return_value = {"exit_code": 0, "output": ""}
         await workon_main(args)
         # Should call git checkout
-        mock_run.assert_called_with(
-            "git", ["checkout", "branch-1"], cwd=str(workspace)
-        )
+        mock_run.assert_called_with("git", ["checkout", "branch-1"], cwd=str(workspace))
 
 
 @pytest.mark.asyncio
@@ -215,8 +233,16 @@ async def test_workon_main_attach_session():
     args.issue = "issue-1"
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="branch-1"),
-        patch("copium_loop.workon.find_remote_url", autospec=True, return_value="git@remote"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="branch-1",
+        ),
+        patch(
+            "copium_loop.workon.find_remote_url",
+            autospec=True,
+            return_value="git@remote",
+        ),
         patch("os.path.exists", return_value=True),
         patch("copium_loop.workon.run_command", autospec=True),
         patch("copium_loop.workon.TmuxManager", autospec=True) as mock_tmux_cls,
@@ -244,7 +270,9 @@ async def test_workon_main_full_flow(tmp_path):
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
         patch(
-            "copium_loop.workon.resolve_branch_name", autospec=True, return_value=branch_name
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value=branch_name,
         ) as mock_resolve,
         patch(
             "copium_loop.workon.find_remote_url", autospec=True, return_value=remote_url
@@ -326,8 +354,16 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
 
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="workspace"),
-        patch("copium_loop.workon.find_remote_url", autospec=True, return_value="git@remote"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="workspace",
+        ),
+        patch(
+            "copium_loop.workon.find_remote_url",
+            autospec=True,
+            return_value="git@remote",
+        ),
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
@@ -345,8 +381,16 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
     (workspace / "pnpm-lock.yaml").write_text("")
     with (
         patch("copium_loop.workon.check_dependencies", autospec=True),
-        patch("copium_loop.workon.resolve_branch_name", autospec=True, return_value="workspace"),
-        patch("copium_loop.workon.find_remote_url", autospec=True, return_value="git@remote"),
+        patch(
+            "copium_loop.workon.resolve_branch_name",
+            autospec=True,
+            return_value="workspace",
+        ),
+        patch(
+            "copium_loop.workon.find_remote_url",
+            autospec=True,
+            return_value="git@remote",
+        ),
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),

@@ -35,7 +35,7 @@ class TmuxStatsFetcher:
         session_name: str = "copium-loop",
         window_name: str = "stats",
         tmux: TmuxInterface | None = None,
-        gemini_cmd: str = "/opt/homebrew/bin/gemini --sandbox",
+        gemini_cmd: str = "/opt/homebrew/bin/gemini --sandbox -m gemini-2.5-flash-lite",
     ):
         self.session_name = session_name
         self.window_name = window_name

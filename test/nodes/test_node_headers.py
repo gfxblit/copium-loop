@@ -58,9 +58,7 @@ async def test_architect_node_header(agent_state, capsys):
 @pytest.mark.asyncio
 async def test_tester_node_header(agent_state, capsys):
     """Test that tester_node prints and logs its header."""
-    with patch(
-        "copium_loop.nodes.tester_node.run_command", autospec=True
-    ) as mock_run:
+    with patch("copium_loop.nodes.tester_node.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"output": "Success", "exit_code": 0}
         await tester_node(agent_state)
 
@@ -167,9 +165,7 @@ async def test_pr_creator_node_header(agent_state, capsys):
         patch(
             "copium_loop.nodes.pr_creator_node.is_dirty", autospec=True
         ) as mock_dirty,
-        patch(
-            "copium_loop.nodes.pr_creator_node.push", autospec=True
-        ) as mock_push,
+        patch("copium_loop.nodes.pr_creator_node.push", autospec=True) as mock_push,
         patch(
             "copium_loop.nodes.pr_creator_node.run_command", autospec=True
         ) as mock_run,

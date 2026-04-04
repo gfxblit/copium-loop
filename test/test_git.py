@@ -88,9 +88,7 @@ async def test_rebase_abort():
 async def test_push():
     with (
         patch("copium_loop.git.run_command", autospec=True) as mock_run,
-        patch(
-            "copium_loop.git.get_current_branch", autospec=True
-        ) as mock_branch,
+        patch("copium_loop.git.get_current_branch", autospec=True) as mock_branch,
     ):
         mock_run.return_value = {"exit_code": 0}
         mock_branch.return_value = "feature-branch"
@@ -228,9 +226,7 @@ async def test_initial_commit_hash_for_architect_with_origin_main(
     mock_get_head.return_value = "head_hash"
 
     # Mock resolve_ref (we'll add this to git.py)
-    with patch(
-        "copium_loop.copium_loop.is_git_repo", autospec=True
-    ) as mock_is_git:
+    with patch("copium_loop.copium_loop.is_git_repo", autospec=True) as mock_is_git:
         mock_is_git.return_value = True
 
         # Mock current branch to NOT be main
@@ -279,9 +275,7 @@ async def test_initial_commit_hash_for_architect_fallback_to_main(
     mock_verify_environment.return_value = True
     mock_get_head.return_value = "head_hash"
 
-    with patch(
-        "copium_loop.copium_loop.is_git_repo", autospec=True
-    ) as mock_is_git:
+    with patch("copium_loop.copium_loop.is_git_repo", autospec=True) as mock_is_git:
         mock_is_git.return_value = True
         with patch(
             "copium_loop.copium_loop.get_current_branch", autospec=True
@@ -327,9 +321,7 @@ async def test_initial_commit_hash_for_architect_on_main(
     mock_verify_environment.return_value = True
     mock_get_head.return_value = "head_hash"
 
-    with patch(
-        "copium_loop.copium_loop.is_git_repo", autospec=True
-    ) as mock_is_git:
+    with patch("copium_loop.copium_loop.is_git_repo", autospec=True) as mock_is_git:
         mock_is_git.return_value = True
         with patch(
             "copium_loop.copium_loop.get_current_branch", autospec=True
@@ -374,9 +366,7 @@ async def test_initial_commit_hash_for_architect_fallback_to_head(
     mock_verify_environment.return_value = True
     mock_get_head.return_value = "head_hash"
 
-    with patch(
-        "copium_loop.copium_loop.is_git_repo", autospec=True
-    ) as mock_is_git:
+    with patch("copium_loop.copium_loop.is_git_repo", autospec=True) as mock_is_git:
         mock_is_git.return_value = True
 
         with patch(
@@ -412,9 +402,7 @@ async def test_initial_commit_hash_for_coder_stays_head(
     mock_get_head.return_value = "head_hash"
     mock_run_command.return_value = {"exit_code": 0, "output": ""}
 
-    with patch(
-        "copium_loop.copium_loop.is_git_repo", autospec=True
-    ) as mock_is_git:
+    with patch("copium_loop.copium_loop.is_git_repo", autospec=True) as mock_is_git:
         mock_is_git.return_value = True
 
         with patch(
