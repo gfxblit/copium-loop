@@ -78,8 +78,12 @@ async def async_main():
     if args.command == "alldone":
         from copium_loop.alldone import run_alldone
 
-        code = await run_alldone()
-        sys.exit(code)
+        try:
+            code = await run_alldone(node="alldone")
+            sys.exit(code)
+        except Exception as e:
+            print(f"Error during alldone cleanup: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if args.monitor:
         from copium_loop.ui import TextualDashboard
