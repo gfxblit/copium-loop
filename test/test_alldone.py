@@ -130,6 +130,7 @@ class TestAlldone(unittest.IsolatedAsyncioTestCase):
             "tmux",
             ["kill-session", "-t", "feature-branch"],
             capture_stderr=False,
+            node=None,
         )
 
         # Check directory change and removal

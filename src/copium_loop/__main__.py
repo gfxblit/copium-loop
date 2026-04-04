@@ -6,35 +6,19 @@ import os
 import sys
 
 
-class DefaultSubcommandArgumentParser(argparse.ArgumentParser):
-    """An ArgumentParser that defaults to the 'run' subcommand if no known subcommand is provided."""
-
-    def parse_args(self, args=None, namespace=None):
-        args = sys.argv[1:] if args is None else list(args)
-
-        subcommands = []
-        if self._subparsers:
-            for action in self._subparsers._group_actions:
-                if isinstance(action, argparse._SubParsersAction):
-                    subcommands.extend(action.choices.keys())
-
-        # Check if the first non-flag argument is a known subcommand
-        first_non_flag = next((arg for arg in args if not arg.startswith("-")), None)
-        has_subcommand = first_non_flag in subcommands
-
-        if (
-            not has_subcommand
-            and "run" in subcommands
-            and not any(arg in ["-h", "--help"] for arg in args)
-        ):
-            args.insert(0, "run")
-
-        return super().parse_args(args, namespace)
-
-
 async def async_main():
     """Main async function."""
-    parser = DefaultSubcommandArgumentParser(description="Run the dev workflow.")
+    # Ensure a default subcommand of 'run' if no known subcommand or help flag is provided.
+    args_list = sys.argv[1:]
+    first_non_flag = next((arg for arg in args_list if not arg.startswith("-")), None)
+    
+    if (
+        first_non_flag not in ["run", "alldone"]
+        and not any(arg in ["-h", "--help"] for arg in args_list)
+    ):
+        sys.argv.insert(1, "run")
+
+    parser = argparse.ArgumentParser(description="Run the dev workflow.")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # 'run' subcommand (default)

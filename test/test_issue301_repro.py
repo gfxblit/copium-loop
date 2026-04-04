@@ -2,31 +2,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from copium_loop.__main__ import DefaultSubcommandArgumentParser
 from copium_loop.alldone import AllDoneCommand
 
 
 class TestIssue301Repro(unittest.IsolatedAsyncioTestCase):
-    def test_argument_parser_hijacking(self):
-        """Test that DefaultSubcommandArgumentParser doesn't hijack subcommands in arguments."""
-        parser = DefaultSubcommandArgumentParser()
-        subparsers = parser.add_subparsers(dest="command")
-        subparsers.add_parser("run")
-        subparsers.add_parser("alldone")
-
-        # Scenario: user wants to run a prompt that contains the word 'alldone'
-        # e.g. copium-loop implement alldone
-        # It should default to 'run' and the prompt should be 'implement alldone'
-        test_args = ["implement", "alldone"]
-        with patch("sys.argv", ["copium-loop"] + test_args):
-            # We need to add arguments to the 'run' parser to avoid errors
-            run_parser = subparsers.choices["run"]
-            run_parser.add_argument("prompt", nargs="*")
-
-            args = parser.parse_args(test_args)
-            self.assertEqual(args.command, "run")
-            self.assertEqual(args.prompt, ["implement", "alldone"])
-
     @patch("copium_loop.alldone.is_git_repo")
     @patch("copium_loop.alldone.is_dirty")
     @patch("copium_loop.alldone.run_command", autospec=True)

@@ -97,7 +97,10 @@ def test_get_test_command_pnpm_priority():
     def side_effect(path):
         return path in ["package.json", "pnpm-lock.yaml"]
 
-    with patch("os.path.exists", side_effect=side_effect):
+    with (
+        patch("os.path.exists", side_effect=side_effect),
+        patch("os.scandir", return_value=[]),
+    ):
         cmd_obj = discovery.get_test_command()
         assert cmd_obj.executable == "pnpm"
         assert cmd_obj.args == ["test"]
