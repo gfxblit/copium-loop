@@ -8,20 +8,10 @@ import sys
 
 async def async_main():
     """Main async function."""
-    # Ensure a default subcommand of 'run' if no known subcommand or help flag is provided.
-    args_list = sys.argv[1:]
-    first_non_flag = next((arg for arg in args_list if not arg.startswith("-")), None)
-    
-    if (
-        first_non_flag not in ["run", "alldone"]
-        and not any(arg in ["-h", "--help"] for arg in args_list)
-    ):
-        sys.argv.insert(1, "run")
-
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
 
-    # 'run' subcommand (default)
+    # 'run' subcommand
     run_parser = subparsers.add_parser("run", help="Run the dev workflow.")
     run_parser.add_argument("prompt", nargs="*", help="The prompt to run.")
     run_parser.add_argument(
