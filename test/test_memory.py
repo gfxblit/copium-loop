@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -54,9 +54,7 @@ async def test_nodes_do_not_call_get_all_memories(agent_state):
     assert "## Project-Specific Memory" not in prompt
 
     agent_state["engine"].invoke.reset_mock()
-    with patch(
-        "copium_loop.nodes.utils.get_diff", autospec=True
-    ) as mock_arch_diff:
+    with patch("copium_loop.nodes.utils.get_diff", autospec=True) as mock_arch_diff:
         mock_arch_diff.return_value = "diff"
         agent_state["engine"].invoke.return_value = "VERDICT: OK"
         await architect(agent_state)
@@ -65,9 +63,7 @@ async def test_nodes_do_not_call_get_all_memories(agent_state):
         assert "## Project-Specific Memory" not in prompt
 
     agent_state["engine"].invoke.reset_mock()
-    with patch(
-        "copium_loop.nodes.utils.get_diff", autospec=True
-    ) as mock_rev_diff:
+    with patch("copium_loop.nodes.utils.get_diff", autospec=True) as mock_rev_diff:
         mock_rev_diff.return_value = "diff"
         agent_state["engine"].invoke.return_value = "VERDICT: APPROVED"
         await reviewer(agent_state)

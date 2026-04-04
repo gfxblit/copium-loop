@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -51,9 +51,7 @@ async def test_issue249_integration_noise_reduction():
 
         # 3. Run ArchitectNode
         # We need to mock get_diff because ArchitectNode calls get_architect_prompt which calls get_diff
-        with patch(
-            "copium_loop.nodes.utils.get_diff", autospec=True
-        ) as mock_diff:
+        with patch("copium_loop.nodes.utils.get_diff", autospec=True) as mock_diff:
             mock_diff.return_value = "some diff"
             with patch(
                 "copium_loop.nodes.utils.is_git_repo", autospec=True

@@ -36,9 +36,7 @@ async def test_cli_workon_subcommand():
     """Test that the 'workon' subcommand is recognized."""
     # This should fail initially because workon is not implemented
     with (
-        patch(
-            "copium_loop.workon.workon_main", autospec=True
-        ) as mock_workon_main,
+        patch("copium_loop.workon.workon_main", autospec=True) as mock_workon_main,
         patch(
             "sys.argv",
             ["copium-loop", "workon", "https://github.com/owner/repo/issues/1"],

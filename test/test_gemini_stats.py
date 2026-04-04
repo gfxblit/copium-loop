@@ -9,6 +9,13 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
         self.mock_tmux = MagicMock()
         self.fetcher = TmuxStatsFetcher(tmux=self.mock_tmux)
 
+    def test_default_gemini_cmd(self):
+        fetcher = TmuxStatsFetcher()
+        self.assertEqual(
+            fetcher.gemini_cmd,
+            "/opt/homebrew/bin/gemini --sandbox -m gemini-2.5-flash-lite",
+        )
+
     def test_ensure_worker_creates_window_if_missing(self):
         # Mock tmux behavior: window missing
         self.mock_tmux.has_window.return_value = False
@@ -23,7 +30,9 @@ class TestTmuxStatsFetcher(unittest.IsolatedAsyncioTestCase):
 
         # Check if new_window was called
         self.mock_tmux.new_window.assert_called_with(
-            "copium-loop", "stats", "/opt/homebrew/bin/gemini --sandbox"
+            "copium-loop",
+            "stats",
+            "/opt/homebrew/bin/gemini --sandbox -m gemini-2.5-flash-lite",
         )
 
     def test_fetch_success(self):

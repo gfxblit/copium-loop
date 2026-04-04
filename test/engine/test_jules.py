@@ -512,9 +512,7 @@ async def test_jules_api_invoke_success():
         patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch(
-            "copium_loop.shell.stream_subprocess", autospec=True
-        ) as mock_stream,
+        patch("copium_loop.shell.stream_subprocess", autospec=True) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
@@ -573,9 +571,7 @@ async def test_jules_api_invoke_success_200():
         patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch(
-            "copium_loop.shell.stream_subprocess", autospec=True
-        ) as mock_stream,
+        patch("copium_loop.shell.stream_subprocess", autospec=True) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
@@ -690,9 +686,7 @@ async def test_jules_api_polling_retries():
         patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch(
-            "copium_loop.shell.stream_subprocess", autospec=True
-        ) as mock_stream,
+        patch("copium_loop.shell.stream_subprocess", autospec=True) as mock_stream,
     ):
         mock_pull.return_value = {"exit_code": 0, "output": ""}
         mock_push.return_value = {"exit_code": 0, "output": ""}
@@ -923,9 +917,7 @@ async def test_jules_api_pull_failure():
         patch("copium_loop.git.push", autospec=True) as mock_push,
         patch("httpx.AsyncClient") as mock_client,
         patch("asyncio.sleep", return_value=None),
-        patch(
-            "copium_loop.shell.stream_subprocess", autospec=True
-        ) as mock_stream,
+        patch("copium_loop.shell.stream_subprocess", autospec=True) as mock_stream,
     ):
         mock_push.return_value = {"exit_code": 0, "output": ""}
         mock_stream.return_value = ("output", "", "output", 0, False, "")

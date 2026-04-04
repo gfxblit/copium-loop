@@ -67,9 +67,7 @@ async def find_remote_url(issue_input: str | None = None) -> str | None:
         path = os.path.join(cwd, item)
         if os.path.isdir(path) and os.path.exists(os.path.join(path, ".git")):
             # Try to get remote URL from this directory
-            res = await run_command(
-                "git", ["remote", "get-url", "origin"], cwd=path
-            )
+            res = await run_command("git", ["remote", "get-url", "origin"], cwd=path)
             if res["exit_code"] == 0:
                 url = res["output"].strip()
                 if url:
