@@ -16,16 +16,6 @@ import copium_loop.workon
 
 async def async_main():
     """Main async function."""
-    # Ensure a default subcommand of 'run' if no known subcommand or help flag is provided.
-    args_list = sys.argv[1:]
-    first_non_flag = next((arg for arg in args_list if not arg.startswith("-")), None)
-
-    if (
-        first_non_flag not in ["run", "alldone", "workon"]
-        and not any(arg in ["-h", "--help"] for arg in args_list)
-    ):
-        sys.argv.insert(1, "run")
-
     # Parent parser for shared arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
@@ -40,9 +30,9 @@ async def async_main():
     )
 
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
 
-    # Run command
+    # 'run' subcommand
     run_parser = subparsers.add_parser(
         "run", parents=[parent_parser], help="Run a development workflow"
     )
