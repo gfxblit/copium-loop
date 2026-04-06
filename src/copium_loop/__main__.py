@@ -30,7 +30,9 @@ async def async_main():
     )
 
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command", help="Available commands", required=True
+    )
 
     # 'run' subcommand
     run_parser = subparsers.add_parser(

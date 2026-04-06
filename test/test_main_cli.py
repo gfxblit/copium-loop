@@ -7,8 +7,8 @@ from copium_loop.__main__ import async_main
 
 
 @pytest.mark.asyncio
-async def test_cli_run_subcommand_compatibility():
-    """Test that the default behavior still works as 'run'."""
+async def test_cli_run_subcommand_explicit():
+    """Test that the 'run' subcommand must be used explicitly."""
     # Mock WorkflowManager and other dependencies to avoid actual execution
     with patch("copium_loop.copium_loop.WorkflowManager") as mock_workflow_manager:
         mock_instance = mock_workflow_manager.return_value
@@ -21,7 +21,7 @@ async def test_cli_run_subcommand_compatibility():
             mock_session_manager.return_value.get_agent_state.return_value = None
             mock_session_manager.return_value.get_original_prompt.return_value = None
 
-            with patch("sys.argv", ["copium-loop", "my prompt"]):
+            with patch("sys.argv", ["copium-loop", "run", "my prompt"]):
                 with pytest.raises(SystemExit) as e:
                     await async_main()
                 assert e.value.code == 0
