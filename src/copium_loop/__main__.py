@@ -81,7 +81,14 @@ async def async_main():
             sys.exit(1)
 
     if args.command == "workon":
-        await copium_loop.workon.workon_main(args)
+        from copium_loop.tmux import TmuxManager
+
+        try:
+            tmux = TmuxManager()
+            await copium_loop.workon.workon_main(args.issue, tmux)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
         return
 
     # Default 'run' logic follows
