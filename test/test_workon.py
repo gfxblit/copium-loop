@@ -193,6 +193,7 @@ async def test_workon_main_existing_workspace(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
         await workon_main(args.issue, MagicMock())
@@ -343,6 +344,7 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
         await workon_main(args.issue, MagicMock())
@@ -370,6 +372,7 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
         await workon_main(args.issue, MagicMock())
