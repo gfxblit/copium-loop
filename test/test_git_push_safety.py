@@ -10,9 +10,7 @@ async def test_push_force_with_lease():
     """Test that git.push uses --force-with-lease instead of --force."""
     with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
-        with patch(
-            "copium_loop.git.get_current_branch", autospec=True
-        ) as mock_branch:
+        with patch("copium_loop.git.get_current_branch", autospec=True) as mock_branch:
             mock_branch.return_value = "feature-branch"
 
             # Test force push
@@ -50,9 +48,7 @@ async def test_push_non_protected_branch_succeeds():
     """Test that git.push succeeds when force pushing to a non-protected branch."""
     with patch("copium_loop.git.run_command", autospec=True) as mock_run:
         mock_run.return_value = {"exit_code": 0}
-        with patch(
-            "copium_loop.git.get_current_branch", autospec=True
-        ) as mock_branch:
+        with patch("copium_loop.git.get_current_branch", autospec=True) as mock_branch:
             mock_branch.return_value = "feature/new-ui"
 
             await git.push(force=True)

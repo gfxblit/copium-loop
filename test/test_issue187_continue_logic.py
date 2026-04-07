@@ -146,7 +146,10 @@ async def test_repo_root_mismatch_error(mock_repo_root):
                     mock_branch.return_value = "current-branch"
 
                     # Mock git rev-parse --show-toplevel to return a DIFFERENT path
-                    mock_repo_root.return_value = {"exit_code": 0, "output": "/new/path"}
+                    mock_repo_root.return_value = {
+                        "exit_code": 0,
+                        "output": "/new/path",
+                    }
 
                     # Expect SystemExit(1)
                     with pytest.raises(SystemExit) as excinfo:

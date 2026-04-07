@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -20,9 +20,7 @@ async def test_tester_node_updates_last_error_on_failure():
         patch(
             "copium_loop.nodes.tester_node.get_lint_command", return_value=("lint", [])
         ),
-        patch(
-            "copium_loop.nodes.tester_node._run_stage", autospec=True
-        ) as mock_run,
+        patch("copium_loop.nodes.tester_node._run_stage", autospec=True) as mock_run,
         patch("copium_loop.nodes.tester_node.get_telemetry"),
     ):
         # 1. Lint failure

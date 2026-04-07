@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -33,9 +33,7 @@ class TestTesterNode:
     async def test_tester_returns_pass_with_build(self, agent_state):
         """Test that test runner returns PASS when build, lint and tests pass."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -58,9 +56,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_lint(self, agent_state):
         """Test that test runner returns FAIL if linting fails."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -78,9 +74,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_build(self, agent_state):
         """Test that test runner returns FAIL if build fails."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -106,9 +100,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_test(self, agent_state):
         """Test that test runner returns FAIL if unit tests fail."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch(
                 "copium_loop.nodes.tester_node.get_build_command",
                 return_value=Command("npm", ["run", "build"]),
@@ -134,9 +126,7 @@ class TestTesterNode:
     async def test_tester_false_positive_avoidance(self, agent_state):
         """Test that '0 failed' or 'failed' in test names don't trigger failure with exit code 0."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -165,9 +155,7 @@ class TestTesterNode:
     async def test_tester_detects_lint_failure_with_exit_0(self, agent_state):
         """Test that tester node detects lint failures even if exit code is 0."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -187,9 +175,7 @@ class TestTesterNode:
     async def test_tester_still_detects_failure_with_exit_0(self, agent_state):
         """Test that explicit failure indicators still trigger failure even if exit code is 0."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -215,9 +201,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_pytest(self, agent_state):
         """Test that test runner returns FAIL (Coverage) if pytest coverage is low."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -246,9 +230,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_jest(self, agent_state):
         """Test that test runner returns FAIL (Coverage) if Jest coverage is low."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -276,9 +258,7 @@ class TestTesterNode:
     async def test_tester_returns_fail_on_coverage_nyc(self, agent_state):
         """Test that test runner returns FAIL (Coverage) if nyc/c8 coverage is low."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(
                 tester_module,
                 "get_build_command",
@@ -302,9 +282,7 @@ class TestTesterNode:
     async def test_tester_detect_ruff_violations(self):
         """Test that tester node detects ruff violations like F401 even if exit code is 0."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -324,9 +302,7 @@ class TestTesterNode:
     async def test_tester_node_detect_ruff_violation_with_colon_relaxed_space(self):
         """Verify that it detects Ruff violations even with no space after the colon."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
@@ -346,9 +322,7 @@ class TestTesterNode:
     async def test_tester_detect_ruff_summary(self):
         """Test that tester node detects ruff summary like 'Found 5 errors' even if exit code is 0."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_telemetry") as mock_get_telemetry,
         ):
             mock_log_status = mock_get_telemetry.return_value.log_status
@@ -367,9 +341,7 @@ class TestTesterNode:
     async def test_tester_node_false_positive_regex_avoidance(self):
         """Verify that generic strings like 'T100' or 'ORD123' don't trigger failures."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
         ):
             # Scenario: Output contains "Order ID: ORD123" and "Status: T100"
@@ -391,9 +363,7 @@ class TestTesterNode:
     async def test_tester_node_detect_ruff_violation_with_line_col(self):
         """Verify that it STILL detects Ruff violations when formatted with line/col and a colon."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):
@@ -413,9 +383,7 @@ class TestTesterNode:
     async def test_tester_error_regex_logic(self, agent_state):
         """Verify the regex for 'error:' correctly handles paths and real errors."""
         with (
-            patch.object(
-                            tester_module, "run_command", autospec=True
-                        ) as mock_run,
+            patch.object(tester_module, "run_command", autospec=True) as mock_run,
             patch.object(tester_module, "get_build_command", return_value=None),
             patch.object(tester_module, "get_telemetry"),
         ):

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -39,9 +39,7 @@ async def test_tester_node_skips_lint_if_none(agent_state):
         patch("copium_loop.nodes.tester_node.get_lint_command", return_value=None),
         patch("copium_loop.nodes.tester_node.get_build_command", return_value=None),
         patch("copium_loop.nodes.tester_node.get_test_command", return_value=None),
-        patch(
-            "copium_loop.nodes.tester_node.run_command", autospec=True
-        ) as mock_run,
+        patch("copium_loop.nodes.tester_node.run_command", autospec=True) as mock_run,
         patch("copium_loop.nodes.tester_node.get_telemetry"),
     ):
         result = await tester_node(agent_state)
@@ -60,9 +58,7 @@ async def test_tester_node_logs_useful_msg_on_lint_failure(agent_state):
         patch("copium_loop.nodes.tester_node.get_lint_command", return_value=lint_cmd),
         patch("copium_loop.nodes.tester_node.get_build_command", return_value=None),
         patch("copium_loop.nodes.tester_node.get_test_command", return_value=None),
-        patch(
-            "copium_loop.nodes.tester_node.run_command", autospec=True
-        ) as mock_run,
+        patch("copium_loop.nodes.tester_node.run_command", autospec=True) as mock_run,
     ):
         mock_run.return_value = {"output": "Missing semicolon", "exit_code": 1}
         result = await tester_node(agent_state)
