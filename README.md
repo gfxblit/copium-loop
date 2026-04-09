@@ -18,9 +18,7 @@ export NTFY_CHANNEL="your-channel-name"  # For notifications
 # Usage
 
 ```bash
-# Basic (run subcommand is default)
-copium-loop "implement user authentication"
-# or explicitly
+# Basic
 copium-loop run "implement user authentication"
 
 # Set up a new workspace for an issue
@@ -55,23 +53,23 @@ copium-loop run --continue
 
 Sessions are tied to your current branch and repository. `copium-loop` allows you to resume work seamlessly.
 
-- **Implicit Resumption**: If you run `copium-loop` without a prompt on a branch that has an active session, it will automatically resume from the last node it reached.
+- **Implicit Resumption**: If you run `copium-loop run` without a prompt on a branch that has an active session, it will automatically resume from the last node it reached.
   ```bash
   # Automatically resumes the current branch's session
-  copium-loop
+  copium-loop run
   ```
 - **Explicit Resumption**: Use `--continue` or `-c` to explicitly request resumption.
   ```bash
-  copium-loop --continue
+  copium-loop run --continue
   ```
 - **Prompt Overriding**: You can resume a session but provide a *new* prompt to guide the AI differently for the remaining nodes.
   ```bash
-  copium-loop --continue "now focus on fixing the login bug specifically"
+  copium-loop run --continue "now focus on fixing the login bug specifically"
   ```
 - **Node Selection**: Combine with `--node` to restart from a specific phase while keeping the existing context.
   ```bash
   # Restart from the testing phase
-  copium-loop --continue --node tester
+  copium-loop run --continue --node tester
   ```
 
 ## Branch-Locked Sessions

@@ -7,6 +7,21 @@ import pytest
 from copium_loop.__main__ import async_main
 
 
+def test_cli_help_menu():
+    """Test that the CLI help menu is accessible without defaulting to 'run'."""
+    env = {"PYTHONPATH": "src"}
+    result = subprocess.run(
+        [sys.executable, "-m", "copium_loop", "--help"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert result.returncode == 0
+    # The output should show available commands like 'run' and 'alldone'
+    assert "alldone" in result.stdout
+    assert "Clean up copium-loop workspace" in result.stdout
+
+
 def test_cli_invalid_start_node():
     """
     Test that the CLI fails with a non-zero exit code and prints an error message
@@ -15,7 +30,15 @@ def test_cli_invalid_start_node():
     # Run the CLI command
     env = {"PYTHONPATH": "src"}
     result = subprocess.run(
-        [sys.executable, "-m", "copium_loop", "-n", "invalid_node", "test prompt"],
+        [
+            sys.executable,
+            "-m",
+            "copium_loop",
+            "run",
+            "-n",
+            "invalid_node",
+            "test prompt",
+        ],
         capture_output=True,
         text=True,
         env=env,

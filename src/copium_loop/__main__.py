@@ -30,9 +30,11 @@ async def async_main():
     )
 
     parser = argparse.ArgumentParser(description="Run the dev workflow.")
-    subparsers = parser.add_subparsers(dest="command", help="Subcommand to run")
+    subparsers = parser.add_subparsers(
+        dest="command", help="Available commands", required=True
+    )
 
-    # Run command
+    # 'run' subcommand
     run_parser = subparsers.add_parser(
         "run", parents=[parent_parser], help="Run a development workflow"
     )
@@ -63,19 +65,30 @@ async def async_main():
     )
     workon_parser.add_argument("issue", help="The issue URL or description to work on")
 
-    # Handle default command if none provided
-    if len(sys.argv) > 1 and sys.argv[1] not in ["run", "workon", "-h", "--help"]:
-        # If it's a flag that belongs to run_parser but not to workon_parser (like -m, -c),
-        # or if it's just a prompt, insert 'run'
-        # To be safe, if it's not 'workon', we default to 'run'
-        sys.argv.insert(1, "run")
-    elif len(sys.argv) == 1:
-        sys.argv.append("run")
+    # Alldone command
+    subparsers.add_parser("alldone", help="Clean up copium-loop workspace")
 
     args = parser.parse_args()
 
+    if args.command == "alldone":
+        from copium_loop.alldone import run_alldone
+
+        try:
+            code = await run_alldone(node="alldone")
+            sys.exit(code)
+        except Exception as e:
+            print(f"Error during alldone cleanup: {e}", file=sys.stderr)
+            sys.exit(1)
+
     if args.command == "workon":
-        await copium_loop.workon.workon_main(args)
+        from copium_loop.tmux import TmuxManager
+
+        try:
+            tmux = TmuxManager()
+            await copium_loop.workon.workon_main(args.issue, tmux)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
         return
 
     # Default 'run' logic follows

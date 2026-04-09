@@ -4,7 +4,6 @@ import os
 import re
 import shlex
 import shutil
-import sys
 
 from copium_loop.shell import run_command
 from copium_loop.tmux import TmuxManager
@@ -62,17 +61,6 @@ async def find_remote_url(issue_input: str | None = None) -> str | None:
         with open(dotfile) as f:
             return f.read().strip()
 
-    # 3. Check sibling directories for git remotes
-    for item in os.listdir(cwd):
-        path = os.path.join(cwd, item)
-        if os.path.isdir(path) and os.path.exists(os.path.join(path, ".git")):
-            # Try to get remote URL from this directory
-            res = await run_command("git", ["remote", "get-url", "origin"], cwd=path)
-            if res["exit_code"] == 0:
-                url = res["output"].strip()
-                if url:
-                    return url
-
     return None
 
 
@@ -114,37 +102,32 @@ async def resolve_branch_name(input_str: str) -> str:
 
 async def check_dependencies():
     """Check if required external tools are installed."""
-    tools = ["gh", "tmux", "git", "pnpm"]
+    tools = ["gh", "tmux", "git"]
     missing = [tool for tool in tools if not shutil.which(tool)]
 
     if missing:
-        print(f"Error: Missing required tools: {', '.join(missing)}")
+        error_msg = f"Missing required tools: {', '.join(missing)}\n"
         if "gh" in missing:
-            print("Please install GitHub CLI: https://cli.github.com/")
+            error_msg += "Please install GitHub CLI: https://cli.github.com/\n"
         if "tmux" in missing:
-            print("Please install tmux: https://github.com/tmux/tmux")
-        if "pnpm" in missing:
-            print("Please install pnpm: https://pnpm.io/")
-        sys.exit(1)
+            error_msg += "Please install tmux: https://github.com/tmux/tmux\n"
+        raise RuntimeError(error_msg.strip())
 
 
-async def workon_main(args):
+async def workon_main(issue_input: str, tmux: TmuxManager):
     """Main function for 'workon' subcommand."""
     await check_dependencies()
 
     # 1. Resolve branch name
-
-    issue_input = args.issue
     branch_name = await resolve_branch_name(issue_input)
     print(f"Resolved branch name: {branch_name}")
 
     # 2. Find remote URL
     remote_url = await find_remote_url(issue_input)
     if not remote_url:
-        print(
-            "Error: Could not find remote URL. Create a .workon-remote file or run from a directory with sibling git repositories."
+        raise RuntimeError(
+            "Could not find remote URL. Create a .workon-remote file or run from a directory with sibling git repositories."
         )
-        sys.exit(1)
 
     cwd = os.getcwd()
     workspace_path = os.path.join(cwd, branch_name)
@@ -162,8 +145,7 @@ async def workon_main(args):
             )
             res = await run_command("git", ["clone", "--", remote_url, branch_name])
             if res["exit_code"] != 0:
-                print(f"Error cloning repository: {res['output']}")
-                sys.exit(1)
+                raise RuntimeError(f"Error cloning repository: {res['output']}")
 
             # Create branch
             print(f"Creating branch '{branch_name}'...")
@@ -177,11 +159,14 @@ async def workon_main(args):
 
     # 4. Detect and run pnpm install
     if os.path.exists(os.path.join(workspace_path, "pnpm-lock.yaml")):
+        if not shutil.which("pnpm"):
+            raise RuntimeError(
+                "pnpm project detected, but pnpm is not installed. Please install pnpm: https://pnpm.io/"
+            )
         print("pnpm project detected. Running pnpm install...")
         await run_command("pnpm", ["install"], cwd=workspace_path)
 
     # 5. Orchestrate tmux session
-    tmux = TmuxManager()
     if not tmux.has_session(branch_name):
         print(f"Creating tmux session: {branch_name}")
         tmux.new_session(branch_name, workspace_path)

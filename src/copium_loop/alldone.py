@@ -1,0 +1,84 @@
+import os
+import shutil
+from pathlib import Path
+
+from copium_loop.git import get_current_branch, get_repo_name, is_dirty, is_git_repo
+from copium_loop.shell import run_command
+
+
+class AllDoneCommand:
+    def __init__(self, log_dir: Path, session_dir: Path, node: str | None = None):
+        self.log_dir = log_dir
+        self.session_dir = session_dir
+        self.node = node
+
+    async def execute(self) -> int:
+        if not await is_git_repo(node=self.node):
+            print("Error: Not inside a git repository.")
+            return 1
+
+        if await is_dirty(node=self.node):
+            print("Error: Git repository has uncommitted or untracked files. Aborting.")
+            return 1
+
+        branch = await get_current_branch(node=self.node)
+        if not branch:
+            print("Error: Could not determine current branch. Aborting.")
+            return 1
+
+        repo_name = await get_repo_name(node=self.node)
+        if not repo_name:
+            print("Error: Could not determine repository name. Aborting.")
+            return 1
+
+        # Get toplevel directory
+        res = await run_command("git", ["rev-parse", "--show-toplevel"], node=self.node)
+        if res["exit_code"] != 0:
+            print("Error: Could not determine git repository root.")
+            return 1
+
+        toplevel_dir = res["output"].strip()
+
+        # Safety check: ensure we are only deleting from a designated temporary workspace directory
+        safe_workspace_root = Path.home() / ".copium" / "workspaces"
+        if (
+            not Path(toplevel_dir)
+            .resolve()
+            .is_relative_to(safe_workspace_root.resolve())
+        ):
+            print(
+                f"Error: Repository root '{toplevel_dir}' is not a safe temporary workspace. Aborting."
+            )
+            return 1
+
+        log_path = self.log_dir / repo_name / f"{branch}.jsonl"
+        session_path = self.session_dir / repo_name / f"{branch}.json"
+
+        if log_path.exists():
+            log_path.unlink()
+
+        if session_path.exists():
+            session_path.unlink()
+
+        # Kill tmux session
+        await run_command(
+            "tmux", ["kill-session", "-t", branch], capture_stderr=False, node=self.node
+        )
+
+        # Mitigation: Change the working directory to the parent directory
+        # to avoid attempting to delete the current working directory.
+        os.chdir(str(Path(toplevel_dir).parent))
+        shutil.rmtree(toplevel_dir)
+
+        print(
+            f"Successfully cleaned up copium-loop workspace for '{branch}' in '{repo_name}'."
+        )
+        return 0
+
+
+async def run_alldone(node: str | None = None) -> int:
+    """Cleans up copium-loop workspace, logs, and sessions for the current branch."""
+    log_dir = Path.home() / ".copium" / "logs"
+    session_dir = Path.home() / ".copium" / "sessions"
+    command = AllDoneCommand(log_dir, session_dir, node=node)
+    return await command.execute()

@@ -14,17 +14,16 @@ from copium_loop.workon import (
 @pytest.mark.asyncio
 async def test_check_dependencies_missing():
     with patch("shutil.which") as mock_which:
-        # Mock gh and tmux missing, git found, pnpm found
+        # Mock gh and tmux missing, git found
         mock_which.side_effect = lambda tool: {
             "gh": None,
             "tmux": None,
             "git": "/usr/bin/git",
-            "pnpm": "/usr/local/bin/pnpm",
         }.get(tool)
 
-        with pytest.raises(SystemExit) as e:
+        with pytest.raises(RuntimeError) as e:
             await check_dependencies()
-        assert e.value.code == 1
+        assert "Missing required tools: gh, tmux" in str(e.value)
 
 
 def test_slugify():
@@ -122,32 +121,6 @@ async def test_find_remote_url_from_dotfile(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_find_remote_url_from_siblings(tmp_path):
-    # Setup sibling directories
-    repo_dir = tmp_path / "existing-repo"
-    repo_dir.mkdir()
-    (repo_dir / ".git").mkdir()
-
-    with (
-        patch("os.getcwd", return_value=str(tmp_path)),
-        patch("copium_loop.workon.run_command", autospec=True) as mock_run,
-    ):
-        mock_run.return_value = {
-            "exit_code": 0,
-            "output": "git@github.com:owner/repo.git\n",
-        }
-
-        url = await find_remote_url()
-        assert url == "git@github.com:owner/repo.git"
-
-        # Verify it checked the existing-repo
-        mock_run.assert_called()
-        args, _ = mock_run.call_args
-        assert "remote" in args[1]
-        assert "get-url" in args[1]
-
-
-@pytest.mark.asyncio
 async def test_workon_main_no_remote_error():
     args = MagicMock()
     args.issue = "some-issue"
@@ -160,9 +133,9 @@ async def test_workon_main_no_remote_error():
         ),
         patch("copium_loop.workon.find_remote_url", autospec=True, return_value=None),
     ):
-        with pytest.raises(SystemExit) as e:
-            await workon_main(args)
-        assert e.value.code == 1
+        with pytest.raises(RuntimeError) as e:
+            await workon_main(args.issue, MagicMock())
+        assert "Could not find remote URL" in str(e.value)
 
 
 @pytest.mark.asyncio
@@ -192,7 +165,7 @@ async def test_workon_main_clone_fallback(tmp_path):
             {"exit_code": 0, "output": ""},
             {"exit_code": 0, "output": ""},
         ]
-        await workon_main(args)
+        await workon_main(args.issue, MagicMock())
         assert mock_run.call_count == 3
         # Verify it tried to create the branch
         assert mock_run.call_args_list[2].args[1] == ["checkout", "-b", "branch-1"]
@@ -220,9 +193,10 @@ async def test_workon_main_existing_workspace(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
-        await workon_main(args)
+        await workon_main(args.issue, MagicMock())
         # Should call git checkout
         mock_run.assert_called_with("git", ["checkout", "branch-1"], cwd=str(workspace))
 
@@ -243,7 +217,10 @@ async def test_workon_main_attach_session():
             autospec=True,
             return_value="git@remote",
         ),
-        patch("os.path.exists", return_value=True),
+        patch(
+            "os.path.exists",
+            side_effect=lambda path: not str(path).endswith("pnpm-lock.yaml"),
+        ),
         patch("copium_loop.workon.run_command", autospec=True),
         patch("copium_loop.workon.TmuxManager", autospec=True) as mock_tmux_cls,
     ):
@@ -252,12 +229,12 @@ async def test_workon_main_attach_session():
 
         # Mock not in TMUX
         with patch.dict("os.environ", {}, clear=True):
-            await workon_main(args)
+            await workon_main(args.issue, mock_tmux)
             mock_tmux.attach_session.assert_called_with("branch-1")
 
         # Mock in TMUX
         with patch.dict("os.environ", {"TMUX": "/tmp/tmux"}):
-            await workon_main(args)
+            await workon_main(args.issue, mock_tmux)
             mock_tmux.switch_client.assert_called_with("branch-1")
 
 
@@ -290,7 +267,7 @@ async def test_workon_main_full_flow(tmp_path):
         args = MagicMock()
         args.issue = issue_url
 
-        await workon_main(args)
+        await workon_main(args.issue, mock_tmux)
 
         # Verify steps
         mock_resolve.assert_called_with(issue_url)
@@ -367,9 +344,10 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
-        await workon_main(args)
+        await workon_main(args.issue, MagicMock())
 
         # Verify pnpm install was NOT called
         pnpm_calls = [
@@ -394,9 +372,10 @@ async def test_pnpm_detection_only_lockfile(tmp_path):
         patch("os.getcwd", return_value=str(tmp_path)),
         patch("copium_loop.workon.run_command", autospec=True) as mock_run,
         patch("copium_loop.workon.TmuxManager", autospec=True),
+        patch("shutil.which", return_value="/usr/bin/pnpm"),
     ):
         mock_run.return_value = {"exit_code": 0, "output": ""}
-        await workon_main(args)
+        await workon_main(args.issue, MagicMock())
 
         # Verify pnpm install WAS called
         pnpm_calls = [
