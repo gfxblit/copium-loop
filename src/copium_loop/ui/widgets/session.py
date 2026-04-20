@@ -40,9 +40,12 @@ class SessionWidget(Vertical):
     }
     """
 
-    def __init__(self, session_column: SessionColumn, **kwargs):
+    def __init__(
+        self, session_column: SessionColumn, index: int | None = None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.can_focus = True
+        self.index = index
         self.session_column = session_column
         self.session_id = session_column.session_id
         # We don't pre-populate self.pillars here because they need to be mounted in compose or refresh_ui
@@ -91,6 +94,8 @@ class SessionWidget(Vertical):
             header.styles.color = header_color
 
             display_name = self.session_column.display_name
+            if self.index:
+                display_name = f"[{self.index}] {display_name}"
             header.update(f"{display_name}{status_suffix}")
             header.border_subtitle = ""
 
