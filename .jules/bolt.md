@@ -9,3 +9,7 @@
 ## 2025-02-18 - Optimize Git Remote Checks
 **Learning:** Checking for git remotes using sequential subprocess calls (`git remote` list then `git remote get-url` per remote) is inefficient (N+1 problem).
 **Action:** Use `git remote -v` to fetch all remote URLs in a single subprocess call and parse the output. This reduces overhead significantly, especially in environments where process spawning is expensive.
+
+## 2024-05-19 - Fast File Discovery with Metadata
+**Learning:** `Path.rglob` followed by `Path.stat()` iterates all files but requires a separate system call for `stat()` on each matched file. In Python, `os.scandir` caches `stat` metadata (on most POSIX/Windows systems), so an explicit recursive generator using `os.scandir` combined with `entry.stat()` avoids the extra system calls, making bulk metadata reads (like finding the most recent logs) noticeably faster.
+**Action:** When searching directories where file metadata (like `st_mtime` or `st_size`) is immediately needed, write a recursive `os.scandir` generator instead of relying on `Path.rglob()`.
