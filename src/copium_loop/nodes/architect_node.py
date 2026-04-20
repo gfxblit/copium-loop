@@ -25,7 +25,7 @@ async def architect_node(state: AgentState) -> dict:
     engine = state["engine"]
     retry_count = state.get("retry_count", 0)
 
-    system_prompt = await get_architect_prompt(engine.engine_type, state)
+    system_prompt = await get_architect_prompt(engine.engine_type, state, engine)
 
     # Check for empty diff (Gemini provides diff in prompt, Jules calculates its own)
     if re.search(r"<git_diff>\s*</git_diff>", system_prompt, re.DOTALL):
